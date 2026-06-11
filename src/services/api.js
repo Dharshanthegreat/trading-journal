@@ -120,3 +120,13 @@ export const mt5 = {
     request('/mt5/disconnect', { method: 'POST' }),
   status: () => request('/mt5/status'),
 };
+
+// ─── Backup ──────────────────────────────────────────
+export const backup = {
+  export: () => request('/backup/export'),
+  import: (data) =>
+    request('/backup/import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};

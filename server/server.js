@@ -9,6 +9,7 @@ import journalRoutes from './routes/journal.js';
 import aiRoutes from './routes/ai.js';
 import tradingviewRoutes from './routes/tradingview.js';
 import mt5Routes from './routes/mt5.js';
+import backupRoutes from './routes/backup.js';
 import { authenticateToken } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,6 +46,7 @@ app.use('/api/journal', authenticateToken, journalRoutes);
 app.use('/api/ai', authenticateToken, aiRoutes);
 app.use('/api/tradingview', authenticateToken, tradingviewRoutes);
 app.use('/api/mt5', authenticateToken, mt5Routes);
+app.use('/api/backup', authenticateToken, backupRoutes);
 
 // ─── Error Handler ───────────────────────────────────
 app.use((err, req, res, next) => {
