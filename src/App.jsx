@@ -164,12 +164,10 @@ const Dashboard = () => {
   const handleSuggestionClick = (text) => {
     setAiInput(text);
   };
-
   useEffect(() => {
     fetchTrades({ limit: 200 });
     fetchAnalytics();
-  }, [fetchTrades, fetchAnalytics]);
-
+  }, []);
   // Compute unique symbols & setups for filter dropdowns from all trades
   const uniqueSymbols = useMemo(() => {
     const syms = trades.map(t => t.symbol?.toUpperCase()).filter(Boolean);
