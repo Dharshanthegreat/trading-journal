@@ -547,11 +547,11 @@ const Dashboard = () => {
 
       {/* Mid Section Grid */}
       <div className="tz-mid-grid">
-        {/* Zella Score */}
+        {/* Score */}
         <div className="tz-card">
           <div className="tz-card-header">
             <div className="tz-card-title">
-              <Brain size={14} /> Zella Score
+              <Brain size={14} /> Score
             </div>
           </div>
           <div className="tz-radar-container">
@@ -570,7 +570,7 @@ const Dashboard = () => {
             )}
             
             <div className="tz-score-display">
-              <div className="tz-score-label">Your Zella Score</div>
+              <div className="tz-score-label">Your Score</div>
               <div className="tz-score-value">{scoreValue}</div>
               
               <div className="tz-score-bar-wrapper">
