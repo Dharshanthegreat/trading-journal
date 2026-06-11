@@ -27,7 +27,9 @@ import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine
+  Tooltip, ResponsiveContainer, ReferenceLine,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  LineChart, Line
 } from 'recharts';
 import { format } from 'date-fns';
 import './App.css';
@@ -41,10 +43,7 @@ const Dashboard = () => {
   const [selectedSymbol, setSelectedSymbol] = useState('All');
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
-  
-  // Chart view state
-  const [chartView, setChartView] = useState('equity');
-  const [insightTab, setInsightTab] = useState('metrics'); // 'metrics' or 'leaks'
+  const [bottomTab, setBottomTab] = useState('recent'); // 'recent' or 'open'
 
   useEffect(() => {
     fetchTrades({ limit: 200 });
@@ -190,6 +189,73 @@ const Dashboard = () => {
     };
   }, [filteredTrades]);
 
+  // Group trades by day to calculate Day Win %
+  const dayStats = useMemo(() => {
+    const days = {};
+    filteredTrades.forEach(t => {
+      const timeStr = t.entryTime || t.entry_time;
+      if (!timeStr) return;
+      const dateStr = timeStr.split('T')[0];
+      if (!days[dateStr]) days[dateStr] = 0;
+      days[dateStr] += t.pnl;
+    });
+    const dayList = Object.values(days);
+    const totalDays = dayList.length;
+    if (totalDays === 0) return { winRate: 0, wins: 0, losses: 0, scratch: 0 };
+    const wins = dayList.filter(pnl => pnl > 0).length;
+    const losses = dayList.filter(pnl => pnl < 0).length;
+    const scratch = dayList.filter(pnl => pnl === 0).length;
+    const winRate = ((wins / totalDays) * 100).toFixed(1);
+    return { winRate: parseFloat(winRate), wins, losses, scratch };
+  }, [filteredTrades]);
+
+  // Compute Zella Radar Chart Data and Overall Zella Score
+  const { scoreValue, radarData } = useMemo(() => {
+    if (filteredTrades.length === 0) {
+      return {
+        scoreValue: 0,
+        radarData: [
+          { subject: 'Win %', value: 0 },
+          { subject: 'Profit Factor', value: 0 },
+          { subject: 'Avg Win/Loss', value: 0 },
+          { subject: 'Recovery Factor', value: 0 },
+          { subject: 'Max Drawdown', value: 0 },
+          { subject: 'Consistency', value: 0 },
+        ]
+      };
+    }
+
+    const winRateScore = stats.winRate; // 0-100
+    const pf = parseFloat(stats.profitFactor);
+    const pfScore = isNaN(pf) || pf <= 0 ? 0 : (pf >= 3 ? 100 : (pf / 3) * 100);
+
+    const avgWinNum = parseFloat(stats.avgWin);
+    const avgLossNum = parseFloat(stats.avgLoss);
+    const wlr = avgLossNum > 0 ? (avgWinNum / avgLossNum) : (avgWinNum > 0 ? 3 : 1);
+    const wlrScore = wlr >= 3 ? 100 : (wlr / 3) * 100;
+
+    const consistencyScore = Math.max(20, 100 - (stats.maxLossStreak * 12));
+
+    const recoveryFactor = stats.maxDrawdown > 0 ? (stats.totalPnL / stats.maxDrawdown) : (stats.totalPnL > 0 ? 4 : 0);
+    const rfScore = recoveryFactor <= 0 ? 0 : (recoveryFactor >= 4 ? 100 : (recoveryFactor / 4) * 100);
+
+    const ddRatio = stats.totalPnL > 0 ? (stats.maxDrawdown / stats.totalPnL) : 1;
+    const ddScore = Math.max(10, 100 - (ddRatio * 50));
+
+    const scoreValue = parseFloat(((winRateScore + pfScore + wlrScore + consistencyScore + rfScore + ddScore) / 6).toFixed(1));
+
+    const radarData = [
+      { subject: 'Win %', value: winRateScore },
+      { subject: 'Profit Factor', value: pfScore },
+      { subject: 'Avg Win/Loss', value: wlrScore },
+      { subject: 'Recovery Factor', value: rfScore },
+      { subject: 'Max Drawdown', value: ddScore },
+      { subject: 'Consistency', value: consistencyScore },
+    ];
+
+    return { scoreValue, radarData };
+  }, [filteredTrades, stats]);
+
   // Compute charts data
   const chartsData = useMemo(() => {
     const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
@@ -208,74 +274,56 @@ const Dashboard = () => {
       };
     });
 
-    running = 0;
-    const drawdownCurve = chronoTrades.map((t, idx) => {
+    return { equityCurve };
+  }, [filteredTrades]);
+
+  // Group trades by day for the Net Daily P&L bar chart
+  const dailyPnlData = useMemo(() => {
+    const days = {};
+    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    chronoTrades.forEach(t => {
+      const timeStr = t.entryTime || t.entry_time;
+      if (!timeStr) return;
+      const dateStr = format(new Date(timeStr), 'MM/dd/yy');
+      if (!days[dateStr]) days[dateStr] = 0;
+      days[dateStr] += t.pnl;
+    });
+    return Object.entries(days).map(([date, pnl]) => ({
+      date,
+      pnl: parseFloat(pnl.toFixed(2))
+    }));
+  }, [filteredTrades]);
+
+  // Compute account balance curve
+  const balanceData = useMemo(() => {
+    let balance = 10000;
+    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    return chronoTrades.map((t, idx) => {
+      balance += t.pnl;
+      return {
+        index: idx + 1,
+        date: t.entryTime ? format(new Date(t.entryTime), 'MM/dd/yy') : '',
+        balance: parseFloat(balance.toFixed(2)),
+        pnl: t.pnl
+      };
+    });
+  }, [filteredTrades]);
+
+  // Compute drawdown curve
+  const drawdownData = useMemo(() => {
+    let running = 0;
+    let peak = 0;
+    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    return chronoTrades.map((t, idx) => {
       running += t.pnl;
       if (running > peak) peak = running;
       const dd = peak - running;
       return {
         index: idx + 1,
-        date: t.entryTime ? format(new Date(t.entryTime), 'MMM d') : '',
-        drawdown: parseFloat(dd.toFixed(2)),
-        pnl: t.pnl,
-        symbol: t.symbol,
+        date: t.entryTime ? format(new Date(t.entryTime), 'MM/dd/yy') : '',
+        drawdown: parseFloat(dd.toFixed(2))
       };
     });
-
-    const pnlBars = chronoTrades.map((t, idx) => ({
-      name: `${t.symbol} #${idx+1}`,
-      pnl: t.pnl,
-    }));
-
-    return { equityCurve, drawdownCurve, pnlBars };
-  }, [filteredTrades]);
-
-  // Compute Setup breakdown dynamically
-  const setupBreakdown = useMemo(() => {
-    const setupsMap = {};
-    filteredTrades.forEach(t => {
-      const s = t.setup || 'Untagged';
-      if (!setupsMap[s]) setupsMap[s] = { setup: s, count: 0, wins: 0, pnl: 0 };
-      setupsMap[s].count++;
-      setupsMap[s].pnl += t.pnl;
-      if (t.pnl > 0) setupsMap[s].wins++;
-    });
-
-    return Object.values(setupsMap)
-      .map(item => ({
-        ...item,
-        winRate: item.count ? parseFloat(((item.wins / item.count) * 100).toFixed(1)) : 0,
-        pnl: parseFloat(item.pnl.toFixed(2))
-      }))
-      .sort((a, b) => b.pnl - a.pnl);
-  }, [filteredTrades]);
-
-  // Compute Cognitive/FOMO leak stats
-  const cognitiveLeaks = useMemo(() => {
-    const fomoTrades = filteredTrades.filter(t => (t.fomoLevel || 5) > 5);
-    const disciplinedTrades = filteredTrades.filter(t => (t.fomoLevel || 5) <= 5);
-    
-    const fomoCount = fomoTrades.length;
-    const discCount = disciplinedTrades.length;
-
-    const fomoPnL = fomoTrades.reduce((acc, t) => acc + t.pnl, 0);
-    const discPnL = disciplinedTrades.reduce((acc, t) => acc + t.pnl, 0);
-
-    const fomoWins = fomoTrades.filter(t => t.pnl > 0);
-    const fomoWinRate = fomoCount ? ((fomoWins.length / fomoCount) * 100).toFixed(1) : '0';
-
-    const discWins = disciplinedTrades.filter(t => t.pnl > 0);
-    const discWinRate = discCount ? ((discWins.length / discCount) * 100).toFixed(1) : '0';
-
-    return {
-      fomoCount,
-      discCount,
-      fomoPnL: parseFloat(fomoPnL.toFixed(2)),
-      discPnL: parseFloat(discPnL.toFixed(2)),
-      fomoWinRate,
-      discWinRate,
-      fomoCost: fomoPnL < 0 ? Math.abs(fomoPnL) : 0,
-    };
   }, [filteredTrades]);
 
   if (loading && !trades.length) {
@@ -288,16 +336,9 @@ const Dashboard = () => {
     );
   }
 
-  // Ring progression helper
-  const winRateNum = stats.winRate;
-  const radius = 24;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (winRateNum / 100) * circumference;
-
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const p = payload[0].payload;
-    const v = payload[0].value;
     return (
       <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Trade #{p.index} · {p.date}</div>
@@ -308,11 +349,9 @@ const Dashboard = () => {
           </span>
         </div>
         <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem' }}>
-            {chartView === 'equity' ? 'Cumulative P&L:' : 'Drawdown:'}
-          </span>
-          <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: chartView === 'equity' ? (v >= 0 ? 'var(--profit)' : 'var(--loss)') : 'var(--loss)' }}>
-            {chartView === 'equity' ? (v >= 0 ? '+' : '') : ''}${v.toFixed(2)}
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem' }}>Cumulative P&L:</span>
+          <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: p.equity >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+            {p.equity >= 0 ? '+' : ''}${p.equity?.toFixed(2)}
           </span>
         </div>
       </div>
@@ -322,7 +361,7 @@ const Dashboard = () => {
   const BarTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const v = payload[0].value;
-    const name = payload[0].payload.name;
+    const name = payload[0].payload.date;
     return (
       <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '2px' }}>{name}</div>
@@ -334,361 +373,424 @@ const Dashboard = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-      {/* Page Header */}
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: 0 }}>
-        <div>
-          <div className="page-title">
-            <span className="status-dot live" />
-            Trading Dashboard
+    <div className="tz-dashboard-container">
+      {/* Header Row */}
+      <div className="tz-header">
+        <h1 className="tz-title">Dashboard</h1>
+        
+        {/* Filters */}
+        <div className="tz-filters">
+          <button className="tz-filter-btn" style={{ padding: '6px 10px' }}>
+            <span style={{ fontWeight: 700 }}>$</span>
+          </button>
+          
+          <div className="tz-filter-btn">
+            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>1 filter</span>
+            <button className="tz-filter-clear" onClick={handleResetFilters}>×</button>
           </div>
-          <div className="page-subtitle">
-            {format(new Date(), 'EEEE, MMMM d, yyyy')} · Running stats for {stats.totalTrades} of {trades.length} total trades
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Station */}
-      <div className="glass" style={{ padding: 'var(--s3) var(--s4)', display: 'flex', flexWrap: 'wrap', gap: 'var(--s4)', alignItems: 'center', justifyContent: 'space-between', borderRadius: 'var(--r-lg)' }}>
-        <div style={{ display: 'flex', gap: 'var(--s4)', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Date Range Selector */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <span className="label-sm" style={{ fontSize: '0.58rem' }}>Date Range</span>
-            <select className="input btn-ghost" value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ padding: '3px 8px', height: '28px', fontSize: '0.72rem', width: '110px', background: 'var(--bg-primary)' }}>
-              <option value="all">All Time</option>
+          
+          <div className="tz-filter-btn">
+            <select value={dateRange} onChange={e => setDateRange(e.target.value)}>
+              <option value="all">Date range</option>
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
               <option value="90d">Last 90 Days</option>
               <option value="ytd">Year to Date</option>
             </select>
           </div>
-
-          {/* Symbol Selector */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <span className="label-sm" style={{ fontSize: '0.58rem' }}>Symbol</span>
-            <select className="input btn-ghost" value={selectedSymbol} onChange={e => setSelectedSymbol(e.target.value)} style={{ padding: '3px 8px', height: '28px', fontSize: '0.72rem', width: '110px', background: 'var(--bg-primary)' }}>
-              <option value="All">All Symbols</option>
+          
+          <div className="tz-filter-btn">
+            <select value={selectedSymbol} onChange={e => setSelectedSymbol(e.target.value)}>
+              <option value="All">All accounts</option>
               {uniqueSymbols.map(sym => (
                 <option key={sym} value={sym}>{sym}</option>
               ))}
             </select>
           </div>
 
-          {/* Setup Selector */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <span className="label-sm" style={{ fontSize: '0.58rem' }}>Setup</span>
-            <select className="input btn-ghost" value={selectedSetup} onChange={e => setSelectedSetup(e.target.value)} style={{ padding: '3px 8px', height: '28px', fontSize: '0.72rem', width: '120px', background: 'var(--bg-primary)' }}>
-              <option value="All">All Setups</option>
+          <div className="tz-filter-btn">
+            <select value={selectedSetup} onChange={e => setSelectedSetup(e.target.value)}>
+              <option value="All">All setups</option>
               {uniqueSetups.map(s => (
                 <option key={s} value={s}>{s || 'Untagged'}</option>
               ))}
             </select>
           </div>
-
-          {/* Side Selector */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <span className="label-sm" style={{ fontSize: '0.58rem' }}>Side</span>
-            <select className="input btn-ghost" value={selectedType} onChange={e => setSelectedType(e.target.value)} style={{ padding: '3px 8px', height: '28px', fontSize: '0.72rem', width: '90px', background: 'var(--bg-primary)' }}>
-              <option value="All">All Sides</option>
-              <option value="Long">Long</option>
-              <option value="Short">Short</option>
-            </select>
-          </div>
         </div>
-
-        <button className="btn btn-ghost btn-sm" onClick={handleResetFilters} style={{ padding: '3px 10px', height: '28px', fontSize: '0.7rem' }}>
-          Reset Filters
+      </div>
+      
+      {/* Resync Bar */}
+      <div className="tz-resync-bar">
+        <div>
+          Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : 'Jun 10, 2026 05:19 PM'}
+          <span className="tz-resync-link" onClick={() => fetchTrades({ limit: 200 })}>Resync</span>
+        </div>
+        <button className="tz-btn-primary" onClick={() => fetchTrades({ limit: 200 })}>
+          <Zap size={14} /> Start my day
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="stat-grid" style={{ marginBottom: 0 }}>
-        {/* Total PnL */}
-        <div className="glass glass-hover stat-card anim-fade-up delay-1" style={{ position: 'relative', overflow: 'hidden' }}>
-          <div className="stat-label">
-            <span style={{ color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-              {stats.totalPnL >= 0 ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
+      {/* KPI cards */}
+      <div className="tz-kpi-grid">
+        {/* Card 1: Net P&L */}
+        <div className="tz-kpi-card">
+          <div className="tz-kpi-header">
+            <div className="tz-kpi-label">
+              Net P&L <Activity size={12} style={{ opacity: 0.6 }} />
+            </div>
+            <span style={{ background: 'var(--border)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.62rem' }}>
+              {stats.totalTrades}
             </span>
-            Total P&L
           </div>
-          <div className="stat-value" style={{ color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-            {stats.totalPnL >= 0 ? '+' : ''}${stats.totalPnL.toFixed(2)}
-          </div>
-          <div className="stat-delta">
-            <span>Wins: {stats.wins} | Losses: {stats.losses}</span>
-          </div>
-        </div>
-
-        {/* Win Rate Ring */}
-        <div className="glass glass-hover stat-card anim-fade-up delay-2" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 'var(--s5)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-            <div className="stat-label"><span style={{ color: 'var(--accent)' }}><Zap size={13}/></span> Win Rate</div>
-            <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
-              {stats.winRate}%
+          <div className="tz-kpi-body">
+            <div className="tz-kpi-val" style={{ color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+              {stats.totalPnL >= 0 ? '+' : ''}${stats.totalPnL.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </div>
-            <div className="stat-delta">
-              <span>Ratio: {(stats.totalTrades ? (stats.wins / stats.totalTrades) : 0).toFixed(2)}</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '60px', height: '60px' }}>
-            <svg width="60" height="60" viewBox="0 0 60 60" style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx="30" cy="30" r={radius} fill="transparent" stroke="var(--border)" strokeWidth="4" />
-              <circle cx="30" cy="30" r={radius} fill="transparent" stroke={winRateNum >= 50 ? 'var(--profit)' : 'var(--loss)'} strokeWidth="4" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
-            </svg>
-            <div style={{ position: 'absolute', fontSize: '0.62rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-              {winRateNum.toFixed(0)}%
+            <div>
+              <TrendingUp size={24} style={{ color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)', opacity: 0.8 }} />
             </div>
           </div>
         </div>
 
-        {/* Total Trades */}
-        <div className="glass glass-hover stat-card anim-fade-up delay-3">
-          <div className="stat-label">
-            <span style={{ color: 'var(--info)' }}><Activity size={13}/></span>
-            Volume
+        {/* Card 2: Trade win % */}
+        <div className="tz-kpi-card">
+          <div className="tz-kpi-header">
+            <div className="tz-kpi-label">
+              Trade win % <Zap size={12} style={{ opacity: 0.6 }} />
+            </div>
           </div>
-          <div className="stat-value" style={{ color: 'var(--info)' }}>
-            {stats.totalTrades}
+          <div className="tz-kpi-body">
+            <div className="tz-kpi-val">{stats.winRate.toFixed(0)}%</div>
+            <div className="tz-kpi-gauge">
+              <svg viewBox="0 0 100 50" style={{ width: '58px', height: '29px' }}>
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--border-strong)" strokeWidth="8" strokeLinecap="round" />
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--profit)" strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray="125.66" strokeDashoffset={125.66 * (1 - stats.winRate / 100)} />
+              </svg>
+            </div>
           </div>
-          <div className="stat-delta">
-            <span>Streak: Max Win {stats.maxWinStreak} / Loss {stats.maxLossStreak}</span>
+          <div className="tz-kpi-subtext">
+            <span style={{ color: 'var(--profit)' }}>{stats.wins} W</span>
+            <span style={{ color: 'var(--loss)' }}>{stats.losses} L</span>
+            <span>{stats.totalTrades - stats.wins - stats.losses} S</span>
           </div>
         </div>
 
-        {/* Profit Factor */}
-        <div className="glass glass-hover stat-card anim-fade-up delay-4">
-          <div className="stat-label">
-            <span style={{ color: 'var(--warn)' }}><BarChart2 size={13}/></span>
-            Expectancy
+        {/* Card 3: Profit factor */}
+        <div className="tz-kpi-card">
+          <div className="tz-kpi-header">
+            <div className="tz-kpi-label">
+              Profit factor <BarChart2 size={12} style={{ opacity: 0.6 }} />
+            </div>
           </div>
-          <div className="stat-value" style={{ color: 'var(--warn)' }}>
-            {stats.profitFactor === 'Infinity' ? '∞' : stats.profitFactor}
-          </div>
-          <div className="stat-delta">
-            <span>Avg: Win ${stats.avgWin} / Loss -${stats.avgLoss}</span>
+          <div className="tz-kpi-body">
+            <div className="tz-kpi-val">{stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}</div>
+            <div className="tz-kpi-gauge">
+              <svg width="32" height="32" viewBox="0 0 32 32">
+                <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
+                <circle cx="16" cy="16" r="12" fill="none"
+                        stroke={parseFloat(stats.profitFactor) >= 1.5 ? 'var(--profit)' : 'var(--loss)'}
+                        strokeWidth="3"
+                        strokeDasharray="75.4"
+                        strokeDashoffset={stats.profitFactor === 'Infinity' ? 0 : 75.4 * (1 - Math.min(1, (parseFloat(stats.profitFactor) || 0) / 3))}
+                        transform="rotate(-90 16 16)" />
+              </svg>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Charts Station & Insights Row */}
-      <div className="charts-row" style={{ margin: 0 }}>
-        {/* Interactive Chart Panel */}
-        <div className="glass chart-panel anim-fade-up delay-3" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-          <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="chart-title" style={{ margin: 0 }}>Performance Charts</span>
-            <div className="tabs" style={{ margin: 0, borderBottom: 'none', gap: '2px' }}>
-              <button className={`tab btn-sm ${chartView === 'equity' ? 'active' : ''}`} onClick={() => setChartView('equity')} style={{ padding: '3px 8px', fontSize: '0.7rem' }}>Cumulative P&L</button>
-              <button className={`tab btn-sm ${chartView === 'drawdown' ? 'active' : ''}`} onClick={() => setChartView('drawdown')} style={{ padding: '3px 8px', fontSize: '0.7rem' }}>Drawdown</button>
-              <button className={`tab btn-sm ${chartView === 'pnlBars' ? 'active' : ''}`} onClick={() => setChartView('pnlBars')} style={{ padding: '3px 8px', fontSize: '0.7rem' }}>Trade Bars</button>
+        {/* Card 4: Day win % */}
+        <div className="tz-kpi-card">
+          <div className="tz-kpi-header">
+            <div className="tz-kpi-label">
+              Day win % <Activity size={12} style={{ opacity: 0.6 }} />
             </div>
           </div>
-
-          {filteredTrades.length > 0 ? (
-            <div style={{ width: '100%', height: '250px' }}>
-              {chartView === 'equity' && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartsData.equityCurve} margin={{ top: 10, right: 10, bottom: 0, left: -25 }}>
-                    <defs>
-                      <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.25}/>
-                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-mid)" vertical={false}/>
-                    <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10, fontFamily: 'Inter' }} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false}/>
-                    <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }}/>
-                    <Area type="monotone" dataKey="equity" stroke="var(--accent)" strokeWidth={2} fill="url(#equityGrad)" dot={{ stroke: 'var(--accent)', strokeWidth: 1.5, r: 2, fill: 'var(--bg-secondary)' }}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-
-              {chartView === 'drawdown' && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartsData.drawdownCurve} margin={{ top: 10, right: 10, bottom: 0, left: -25 }}>
-                    <defs>
-                      <linearGradient id="drawdownGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--loss)" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="var(--loss)" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-mid)" vertical={false}/>
-                    <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10, fontFamily: 'Inter' }} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false}/>
-                    <ReferenceLine y={0} stroke="var(--border-strong)"/>
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }}/>
-                    <Area type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fill="url(#drawdownGrad)" dot={{ stroke: 'var(--loss)', strokeWidth: 1.5, r: 2, fill: 'var(--bg-secondary)' }}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-
-              {chartView === 'pnlBars' && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartsData.pnlBars} margin={{ top: 10, right: 10, bottom: 0, left: -25 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-mid)" vertical={false}/>
-                    <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 8, fontFamily: 'Inter' }} axisLine={false} tickLine={false} hide/>
-                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false}/>
-                    <ReferenceLine y={0} stroke="var(--border-strong)"/>
-                    <Tooltip content={<BarTooltip />} cursor={{ fill: 'var(--surface-glass-h)' }}/>
-                    <Bar dataKey="pnl" radius={[2, 2, 0, 0]}>
-                      {chartsData.pnlBars.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.8} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+          <div className="tz-kpi-body">
+            <div className="tz-kpi-val">{dayStats.winRate.toFixed(0)}%</div>
+            <div className="tz-kpi-gauge">
+              <svg viewBox="0 0 100 50" style={{ width: '58px', height: '29px' }}>
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--border-strong)" strokeWidth="8" strokeLinecap="round" />
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--profit)" strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray="125.66" strokeDashoffset={125.66 * (1 - dayStats.winRate / 100)} />
+              </svg>
             </div>
-          ) : (
-            <div className="empty-state" style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="empty-desc">No trade data matches the selected filters.</span>
-            </div>
-          )}
+          </div>
+          <div className="tz-kpi-subtext">
+            <span style={{ color: 'var(--profit)' }}>{dayStats.wins} W</span>
+            <span style={{ color: 'var(--loss)' }}>{dayStats.losses} L</span>
+            <span>{dayStats.scratch} S</span>
+          </div>
         </div>
 
-        {/* Diagnostic Insights Panel */}
-        <div className="glass chart-panel anim-fade-up delay-4" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-          <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)' }}>
-            <span className="chart-title" style={{ margin: 0 }}>Behavioral Audits</span>
-            <div className="tabs" style={{ margin: 0, borderBottom: 'none', gap: '2px' }}>
-              <button className={`tab btn-sm ${insightTab === 'metrics' ? 'active' : ''}`} onClick={() => setInsightTab('metrics')} style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Metrics</button>
-              <button className={`tab btn-sm ${insightTab === 'leaks' ? 'active' : ''}`} onClick={() => setInsightTab('leaks')} style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Leaks</button>
+        {/* Card 5: Avg win/loss trade */}
+        <div className="tz-kpi-card">
+          <div className="tz-kpi-header">
+            <div className="tz-kpi-label">
+              Avg win/loss trade <BarChart2 size={12} style={{ opacity: 0.6 }} />
             </div>
           </div>
-
-          {insightTab === 'metrics' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', flex: 1, justifyContent: 'center' }}>
-              {[
-                { label: 'Avg Win Trade', val: `$${stats.avgWin}`, col: 'var(--profit)' },
-                { label: 'Avg Loss Trade', val: `-$${stats.avgLoss}`, col: 'var(--loss)' },
-                { label: 'Ratio (W/L)', val: stats.avgLoss !== '0.00' ? `1:${(parseFloat(stats.avgWin)/parseFloat(stats.avgLoss) || 1).toFixed(1)}` : '—', col: 'var(--text-primary)' },
-                { label: 'Max Drawdown', val: `-$${stats.maxDrawdown.toFixed(2)}`, col: 'var(--loss)' },
-              ].map((item, idx) => (
-                <div key={item.label} style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center', padding: '6px 0',
-                  borderBottom: idx < 3 ? '1px solid var(--border)' : 'none',
-                  fontSize: '0.78rem'
-                }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.label}</span>
-                  <span style={{ fontWeight: 700, color: item.col, fontFamily: 'JetBrains Mono', fontSize: '0.78rem' }}>{item.val}</span>
-                </div>
-              ))}
+          <div className="tz-kpi-body" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+            <div className="tz-kpi-val" style={{ fontSize: '1.2rem', fontFamily: 'JetBrains Mono' }}>
+              ${stats.avgWin} / -${stats.avgLoss}
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)', flex: 1, justifyContent: 'center' }}>
-              {cognitiveLeaks.fomoCount > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', padding: 'var(--s2)', borderRadius: 'var(--r-sm)', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)' }}>
-                    <span style={{ color: 'var(--loss)', display: 'flex', alignItems: 'center' }}><TrendingDown size={14} /></span>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                      FOMO cost you <strong style={{ color: 'var(--loss)', fontFamily: 'JetBrains Mono' }}>-${cognitiveLeaks.fomoCost.toFixed(2)}</strong> over {cognitiveLeaks.fomoCount} trades.
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Disciplined Win Rate:</span>
-                      <span style={{ fontWeight: 600, color: 'var(--profit)' }}>{cognitiveLeaks.discWinRate}%</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>FOMO Win Rate:</span>
-                      <span style={{ fontWeight: 600, color: 'var(--loss)' }}>{cognitiveLeaks.fomoWinRate}%</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid var(--border)', paddingTop: '6px' }}>
-                    Coaching tip: Stop chasing entries. Your disciplined execution yields better risk reward.
-                  </div>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: 'var(--s3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s2)' }}>
-                  <span style={{ color: 'var(--profit)', display: 'flex', alignItems: 'center' }}><Check size={20} /></span>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>100% Disciplined Session</div>
-                  <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>No high-FOMO trades found. You've protected your equity curve from emotional leaks!</p>
-                </div>
-              )}
+            <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: 'var(--border-strong)' }}>
+              <div style={{
+                width: `${parseFloat(stats.avgWin) + parseFloat(stats.avgLoss) > 0 ? (parseFloat(stats.avgWin) / (parseFloat(stats.avgWin) + parseFloat(stats.avgLoss)) * 100) : 50}%`,
+                background: 'var(--profit)'
+              }} />
+              <div style={{ flex: 1, background: 'var(--loss)' }} />
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Bottom Setup & Recent Trades Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 'var(--s5)' }}>
-        {/* Setup Expectancy */}
-        <div className="glass chart-panel anim-fade-up delay-5" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-          <div className="chart-title" style={{ margin: 0, paddingBottom: '6px', borderBottom: '1px solid var(--border)' }}>
-            <span>Performance by Setup</span>
-          </div>
-          {setupBreakdown.length > 0 ? (
-            <div style={{ overflowX: 'auto', flex: 1 }}>
-              <table className="data-table" style={{ fontSize: '0.72rem' }}>
-                <thead>
-                  <tr>
-                    <th style={{ padding: '6px 8px' }}>Setup</th>
-                    <th style={{ padding: '6px 8px' }}>Trades</th>
-                    <th style={{ padding: '6px 8px' }}>Win %</th>
-                    <th style={{ padding: '6px 8px' }}>P&L</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {setupBreakdown.map(item => (
-                    <tr key={item.setup} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ color: 'var(--text-primary)', fontWeight: 600, padding: '8px 8px' }}>{item.setup}</td>
-                      <td style={{ color: 'var(--text-muted)', padding: '8px 8px' }}>{item.count}</td>
-                      <td style={{ padding: '8px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div className="progress-track" style={{ width: '40px', height: '3px' }}>
-                            <div className="progress-fill" style={{ width: `${item.winRate}%`, background: 'var(--accent)' }}/>
-                          </div>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.62rem' }}>{item.winRate}%</span>
-                        </div>
-                      </td>
-                      <td style={{ fontWeight: 700, color: item.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', padding: '8px 8px', textAlign: 'right' }}>
-                        {item.pnl >= 0 ? '+' : ''}${item.pnl.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Mid Section Grid */}
+      <div className="tz-mid-grid">
+        {/* Zella Score */}
+        <div className="tz-card">
+          <div className="tz-card-header">
+            <div className="tz-card-title">
+              <Brain size={14} /> Zella Score
             </div>
-          ) : (
-            <div className="empty-state" style={{ padding: 'var(--s5)' }}>
-              <span className="empty-desc">No setups logged in this view.</span>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Activity */}
-        <div className="glass chart-panel anim-fade-up delay-6" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-          <div className="chart-title" style={{ margin: 0, paddingBottom: '6px', borderBottom: '1px solid var(--border)' }}>
-            <span>Recent Trades</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)', justifyContent: 'center', flex: 1 }}>
-            {filteredTrades.slice(0, 4).map((t, idx) => (
-              <div key={t.id || idx} style={{
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', padding: '8px 0',
-                borderBottom: idx < 3 ? '1px solid var(--border)' : 'none',
-                fontSize: '0.78rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                  <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ padding: '1px 6px', fontSize: '0.6rem' }}>{t.type}</span>
-                  <span style={{ fontWeight: 600 }}>{t.symbol}</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>({t.setup || 'Untagged'})</span>
-                </div>
-                <span style={{
-                  fontWeight: 700, fontFamily: 'JetBrains Mono',
-                  color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)',
-                  fontSize: '0.78rem'
-                }}>
-                  {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
-                </span>
+          <div className="tz-radar-container">
+            {filteredTrades.length > 0 ? (
+              <ResponsiveContainer width="100%" height={160}>
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                  <PolarGrid stroke="var(--border-mid)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 8 }} />
+                  <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                Log trades to view score
               </div>
-            ))}
-            {filteredTrades.length === 0 && (
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center', padding: 'var(--s4)' }}>No trades found.</span>
+            )}
+            
+            <div className="tz-score-display">
+              <div className="tz-score-label">Your Zella Score</div>
+              <div className="tz-score-value">{scoreValue}</div>
+              
+              <div className="tz-score-bar-wrapper">
+                <div className="tz-score-bar-gradient" />
+                <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
+              </div>
+              
+              <div className="tz-score-bar-ticks">
+                <span>0</span>
+                <span>20</span>
+                <span>40</span>
+                <span>60</span>
+                <span>80</span>
+                <span>100</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Net Cumulative P&L */}
+        <div className="tz-card">
+          <div className="tz-card-header">
+            <div className="tz-card-title">
+              <TrendingUp size={14} /> Daily Net Cumulative P&L
+            </div>
+          </div>
+          {filteredTrades.length > 0 ? (
+            <ResponsiveContainer width="100%" height={230}>
+              <AreaChart data={chartsData.equityCurve} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="tzEquityGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="var(--profit)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="equity" stroke="var(--profit)" strokeWidth={2} fill="url(#tzEquityGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+              No trade data available
+            </div>
+          )}
+        </div>
+
+        {/* Net Daily P&L */}
+        <div className="tz-card">
+          <div className="tz-card-header">
+            <div className="tz-card-title">
+              <BarChart2 size={14} /> Net Daily P&L
+            </div>
+          </div>
+          {dailyPnlData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={dailyPnlData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <Tooltip content={<BarTooltip />} />
+                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+                  {dailyPnlData.map((entry, index) => (
+                    <Cell key={`tz-pnl-${index}`} fill={entry.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+              No daily logs available
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Grid */}
+      <div className="tz-bottom-grid">
+        {/* Recent Trades / Open Positions Table */}
+        <div className="tz-card">
+          <div className="tz-tabs">
+            <button className={`tz-tab ${bottomTab === 'recent' ? 'active' : ''}`} onClick={() => setBottomTab('recent')}>
+              Recent trades
+            </button>
+            <button className={`tz-tab ${bottomTab === 'open' ? 'active' : ''}`} onClick={() => setBottomTab('open')}>
+              Open positions
+            </button>
+          </div>
+          
+          <div className="tz-table-wrapper">
+            {bottomTab === 'recent' ? (
+              filteredTrades.length > 0 ? (
+                <table className="tz-table">
+                  <thead>
+                    <tr>
+                      <th>Close Date</th>
+                      <th>Symbol</th>
+                      <th style={{ textAlign: 'right' }}>Net P&L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTrades.slice(0, 5).map((t, idx) => (
+                      <tr key={t.id || idx}>
+                        <td>{t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}</td>
+                        <td>
+                          <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
+                            {t.symbol} · {t.type}
+                          </span>
+                        </td>
+                        <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
+                          {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ padding: 'var(--s8) 0', textTransform: 'uppercase', color: 'var(--text-muted)', fontSize: '0.7rem', textAlign: 'center', fontWeight: 600 }}>
+                  No recent trades
+                </div>
+              )
+            ) : (
+              trades.filter(t => !t.exitTime && !t.exit_time).length > 0 ? (
+                <table className="tz-table">
+                  <thead>
+                    <tr>
+                      <th>Open Date</th>
+                      <th>Symbol</th>
+                      <th style={{ textAlign: 'right' }}>P&L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trades.filter(t => !t.exitTime && !t.exit_time).slice(0, 5).map((t, idx) => (
+                      <tr key={t.id || idx}>
+                        <td>{t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—'}</td>
+                        <td>
+                          <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
+                            {t.symbol} · {t.type}
+                          </span>
+                        </td>
+                        <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
+                          {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="tz-sleeping-cloud-container">
+                  <svg className="tz-sleeping-cloud" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M46.5 37.5C48.9853 37.5 51 35.4853 51 33C51 30.5147 48.9853 28.5 46.5 28.5C45.8906 28.5 45.313 28.6212 44.7865 28.8406C43.8344 24.8727 40.2796 22 36 22C34.1843 22 32.5085 22.5273 31.0967 23.4357C29.625 21.3283 27.2246 20 24.5 20C19.8056 20 16 23.8056 16 28.5C16 28.8415 16.0201 29.1783 16.0592 29.5093C13.167 30.2974 11 32.9022 11 36C11 39.59 13.91 42.5 17.5 42.5H46.5" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M38 14L41 11M41 11H37M41 11V15" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M47 8L49 6M49 6H46M49 6V9" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <div className="tz-sleeping-text">No active positions open. Zella AI is currently sleeping.</div>
+                </div>
+              )
             )}
           </div>
+        </div>
+
+        {/* Account Balance Chart */}
+        <div className="tz-card">
+          <div className="tz-card-header">
+            <div className="tz-card-title">
+              <TrendingUp size={14} /> Account Balance
+            </div>
+          </div>
+          {balanceData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={balanceData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} domain={['dataMin - 500', 'dataMax + 500']} axisLine={false} tickLine={false}/>
+                <Tooltip />
+                <Line type="monotone" dataKey="balance" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+              No balance logs available
+            </div>
+          )}
+        </div>
+
+        {/* Drawdown Chart */}
+        <div className="tz-card">
+          <div className="tz-card-header">
+            <div className="tz-card-title">
+              <TrendingDown size={14} /> Drawdown
+            </div>
+          </div>
+          {stats.maxDrawdown > 0 && drawdownData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={drawdownData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="tzDrawdownGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--loss)" stopOpacity={0.25}/>
+                    <stop offset="95%" stopColor="var(--loss)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <Tooltip />
+                <Area type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fill="url(#tzDrawdownGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="tz-sleeping-cloud-container" style={{ padding: 'var(--s4) var(--s2)' }}>
+              <svg className="tz-sleeping-cloud" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M46.5 37.5C48.9853 37.5 51 35.4853 51 33C51 30.5147 48.9853 28.5 46.5 28.5C45.8906 28.5 45.313 28.6212 44.7865 28.8406C43.8344 24.8727 40.2796 22 36 22C34.1843 22 32.5085 22.5273 31.0967 23.4357C29.625 21.3283 27.2246 20 24.5 20C19.8056 20 16 23.8056 16 28.5C16 28.8415 16.0201 29.1783 16.0592 29.5093C13.167 30.2974 11 32.9022 11 36C11 39.59 13.91 42.5 17.5 42.5H46.5" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M38 14L41 11M41 11H37M41 11V15" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M47 8L49 6M49 6H46M49 6V9" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <div className="tz-sleeping-text">0% Drawdown. Peak Performance!</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
