@@ -6,7 +6,7 @@ import {
   LogOut, Activity, TrendingUp, TrendingDown,
   Zap, CalendarDays, NotebookPen, Sun, Moon,
   Leaf, Compass, SunDim, Check, Palette,
-  MessageSquare, Wifi
+  MessageSquare, Wifi, Send
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
