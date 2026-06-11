@@ -25,6 +25,7 @@ import AiCoach from './pages/AiCoach';
 import TradingViewPage from './pages/TradingView';
 import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
+import { ai as aiApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -33,6 +34,73 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import './App.css';
+
+// Internal parser helper to turn **bold** text into HTML strong tags
+const parseBoldText = (text) => {
+  const parts = text.split(/\*\*([^*]+)\*\*/g);
+  return parts.map((part, idx) => {
+    if (idx % 2 === 1) {
+      return <strong key={idx} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part}</strong>;
+    }
+    return part;
+  });
+};
+
+// Custom Markdown Parser to style headers, lists, and bold text without third-party dependencies
+const formatMessageContent = (text) => {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  return lines.map((line, lineIdx) => {
+    let content = line.trim();
+    if (!content) return <div key={lineIdx} style={{ height: '8px' }} />;
+
+    // Handle Headers
+    if (content.startsWith('### ')) {
+      return (
+        <h4 key={lineIdx} style={{ fontSize: '0.88rem', fontWeight: 700, margin: '12px 0 6px 0', color: 'var(--text-primary)' }}>
+          {parseBoldText(content.slice(4))}
+        </h4>
+      );
+    }
+    if (content.startsWith('**') && content.endsWith('**') && content.length > 4) {
+      return (
+        <h5 key={lineIdx} style={{ fontSize: '0.82rem', fontWeight: 600, margin: '8px 0 4px 0', color: 'var(--text-secondary)' }}>
+          {parseBoldText(content.slice(2, -2))}
+        </h5>
+      );
+    }
+
+    // Handle Lists
+    const isBulletList = content.startsWith('- ') || content.startsWith('* ');
+    const isNumberedList = /^\d+\.\s/.test(content);
+
+    if (isBulletList) {
+      return (
+        <li key={lineIdx} style={{ marginLeft: '12px', paddingLeft: '4px', fontSize: '0.78rem', lineHeight: '1.5', listStyleType: 'disc', margin: '4px 0' }}>
+          {parseBoldText(content.substring(2))}
+        </li>
+      );
+    }
+
+    if (isNumberedList) {
+      const match = content.match(/^(\d+\.)\s(.*)/);
+      return (
+        <div key={lineIdx} style={{ display: 'flex', gap: '6px', fontSize: '0.78rem', lineHeight: '1.5', margin: '4px 0 4px 6px' }}>
+          <strong style={{ color: 'var(--accent)', fontFamily: 'JetBrains Mono', minWidth: '18px' }}>{match ? match[1] : ''}</strong>
+          <span>{parseBoldText(match ? match[2] : content)}</span>
+        </div>
+      );
+    }
+
+    // Standard paragraphs
+    return (
+      <p key={lineIdx} style={{ fontSize: '0.78rem', lineHeight: '1.5', margin: '6px 0' }}>
+        {parseBoldText(content)}
+      </p>
+    );
+  });
+};
 
 /* ─── Dashboard ─────────────────────────────────── */
 const Dashboard = () => {
@@ -44,6 +112,58 @@ const Dashboard = () => {
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
   const [bottomTab, setBottomTab] = useState('recent'); // 'recent' or 'open'
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('dashboard_nvidia_ai_chat');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      {
+        role: 'assistant',
+        content: "Hello! I am **Zella AI**, your trading coach powered by **NVIDIA Llama-3.1-Nemotron-70B-Instruct**.\n\nI can analyze your trading metrics, evaluate your setups, and debug your execution psychology. What would you like to review today?"
+      }
+    ];
+  });
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const chatBottomRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('dashboard_nvidia_ai_chat', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    if (showAiChat) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, aiLoading, showAiChat]);
+
+  const handleSendAiMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!aiInput.trim() || aiLoading) return;
+
+    const userMsg = { role: 'user', content: aiInput };
+    const newMsgs = [...messages, userMsg];
+    setMessages(newMsgs);
+    setAiInput('');
+    setAiLoading(true);
+
+    try {
+      const res = await aiApi.chat(newMsgs);
+      setMessages([...newMsgs, { role: 'assistant', content: res.content }]);
+    } catch (err) {
+      setMessages([...newMsgs, { role: 'assistant', content: `❌ Error: ${err.message || 'Failed to connect to NVIDIA AI'}` }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSuggestionClick = (text) => {
+    setAiInput(text);
+  };
 
   useEffect(() => {
     fetchTrades({ limit: 200 });
@@ -416,6 +536,10 @@ const Dashboard = () => {
               ))}
             </select>
           </div>
+
+          <button className="tz-filter-btn" onClick={() => setShowAiChat(true)} style={{ background: 'var(--accent-soft)', borderColor: 'var(--border-accent)', color: 'var(--text-primary)', fontWeight: 600 }}>
+            <Brain size={13} style={{ color: 'var(--accent)' }} /> Zella AI
+          </button>
         </div>
       </div>
       
@@ -793,6 +917,185 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Zella AI Chat Drawer Pop-up */}
+      {showAiChat && (
+        <>
+          {/* Drawer Backdrop overlay */}
+          <div 
+            onClick={() => setShowAiChat(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 9999
+            }}
+          />
+          
+          {/* Chat Window Panel */}
+          <div 
+            className="glass tz-card"
+            style={{
+              position: 'fixed',
+              top: '12px',
+              right: '12px',
+              bottom: '12px',
+              width: '420px',
+              maxWidth: 'calc(100vw - 24px)',
+              zIndex: 10000,
+              boxShadow: 'var(--shadow-xl)',
+              borderRadius: 'var(--r-xl)',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-mid)',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0,
+              overflow: 'hidden'
+            }}
+          >
+            {/* Pop-up header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', padding: '16px 20px', background: 'var(--bg-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Brain size={16} color="#fff" />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Zella AI <span className="status-dot live" style={{ width: '6px', height: '6px' }} />
+                  </div>
+                  <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    NVIDIA Llama-3.1-Nemotron-70B
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowAiChat(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
+              >
+                <span style={{ fontSize: '1.2rem', fontWeight: 300, lineHeight: 1 }}>×</span>
+              </button>
+            </div>
+
+            {/* Scrollable message content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {messages.map((msg, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-primary)',
+                    color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                    borderRadius: msg.role === 'user' ? '14px 14px 0 14px' : '0 14px 14px 14px',
+                    padding: '10px 14px',
+                    fontSize: '0.78rem',
+                    boxShadow: 'var(--shadow-sm)',
+                    border: msg.role === 'user' ? 'none' : '1px solid var(--border)'
+                  }}
+                >
+                  <div style={{ fontSize: '0.62rem', color: msg.role === 'user' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                    {msg.role === 'user' ? 'YOU' : 'ZELLA AI'}
+                  </div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {msg.role === 'user' ? msg.content : formatMessageContent(msg.content)}
+                  </div>
+                </div>
+              ))}
+              
+              {aiLoading && (
+                <div style={{ alignSelf: 'flex-start', background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px 16px', borderRadius: '0 14px 14px 14px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>Nemotron-70B is thinking...</span>
+                </div>
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Suggestions Block */}
+            <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Quick Diagnostics
+              </div>
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
+                {[
+                  { text: 'Analyze my FOMO and psychology logs', label: 'Psychology Audit' },
+                  { text: 'How can I optimize my win rate and reward size?', label: 'Performance Diagnostics' },
+                  { text: 'Which setups are generating the best expectancy?', label: 'Setup Optimizer' },
+                  { text: 'Review my risk management and lot sizes', label: 'Risk Audit' }
+                ].map((s, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSuggestionClick(s.text)}
+                    style={{
+                      background: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '0.68rem',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Input Form */}
+            <form onSubmit={handleSendAiMessage} style={{ display: 'flex', borderTop: '1px solid var(--border)', padding: '12px 20px', background: 'var(--bg-primary)', gap: '8px', alignItems: 'center' }}>
+              <input 
+                type="text"
+                value={aiInput}
+                onChange={e => setAiInput(e.target.value)}
+                placeholder="Ask Zella AI Coach..."
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-mid)',
+                  borderRadius: 'var(--r-md)',
+                  padding: '10px 14px',
+                  fontSize: '0.75rem',
+                  outline: 'none',
+                  color: 'var(--text-primary)'
+                }}
+              />
+              <button 
+                type="submit"
+                disabled={!aiInput.trim() || aiLoading}
+                style={{
+                  background: aiInput.trim() && !aiLoading ? 'var(--accent)' : 'var(--border)',
+                  color: aiInput.trim() && !aiLoading ? '#fff' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 'var(--r-md)',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: aiInput.trim() && !aiLoading ? 'pointer' : 'default'
+                }}
+              >
+                <Send size={15} />
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   );
 };
