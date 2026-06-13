@@ -1235,6 +1235,147 @@ const handlePublic = async (url, method, body) => {
   throw { status: 404, message: 'Not Found' };
 };
 
+// 12. TradingView Handler
+const handleTradingView = async (url, method, body) => {
+  const activeUser = getActiveUser();
+
+  const generateMockAnalysis = (symbol, timeframe) => {
+    const s = symbol.toUpperCase();
+    const seed = [...s].reduce((a, c) => a + c.charCodeAt(0), 0);
+    const rand = (min, max) => {
+      const x = Math.sin(seed * 9301 + 49297) % 1;
+      return min + Math.abs(x) * (max - min);
+    };
+
+    const price = +(rand(20, 500)).toFixed(2);
+    const rsi = +(rand(25, 78)).toFixed(1);
+    const macdLine = +(rand(-3, 4)).toFixed(3);
+    const macdSignal = +(macdLine - rand(-1, 1)).toFixed(3);
+    const macdHist = +(macdLine - macdSignal).toFixed(3);
+    const ema20 = +(price * rand(0.96, 1.02)).toFixed(2);
+    const ema50 = +(price * rand(0.93, 1.04)).toFixed(2);
+    const sma200 = +(price * rand(0.88, 1.06)).toFixed(2);
+    const bbUpper = +(price * 1.04).toFixed(2);
+    const bbMiddle = +(price * 1.00).toFixed(2);
+    const bbLower = +(price * 0.96).toFixed(2);
+    const bbWidth = +((bbUpper - bbLower) / bbMiddle * 100).toFixed(2);
+    const volume = Math.floor(rand(500000, 80000000));
+    const avgVolume = Math.floor(volume * rand(0.7, 1.3));
+
+    let buySignals = 0;
+    let sellSignals = 0;
+    let neutralSignals = 0;
+
+    if (rsi < 30) buySignals += 2;
+    else if (rsi < 45) buySignals++;
+    else if (rsi > 70) sellSignals += 2;
+    else if (rsi > 55) sellSignals++;
+    else neutralSignals++;
+
+    if (macdHist > 0) buySignals++;
+    else if (macdHist < 0) sellSignals++;
+    else neutralSignals++;
+
+    if (price > ema20) buySignals++;
+    else sellSignals++;
+
+    if (price > ema50) buySignals++;
+    else sellSignals++;
+
+    if (price > sma200) buySignals++;
+    else sellSignals++;
+
+    const totalSignals = buySignals + sellSignals + neutralSignals;
+    let overallSignal = 'Neutral';
+    if (buySignals >= 4) overallSignal = 'Strong Buy';
+    else if (buySignals >= 3) overallSignal = 'Buy';
+    else if (sellSignals >= 4) overallSignal = 'Strong Sell';
+    else if (sellSignals >= 3) overallSignal = 'Sell';
+
+    const support1 = +(price * 0.97).toFixed(2);
+    const support2 = +(price * 0.94).toFixed(2);
+    const support3 = +(price * 0.90).toFixed(2);
+    const resistance1 = +(price * 1.03).toFixed(2);
+    const resistance2 = +(price * 1.06).toFixed(2);
+    const resistance3 = +(price * 1.10).toFixed(2);
+
+    const trend = price > ema50 ? 'bullish' : 'bearish';
+    const macdTrend = macdHist > 0 ? 'positive and expanding' : 'negative and contracting';
+    const rsiZone = rsi < 30 ? 'oversold' : rsi > 70 ? 'overbought' : 'neutral';
+    const insight = `**${s}** is showing **${trend} momentum** on the ${timeframe} timeframe. RSI is at **${rsi}** (${rsiZone} territory)${rsi < 30 ? ', suggesting a potential reversal to the upside' : rsi > 70 ? ', warning of a potential pullback' : ''}. Price is trading ${price > ema50 ? 'above' : 'below'} the 50 EMA ($${ema50}) and ${price > sma200 ? 'above' : 'below'} the 200 SMA ($${sma200}). MACD histogram is **${macdTrend}** (${macdHist > 0 ? 'buyers in control' : 'sellers dominating'}). Bollinger Band width at ${bbWidth}% ${bbWidth < 3 ? 'indicates a squeeze — expect a breakout soon' : 'suggests normal volatility'}. Key support at **$${support1}**, resistance at **$${resistance1}**.`;
+
+    return {
+      symbol: s,
+      timeframe,
+      price,
+      timestamp: new Date().toISOString(),
+      overallSignal,
+      signalCounts: { buy: buySignals, sell: sellSignals, neutral: neutralSignals, total: totalSignals },
+      indicators: {
+        rsi: { value: rsi, signal: rsi < 30 ? 'Buy' : rsi > 70 ? 'Sell' : 'Neutral' },
+        macd: {
+          line: macdLine, signal: macdSignal, histogram: macdHist,
+          signal_type: macdHist > 0 ? 'Buy' : 'Sell',
+        },
+        ema20: { value: ema20, signal: price > ema20 ? 'Buy' : 'Sell' },
+        ema50: { value: ema50, signal: price > ema50 ? 'Buy' : 'Sell' },
+        sma200: { value: sma200, signal: price > sma200 ? 'Buy' : 'Sell' },
+        bollingerBands: {
+          upper: bbUpper, middle: bbMiddle, lower: bbLower,
+          width: bbWidth,
+          squeeze: bbWidth < 3,
+          signal: price > bbUpper ? 'Sell' : price < bbLower ? 'Buy' : 'Neutral',
+        },
+        volume: { current: volume, average: avgVolume, ratio: +(volume / avgVolume).toFixed(2) },
+      },
+      supportResistance: {
+        support: [
+          { level: support1, strength: 'Strong', label: 'S1' },
+          { level: support2, strength: 'Medium', label: 'S2' },
+          { level: support3, strength: 'Weak', label: 'S3' },
+        ],
+        resistance: [
+          { level: resistance1, strength: 'Strong', label: 'R1' },
+          { level: resistance2, strength: 'Medium', label: 'R2' },
+          { level: resistance3, strength: 'Weak', label: 'R3' },
+        ],
+      },
+      insight,
+      mode: 'mock',
+    };
+  };
+
+  if (url === '/status' && method === 'GET') {
+    return { status: 'mock', message: 'Running in Browser DB Mode (Local Analysis)' };
+  }
+
+  if (url === '/symbols' && method === 'GET') {
+    const trades = getStorageItem(`trades_${activeUser.id}`, []);
+    const tradeSymbols = [...new Set(trades.map(t => t.symbol?.toUpperCase()).filter(Boolean))];
+    const popular = [
+      'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'AMD',
+      'SPY', 'QQQ', 'IWM', 'DIA',
+      'BTCUSD', 'ETHUSD', 'SOLUSD',
+      'EURUSD', 'GBPUSD', 'USDJPY',
+      'ES', 'NQ', 'GC', 'CL',
+    ];
+    const allSymbols = [...new Set([...tradeSymbols, ...popular])];
+    return {
+      userSymbols: tradeSymbols,
+      popular,
+      all: allSymbols,
+    };
+  }
+
+  if (url === '/analyze' && method === 'POST') {
+    const { symbol, timeframe } = body;
+    if (!symbol) throw { status: 400, message: 'Symbol is required' };
+    return generateMockAnalysis(symbol, timeframe || '1D');
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
 // ─── Core Routing Interceptor ─────────────────────────
 export const handleRequest = async (fullUrl, options = {}) => {
   const method = options.method || 'GET';
@@ -1297,9 +1438,8 @@ export const handleRequest = async (fullUrl, options = {}) => {
     
     // TV & MT5 MCP connection mocks
     if (urlPath.startsWith('/tradingview')) {
-      if (urlPath === '/tradingview/status') return { status: 'offline', message: 'Local backend server not running' };
-      if (urlPath === '/tradingview/symbols') return [];
-      return { error: 'Offline Mode: TradingView analysis is not active' };
+      const subUrl = urlPath.slice('/tradingview'.length);
+      return await handleTradingView(subUrl, method, body);
     }
     if (urlPath.startsWith('/mt5')) {
       if (urlPath === '/mt5/status') return { connected: false, serverName: 'Local server offline' };

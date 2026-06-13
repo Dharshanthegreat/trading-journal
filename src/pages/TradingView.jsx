@@ -111,6 +111,72 @@ const SRLevel = ({ level, label, strength, type, price, minPrice, maxPrice }) =>
   );
 };
 
+/* ─── TradingView Widget ───────────────────────────── */
+const TradingViewWidget = ({ symbol }) => {
+  const containerId = 'tradingview-widget-container-main';
+  const scriptAdded = useRef(false);
+
+  useEffect(() => {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = '';
+    }
+
+    const loadWidget = () => {
+      if (window.TradingView) {
+        // Handle forex, crypto, stock exchanges appropriately or fallback to BINANCE/FOREXCOM
+        let formattedSymbol = symbol;
+        if (!symbol.includes(':')) {
+          if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'].includes(symbol)) {
+            formattedSymbol = `FX:${symbol}`;
+          } else if (['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'DOGEUSD'].includes(symbol)) {
+            formattedSymbol = `COINBASE:${symbol}`;
+          } else if (['ES', 'NQ', 'CL', 'GC'].includes(symbol)) {
+            formattedSymbol = `CME_MINI:${symbol}1!`;
+          } else {
+            formattedSymbol = `NASDAQ:${symbol}`;
+          }
+        }
+
+        new window.TradingView.widget({
+          width: '100%',
+          height: 480,
+          symbol: formattedSymbol,
+          interval: 'D',
+          timezone: 'Etc/UTC',
+          theme: 'dark',
+          style: '1',
+          locale: 'en',
+          enable_publishing: false,
+          hide_side_toolbar: false,
+          allow_symbol_change: true,
+          container_id: containerId,
+        });
+      }
+    };
+
+    if (!window.TradingView) {
+      if (!scriptAdded.current) {
+        scriptAdded.current = true;
+        const script = document.createElement('script');
+        script.id = 'tradingview-widget-script';
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = loadWidget;
+        document.head.appendChild(script);
+      }
+    } else {
+      loadWidget();
+    }
+  }, [symbol]);
+
+  return (
+    <div style={{ height: '480px', width: '100%', borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1px solid var(--border-mid)' }}>
+      <div id={containerId} style={{ height: '100%', width: '100%' }} />
+    </div>
+  );
+};
+
 /* ─── Main TradingView Page ───────────────────────── */
 const TradingView = () => {
   const { trades } = useTrades();
@@ -648,6 +714,14 @@ const TradingView = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Live Interactive Chart Card */}
+          <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
+            <div style={cardHeaderStyle}>
+              <TrendingUp size={13} style={{ color: 'var(--accent)' }} /> Live Interactive Technical Chart
+            </div>
+            <TradingViewWidget symbol={analysis.symbol} />
           </div>
 
           {/* Volume Card */}
