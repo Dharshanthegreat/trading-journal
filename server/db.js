@@ -87,10 +87,78 @@ db.exec(`
     UNIQUE(user_id, date)
   );
 
+  CREATE TABLE IF NOT EXISTS notion_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL DEFAULT 'Untitled Document',
+    content TEXT DEFAULT '',
+    icon TEXT DEFAULT '📄',
+    tags TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS stoic_reframings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    situation TEXT NOT NULL,
+    in_control TEXT NOT NULL,
+    out_of_control TEXT NOT NULL,
+    stoic_reframe TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS economic_news (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    country TEXT NOT NULL,
+    date TEXT NOT NULL,
+    impact TEXT NOT NULL,
+    forecast TEXT DEFAULT '',
+    previous TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_trades_user ON trades(user_id);
   CREATE INDEX IF NOT EXISTS idx_trades_entry_time ON trades(entry_time);
   CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol);
   CREATE INDEX IF NOT EXISTS idx_journal_user_date ON journal_entries(user_id, date);
+  CREATE INDEX IF NOT EXISTS idx_notion_user ON notion_documents(user_id);
+  CREATE INDEX IF NOT EXISTS idx_notion_updated ON notion_documents(updated_at);
+  CREATE INDEX IF NOT EXISTS idx_stoic_user ON stoic_reframings(user_id);
+  CREATE INDEX IF NOT EXISTS idx_economic_news_date ON economic_news(date);
+
+  CREATE TABLE IF NOT EXISTS accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    account_name TEXT NOT NULL,
+    account_type TEXT NOT NULL DEFAULT 'Simulated',
+    balance REAL DEFAULT 10000.0,
+    currency TEXT DEFAULT 'USD',
+    status TEXT DEFAULT 'Active',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS achievements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL,
+    account_name TEXT DEFAULT '',
+    amount REAL DEFAULT 0.0,
+    date TEXT NOT NULL,
+    certificate_image_path TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id);
+  CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id);
 `);
 
 // Migration: dynamically add share_token column to trades if it doesn't exist
@@ -103,6 +171,32 @@ try {
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_share_token ON trades(share_token)");
 } catch (e) {
   // Ignore index creation error
+}
+
+// Migration: dynamically add dashboard_share_token column to users if it doesn't exist
+try {
+  db.exec("ALTER TABLE users ADD COLUMN dashboard_share_token TEXT");
+} catch (e) {
+  // Ignore error if column already exists
+}
+try {
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_dashboard_share_token ON users(dashboard_share_token)");
+} catch (e) {
+  // Ignore index creation error
+}
+
+// Migration: dynamically add account_id column to trades if it doesn't exist
+try {
+  db.exec("ALTER TABLE trades ADD COLUMN account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL");
+} catch (e) {
+  // Ignore error if column already exists
+}
+
+// Migration: dynamically add external_url column to notion_documents if it doesn't exist
+try {
+  db.exec("ALTER TABLE notion_documents ADD COLUMN external_url TEXT");
+} catch (e) {
+  // Ignore error if column already exists
 }
 
 export default db;

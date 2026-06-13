@@ -1,10 +1,42 @@
-const BASE = '/api';
+import * as localDb from './localDb.js';
+
+const BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? '/api' : 'http://localhost:3001/api');
+
+let isLocalMode = typeof window !== 'undefined' && 
+  window.location.hostname !== 'localhost' && 
+  window.location.hostname !== '127.0.0.1';
+
+if (typeof window !== 'undefined') {
+  localStorage.setItem('trading_journal_local_mode', isLocalMode ? 'local' : 'cloud');
+}
+
+export const getMode = () => isLocalMode ? 'local' : 'cloud';
 
 async function request(url, options = {}) {
+  if (isLocalMode) {
+    return localDb.handleRequest(url, options);
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Attach token from localStorage if present
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Set up AbortController for a 5-second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
   const config = {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     ...options,
+    headers,
+    credentials: 'include',
+    signal: controller.signal,
   };
 
   // Don't set Content-Type for FormData (let browser set boundary)
@@ -12,14 +44,35 @@ async function request(url, options = {}) {
     delete config.headers['Content-Type'];
   }
 
-  const res = await fetch(`${BASE}${url}`, config);
+  try {
+    const res = await fetch(`${BASE}${url}`, config);
+    clearTimeout(timeoutId);
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `Request failed: ${res.status}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Request failed: ${res.status}`);
+    }
+
+    return res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    
+    // Catch network failures and timeouts to swap automatically to Local Mode
+    const isNetworkError = err.name === 'AbortError' || 
+      err.message === 'Failed to fetch' || 
+      err.message.includes('fetch failed') ||
+      err.message.includes('NetworkError');
+
+    if (isNetworkError) {
+      console.warn('Backend server is offline. Switching to Browser Local Database (Serverless Mode).');
+      isLocalMode = true;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('trading_journal_local_mode', 'local');
+      }
+      return localDb.handleRequest(url, options);
+    }
+    throw err;
   }
-
-  return res.json();
 }
 
 // ─── Auth ────────────────────────────────────────────
@@ -40,7 +93,24 @@ export const auth = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  changePassword: (currentPassword, newPassword) =>
+    request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  generateShowcase: () => request('/auth/share-dashboard', { method: 'POST' }),
+  revokeShowcase: () => request('/auth/share-dashboard', { method: 'DELETE' }),
+  forgotPassword: (email) =>
+    request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (email, code, newPassword) =>
+    request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, newPassword }),
+    }),
 };
 
 // ─── Trades ──────────────────────────────────────────
@@ -98,6 +168,82 @@ export const ai = {
     }),
 };
 
+// ─── News ────────────────────────────────────────────
+export const news = {
+  list: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/news${qs ? `?${qs}` : ''}`);
+  },
+  analyze: (event, messages) =>
+    request('/news/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ event, messages }),
+    }),
+};
+
+// ─── Notion Workspace ────────────────────────────────
+export const notion = {
+  list: () => request('/notion'),
+  get: (id) => request(`/notion/${id}`),
+  create: (data) =>
+    request('/notion', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id, data) =>
+    request(`/notion/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id) => request(`/notion/${id}`, { method: 'DELETE' }),
+  aiChat: (id, messages, content) =>
+    request(`/notion/${id}/ai`, {
+      method: 'POST',
+      body: JSON.stringify({ messages, content }),
+    }),
+};
+
+// ─── Stoic Mindset ───────────────────────────────────
+export const stoic = {
+  getQuotes: () => request('/stoic/quotes'),
+  getReframes: () => request('/stoic/reframes'),
+  createReframe: (data) =>
+    request('/stoic/reframes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteReframe: (id) => request(`/stoic/reframes/${id}`, { method: 'DELETE' }),
+  chat: (messages) =>
+    request('/stoic/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages }),
+    }),
+  analyzeSituation: (situation) =>
+    request('/stoic/analyze-situation', {
+      method: 'POST',
+      body: JSON.stringify({ situation }),
+    }),
+};
+
+// ─── Tradovate Connection ────────────────────────────
+export const tradovate = {
+  connect: (username, password, appId, appSecret, accountType) =>
+    request('/tradovate/connect', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, appId, appSecret, accountType }),
+    }),
+  disconnect: () =>
+    request('/tradovate/disconnect', { method: 'POST' }),
+  status: () => request('/tradovate/status'),
+  syncTrades: () =>
+    request('/tradovate/sync-trades', { method: 'POST' }),
+  chat: (messages) =>
+    request('/tradovate/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages }),
+    }),
+};
+
 // ─── TradingView MCP ─────────────────────────────────
 export const tradingview = {
   analyze: (symbol, timeframe = '1D', indicators = []) =>
@@ -128,5 +274,39 @@ export const backup = {
     request('/backup/import', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+};
+
+// ─── Accounts ────────────────────────────────────────
+export const accounts = {
+  list: () => request('/accounts'),
+  create: (data) =>
+    request('/accounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  delete: (id) =>
+    request(`/accounts/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Achievements ────────────────────────────────────
+export const achievements = {
+  list: () => request('/achievements'),
+  create: (formData) =>
+    request('/achievements', {
+      method: 'POST',
+      body: formData, // FormData for certificate upload
+    }),
+  delete: (id) =>
+    request(`/achievements/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Showcase Public Api ─────────────────────────────
+export const publicApi = {
+  getDashboard: (token) => request(`/public/dashboard/${token}`),
+  aiChat: (token, messages) =>
+    request(`/public/dashboard/ai/chat/${token}`, {
+      method: 'POST',
+      body: JSON.stringify({ messages }),
     }),
 };

@@ -1,29 +1,25 @@
 import { Router } from 'express';
 import db from '../db.js';
-import fs from 'fs';
-import path from 'path';
+import { computeMetrics } from '../utils/analytics.js';
+import '../utils/env.js';
 
 const router = Router();
 
-// Manually parse .env to load API keys securely
-try {
-  const envPath = path.resolve(process.cwd(), '.env');
-  if (fs.existsSync(envPath)) {
-    const envConfig = fs.readFileSync(envPath, 'utf8');
-    envConfig.split('\n').forEach(line => {
-      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-      if (match) {
-        const key = match[1];
-        let value = (match[2] || '').trim();
-        if (value.length > 0 && value.startsWith('"') && value.endsWith('"')) {
-          value = value.substring(1, value.length - 1);
-        }
-        process.env[key] = value;
-      }
-    });
+// Simple in-memory rate limiter (max 15 AI requests per minute per user)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 15;
+
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(userId, { count: 1, windowStart: now });
+    return true;
   }
-} catch (e) {
-  console.warn('Failed to parse .env file manually:', e);
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
 }
 
 router.post('/chat', async (req, res) => {
@@ -31,48 +27,15 @@ router.post('/chat', async (req, res) => {
     const { messages } = req.body;
     const userId = req.user.id;
 
+    // Rate limit check
+    if (!checkRateLimit(userId)) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a minute before sending more messages.' });
+    }
+
     // Fetch user trades for context
     const trades = db.prepare('SELECT * FROM trades WHERE user_id = ?').all(userId);
-    
-    // Compute quick metrics
-    const wins = trades.filter(t => t.pnl > 0);
-    const losses = trades.filter(t => t.pnl < 0);
-    const totalPnL = trades.reduce((a, t) => a + t.pnl, 0);
-    const winRate = trades.length ? ((wins.length / trades.length) * 100).toFixed(1) : '0';
-    const totalWin = wins.reduce((a, t) => a + t.pnl, 0);
-    const totalLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
-    const profitFactor = totalLoss > 0 ? (totalWin / totalLoss).toFixed(2) : wins.length > 0 ? 'Infinity' : '1.0';
-    const avgWin = wins.length > 0 ? (totalWin / wins.length).toFixed(2) : '0';
-    const avgLoss = losses.length > 0 ? (totalLoss / losses.length).toFixed(2) : '0';
-
-    // Top strategy
-    const setups = {};
-    let avgFomo = 0;
-    let avgConfidence = 0;
-    let highFomoCount = 0;
-
-    trades.forEach(t => {
-      const s = t.setup || 'Untagged';
-      if (!setups[s]) setups[s] = { pnl: 0, count: 0 };
-      setups[s].pnl += t.pnl;
-      setups[s].count++;
-      avgFomo += t.fomo_level || 5;
-      avgConfidence += t.confidence_level || 5;
-      if ((t.fomo_level || 5) > 6) highFomoCount++;
-    });
-
-    const tradeCount = trades.length;
-    avgFomo = tradeCount ? (avgFomo / tradeCount).toFixed(1) : '5.0';
-    avgConfidence = tradeCount ? (avgConfidence / tradeCount).toFixed(1) : '5.0';
-
-    let bestSetup = 'None';
-    let bestPnL = -Infinity;
-    Object.entries(setups).forEach(([name, data]) => {
-      if (data.pnl > bestPnL) {
-        bestPnL = data.pnl;
-        bestSetup = name;
-      }
-    });
+    const metrics = computeMetrics(trades);
+    const { tradeCount, winRate, totalPnL, profitFactor, avgWin, avgLoss, avgFomo, avgConfidence, highFomoCount, bestSetup, wins, losses, bestPnL } = metrics;
 
     // Check if NVIDIA API key exists
     const apiKey = process.env.NVIDIA_API_KEY;
@@ -146,8 +109,8 @@ Key behavioral leaks I noticed:
     } else if (lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('winrate') || lastMessage.includes('pnl') || lastMessage.includes('profit') || lastMessage.includes('loss') || lastMessage.includes('factor')) {
       responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:
 
-- **Win Rate**: ${winRate}% (${wins.length} Wins / ${losses.length} Losses)
-- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}**
+- **Win Rate**: ${winRate}% (${wins} Wins / ${losses} Losses)
+- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${(+totalPnL).toFixed(2)}**
 - **Profit Factor**: ${profitFactor}
 - **Average Win**: $${avgWin}
 - **Average Loss**: -$${avgLoss}
@@ -159,7 +122,7 @@ Key behavioral leaks I noticed:
     } else if (lastMessage.includes('strategy') || lastMessage.includes('setup') || lastMessage.includes('pattern') || lastMessage.includes('best')) {
       responseText = `Reviewing your strategies across your **${tradeCount} trades**:
 
-Your absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL.toFixed(2)}** in total profit.
+Your absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL != null && isFinite(bestPnL) ? (+bestPnL).toFixed(2) : '0.00'}** in total profit.
 
 **Strategy optimization steps**:
 1. **Focus Capital**: You have positive expectancy on **${bestSetup}**. Consider sizing up slightly on these setups when they align with higher confidence levels.
@@ -170,7 +133,7 @@ Your absolute best-performing setup is **"${bestSetup}"** which has generated **
 
 Here is your current performance snapshot:
 - **Win Rate**: ${winRate}%
-- **Net P&L**: $${totalPnL.toFixed(2)}
+- **Net P&L**: $${(+totalPnL).toFixed(2)}
 - **Best Strategy**: ${bestSetup}
 - **Avg FOMO**: ${avgFomo}/10
 
@@ -180,7 +143,7 @@ How can I help you optimize your trading today? Ask me something like:
 3. *"Review my setups and strategies"*
 4. *"Give me risk management tips"*`;
     } else {
-      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${totalPnL.toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.
+      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${(+totalPnL).toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.
 
 Your top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.
 

@@ -94,19 +94,28 @@ const Analytics = () => {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }}>
-        {[
-          { label: 'Profit Factor', val: s.profitFactor || '—', icon: <Award size={13}/>, col: 'var(--warn)' },
-          { label: 'Max Drawdown', val: `-$${s.maxDrawdown}`, icon: <TrendingDown size={13}/>, col: 'var(--loss)' },
-          { label: 'Avg Win', val: `$${s.avgWin}`, icon: <TrendingUp size={13}/>, col: 'var(--profit)' },
-          { label: 'Avg Loss', val: `-$${s.avgLoss}`, icon: <Target size={13}/>, col: 'var(--loss)' },
-        ].map((k, i) => (
-          <div key={k.label} className={`glass glass-hover stat-card anim-fade-up delay-${i+1}`}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 'var(--s4)' }}>
+        {(() => {
+          const rr = s.avgLoss > 0 ? (s.avgWin / s.avgLoss).toFixed(2) : '∞';
+          const winRatePct = s.totalTrades > 0 ? s.wins / s.totalTrades : 0;
+          const lossRatePct = 1 - winRatePct;
+          const expectancy = ((winRatePct * s.avgWin) - (lossRatePct * s.avgLoss)).toFixed(2);
+          return [
+            { label: 'Profit Factor', val: s.profitFactor || '—', icon: <Award size={13}/>, col: 'var(--warn)' },
+            { label: 'Max Drawdown', val: `-$${s.maxDrawdown}`, icon: <TrendingDown size={13}/>, col: 'var(--loss)' },
+            { label: 'Avg Win', val: `$${s.avgWin}`, icon: <TrendingUp size={13}/>, col: 'var(--profit)' },
+            { label: 'Avg Loss', val: `-$${s.avgLoss}`, icon: <Target size={13}/>, col: 'var(--loss)' },
+            { label: 'Risk:Reward', val: `1:${rr}`, icon: <Zap size={13}/>, col: parseFloat(rr) >= 1.5 ? 'var(--profit)' : 'var(--warn)', tooltip: 'Avg Win ÷ Avg Loss' },
+            { label: 'Expectancy', val: `${parseFloat(expectancy) >= 0 ? '+' : ''}$${expectancy}`, icon: <TrendingUp size={13}/>, col: parseFloat(expectancy) >= 0 ? 'var(--profit)' : 'var(--loss)', tooltip: 'Expected P&L per trade' },
+          ];
+        })().map((k, i) => (
+          <div key={k.label} className={`glass glass-hover stat-card anim-fade-up delay-${i+1}`} title={k.tooltip || ''}>
             <div className="stat-label"><span style={{ color: k.col }}>{k.icon}</span> {k.label}</div>
-            <div className="stat-value" style={{ color: k.col, fontSize: '1.3rem' }}>{k.val}</div>
+            <div className="stat-value" style={{ color: k.col, fontSize: '1.2rem' }}>{k.val}</div>
           </div>
         ))}
       </div>
+
 
       <div className="analytics-grid">
         {/* Equity Curve */}

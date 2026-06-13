@@ -3,14 +3,14 @@ import { useTrades } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useJournal } from '../contexts/JournalContext';
-import { backup as backupApi } from '../services/api';
+import { backup as backupApi, auth as authApi } from '../services/api';
 import { parseMT5CSV } from '../utils/mt5Parser';
 import {
   Upload, CheckCircle, AlertTriangle, Loader,
   Settings as SettingsIcon, User, Database,
   DollarSign, Shield, Download, Palette, Moon, Sun,
   Compass, Leaf, SunDim, Clock, RefreshCw, Trash2,
-  History, AlertCircle, FileJson, Check
+  History, AlertCircle, FileJson, Check, Share2, Eye, EyeOff
 } from 'lucide-react';
 
 const Settings = () => {
@@ -28,6 +28,87 @@ const Settings = () => {
     riskPercent: user?.riskPercent || '1',
   });
   const [profileSaved, setProfileSaved] = useState(false);
+
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (user?.isGuest) { alert("Cannot change password in Showcase view."); return; }
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    try {
+      await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setPasswordSuccess(true);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+      setTimeout(() => setPasswordSuccess(false), 4000);
+    } catch (err) {
+      setPasswordError(err.message || "Failed to change password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const [sharingLoading, setSharingLoading] = useState(false);
+  const [shareToken, setShareToken] = useState(user?.dashboardShareToken || null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        displayName: user.displayName || '',
+        accountSize: user.accountSize || '',
+        currency: user.currency || 'USD',
+        riskPercent: user.riskPercent || '1',
+      });
+      setShareToken(user.dashboardShareToken || null);
+    }
+  }, [user]);
+
+  const handleGenerateShowcase = async () => {
+    setSharingLoading(true);
+    try {
+      const res = await authApi.generateShowcase();
+      setShareToken(res.dashboardShareToken);
+      await refreshUser();
+    } catch (err) {
+      alert(`Failed to generate showcase: ${err.message}`);
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  const handleRevokeShowcase = async () => {
+    if (!window.confirm("Are you sure you want to revoke your showcase link? Anyone visiting will lose access immediately.")) return;
+    setSharingLoading(true);
+    try {
+      await authApi.revokeShowcase();
+      setShareToken(null);
+      await refreshUser();
+    } catch (err) {
+      alert(`Failed to revoke showcase: ${err.message}`);
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  const handleCopyShowcaseLink = () => {
+    const link = `${window.location.origin}/shared/dashboard/${shareToken}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Backup & Restore states
   const [exporting, setExporting] = useState(false);
@@ -79,6 +160,7 @@ const Settings = () => {
   };
 
   const handleFileUpload = async (e) => {
+    if (user?.isGuest) { alert("Cannot import MT5 trades in Showcase view."); return; }
     const file = e.target.files[0];
     if (!file) return;
     setImportStatus('loading');
@@ -97,12 +179,14 @@ const Settings = () => {
   };
 
   const handleDrop = (e) => {
+    if (user?.isGuest) { alert("Cannot import MT5 trades in Showcase view."); return; }
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) handleFileUpload({ target: { files: [file] } });
   };
 
   const handleExport = async () => {
+    if (user?.isGuest) { alert("Cannot export trades in Showcase view."); return; }
     try {
       const data = await exportTrades();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -116,6 +200,7 @@ const Settings = () => {
   };
 
   const handleFullExport = async () => {
+    if (user?.isGuest) { alert("Cannot export database in Showcase view."); return; }
     setExporting(true);
     try {
       const data = await backupApi.export();
@@ -140,6 +225,7 @@ const Settings = () => {
   };
 
   const handleBackupFileSelect = (file) => {
+    if (user?.isGuest) { alert("Cannot restore database in Showcase view."); return; }
     if (!file) return;
     setBackupError(null);
     setBackupFile(null);
@@ -174,6 +260,7 @@ const Settings = () => {
   };
 
   const handleBackupDrop = (e) => {
+    if (user?.isGuest) { alert("Cannot restore database in Showcase view."); return; }
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
@@ -181,6 +268,7 @@ const Settings = () => {
   };
 
   const handleConfirmRestore = async () => {
+    if (user?.isGuest) { alert("Cannot restore database in Showcase view."); return; }
     if (!backupFile) return;
     
     if (importMode === 'overwrite' && overwriteConfirmText !== 'RESTORE') {
@@ -229,6 +317,7 @@ const Settings = () => {
   };
 
   const handleSaveProfile = async () => {
+    if (user?.isGuest) { alert("Cannot update preferences in Showcase view."); return; }
     try {
       await updateProfile(profileForm);
       setProfileSaved(true);
@@ -251,7 +340,7 @@ const Settings = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
           <div className="form-field">
             <label className="form-label">Display Name</label>
-            <input className="input" value={profileForm.displayName} onChange={e => setProfileForm({ ...profileForm, displayName: e.target.value })}/>
+            <input className="input" value={profileForm.displayName} onChange={e => setProfileForm({ ...profileForm, displayName: e.target.value })} disabled={user?.isGuest}/>
           </div>
           <div className="form-field">
             <label className="form-label">Email</label>
@@ -260,31 +349,272 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* Change Password */}
+      {!user?.isGuest && (
+        <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
+          <div className="settings-section-title"><Shield size={12}/> Change Password</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s4)' }}>
+            <div className="form-field">
+              <label className="form-label">Current Password</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  className="input"
+                  type={showPasswords ? "text" : "password"}
+                  value={passwordForm.currentPassword}
+                  onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  style={{ width: '100%', paddingRight: '2.5rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(!showPasswords)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    outline: 'none'
+                  }}
+                >
+                  {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="form-field">
+              <label className="form-label">New Password</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  className="input"
+                  type={showPasswords ? "text" : "password"}
+                  placeholder="Min 6 characters"
+                  value={passwordForm.newPassword}
+                  onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  style={{ width: '100%', paddingRight: '2.5rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(!showPasswords)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    outline: 'none'
+                  }}
+                >
+                  {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-field">
+              <label className="form-label">Confirm New Password</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  className="input"
+                  type={showPasswords ? "text" : "password"}
+                  placeholder="Re-enter password"
+                  value={passwordForm.confirmNewPassword}
+                  onChange={e => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
+                  style={{ width: '100%', paddingRight: '2.5rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(!showPasswords)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    outline: 'none'
+                  }}
+                >
+                  {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {passwordError && (
+            <div style={{
+              marginTop: 'var(--s3)',
+              padding: 'var(--s2) var(--s3)',
+              borderRadius: 'var(--r-sm)',
+              background: 'var(--loss-soft)',
+              border: '1px solid var(--loss-border)',
+              fontSize: '0.72rem',
+              color: 'var(--loss)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <AlertCircle size={14} />
+              <span>{passwordError}</span>
+            </div>
+          )}
+
+          {passwordSuccess && (
+            <div style={{
+              marginTop: 'var(--s3)',
+              padding: 'var(--s2) var(--s3)',
+              borderRadius: 'var(--r-sm)',
+              background: 'var(--profit-soft)',
+              border: '1px solid var(--profit-border)',
+              fontSize: '0.72rem',
+              color: 'var(--profit)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <CheckCircle size={14} />
+              <span>Password updated successfully!</span>
+            </div>
+          )}
+
+          <div style={{ marginTop: 'var(--s4)', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleChangePassword}
+              disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmNewPassword}
+            >
+              {passwordLoading ? 'Updating...' : 'Change Password'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Trading Preferences */}
       <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
         <div className="settings-section-title"><DollarSign size={12}/> Trading Preferences</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s4)' }}>
           <div className="form-field">
             <label className="form-label">Currency</label>
-            <select className="input" value={profileForm.currency} onChange={e => setProfileForm({ ...profileForm, currency: e.target.value })}>
+            <select className="input" value={profileForm.currency} onChange={e => setProfileForm({ ...profileForm, currency: e.target.value })} disabled={user?.isGuest}>
               {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="form-field">
             <label className="form-label">Default Risk %</label>
-            <input className="input" type="number" step="0.1" min="0.1" max="10" value={profileForm.riskPercent} onChange={e => setProfileForm({ ...profileForm, riskPercent: e.target.value })}/>
+            <input className="input" type="number" step="0.1" min="0.1" max="10" value={profileForm.riskPercent} onChange={e => setProfileForm({ ...profileForm, riskPercent: e.target.value })} disabled={user?.isGuest}/>
           </div>
           <div className="form-field">
             <label className="form-label">Account Size ($)</label>
-            <input className="input" type="number" step="100" placeholder="10000" value={profileForm.accountSize} onChange={e => setProfileForm({ ...profileForm, accountSize: e.target.value })}/>
+            <input className="input" type="number" step="100" placeholder="10000" value={profileForm.accountSize} onChange={e => setProfileForm({ ...profileForm, accountSize: e.target.value })} disabled={user?.isGuest}/>
           </div>
         </div>
         <div style={{ marginTop: 'var(--s4)', display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="btn btn-primary" onClick={handleSaveProfile}>
+          <button className="btn btn-primary" onClick={handleSaveProfile} disabled={user?.isGuest}>
             {profileSaved ? 'Saved ✓' : 'Save Preferences'}
           </button>
         </div>
       </div>
+
+      {/* Showcase Sharing Card */}
+      {!user?.isGuest && (
+        <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s2)' }}>
+            <div className="settings-section-title" style={{ margin: 0, borderBottom: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Share2 size={14} style={{ opacity: 0.6 }}/> Showcase Sharing
+            </div>
+            {shareToken && (
+              <span className="badge badge-success" style={{
+                fontSize: '0.62rem',
+                padding: '2px 8px',
+                background: 'var(--profit-soft)',
+                border: '1px solid var(--profit-border)',
+                color: 'var(--profit)',
+                borderRadius: 'var(--r-md)',
+                fontWeight: 600
+              }}>
+                Active
+              </span>
+            )}
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)', lineHeight: 1.6 }}>
+            Generate a secure, read-only showcase link to share your complete trading journal with your friends. Visitors can view your dashboard, analytics, journal entries, and query the AI coach, but cannot modify your data.
+          </p>
+
+          {shareToken ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-mid)',
+                borderRadius: 'var(--r-md)',
+                padding: 'var(--s2) var(--s3)',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontFamily: 'monospace',
+                  color: 'var(--text-secondary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1
+                }}>
+                  {`${window.location.origin}/shared/dashboard/${shareToken}`}
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleCopyShowcaseLink}
+                  style={{ padding: '4px 12px', fontSize: '0.72rem', height: 'auto', flexShrink: 0 }}
+                >
+                  {copied ? 'Copied! ✓' : 'Copy Link'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <button
+                  className="btn btn-danger"
+                  onClick={handleRevokeShowcase}
+                  disabled={sharingLoading}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '0.75rem',
+                    background: 'var(--loss-soft)',
+                    border: '1px solid var(--loss-border)',
+                    color: 'var(--loss)',
+                    borderRadius: 'var(--r-md)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {sharingLoading ? 'Revoking...' : 'Revoke Showcase Link'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleGenerateShowcase}
+                disabled={sharingLoading}
+              >
+                {sharingLoading ? 'Generating...' : 'Generate Showcase Link'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Appearance & Themes */}
       <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>

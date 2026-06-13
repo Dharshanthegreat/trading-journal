@@ -16,9 +16,17 @@ export const TradeProvider = ({ children }) => {
     if (!user) return;
     setLoading(true);
     try {
-      const data = await tradesApi.list(params);
-      setTrades(data.trades || []);
-      setTotal(data.total || 0);
+      if (user.isGuest) {
+        const { publicApi } = await import('../services/api');
+        const data = await publicApi.getDashboard(user.guestToken);
+        setTrades(data.trades || []);
+        setTotal(data.trades ? data.trades.length : 0);
+        if (data.analytics) setAnalytics(data.analytics);
+      } else {
+        const data = await tradesApi.list(params);
+        setTrades(data.trades || []);
+        setTotal(data.total || 0);
+      }
     } catch (err) {
       console.error('Failed to fetch trades:', err);
     } finally {
@@ -29,15 +37,26 @@ export const TradeProvider = ({ children }) => {
   const fetchAnalytics = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await tradesApi.analytics();
-      setAnalytics(data);
-      return data;
+      if (user.isGuest) {
+        const { publicApi } = await import('../services/api');
+        const data = await publicApi.getDashboard(user.guestToken);
+        setAnalytics(data.analytics);
+        return data.analytics;
+      } else {
+        const data = await tradesApi.analytics();
+        setAnalytics(data);
+        return data;
+      }
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
     }
   }, [user]);
 
   const addTrade = async (tradeData, file) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot add trades.");
+      return null;
+    }
     const formData = new FormData();
     Object.entries(tradeData).forEach(([key, val]) => {
       if (val !== null && val !== undefined) {
@@ -56,6 +75,10 @@ export const TradeProvider = ({ children }) => {
   };
 
   const updateTrade = async (id, tradeData, file) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot modify trades.");
+      return null;
+    }
     const formData = new FormData();
     Object.entries(tradeData).forEach(([key, val]) => {
       if (val !== null && val !== undefined) {
@@ -74,28 +97,48 @@ export const TradeProvider = ({ children }) => {
   };
 
   const deleteTrade = async (id) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot delete trades.");
+      return;
+    }
     await tradesApi.delete(id);
     setTrades(prev => prev.filter(t => t.id !== id));
   };
 
   const shareTrade = async (id) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot share trades.");
+      return null;
+    }
     const { shareToken } = await tradesApi.share(id);
     setTrades(prev => prev.map(t => t.id === id ? { ...t, shareToken } : t));
     return shareToken;
   };
 
   const unshareTrade = async (id) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot modify trades.");
+      return;
+    }
     await tradesApi.unshare(id);
     setTrades(prev => prev.map(t => t.id === id ? { ...t, shareToken: null } : t));
   };
 
   const importTrades = async (tradesArr) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot import trades.");
+      return null;
+    }
     const result = await tradesApi.import(tradesArr);
     await fetchTrades(); // Refresh
     return result;
   };
 
   const exportTrades = async () => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot export trades.");
+      return null;
+    }
     return await tradesApi.export();
   };
 

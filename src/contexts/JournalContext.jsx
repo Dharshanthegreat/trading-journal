@@ -15,8 +15,14 @@ export const JournalProvider = ({ children }) => {
     if (!user) return;
     setLoading(true);
     try {
-      const data = await journalApi.list(params);
-      setEntries(data);
+      if (user.isGuest) {
+        const { publicApi } = await import('../services/api');
+        const data = await publicApi.getDashboard(user.guestToken);
+        setEntries(data.journalEntries || []);
+      } else {
+        const data = await journalApi.list(params);
+        setEntries(data);
+      }
     } catch (err) {
       console.error('Failed to fetch journal entries:', err);
     } finally {
@@ -27,6 +33,11 @@ export const JournalProvider = ({ children }) => {
   const getEntry = useCallback(async (date) => {
     if (!user) return null;
     try {
+      if (user.isGuest) {
+        const entry = entries.find(e => e.date === date) || null;
+        setCurrentEntry(entry);
+        return entry;
+      }
       const entry = await journalApi.getByDate(date);
       setCurrentEntry(entry);
       return entry;
@@ -34,9 +45,13 @@ export const JournalProvider = ({ children }) => {
       console.error('Failed to get journal entry:', err);
       return null;
     }
-  }, [user]);
+  }, [user, entries]);
 
   const saveEntry = async (entryData) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot save journal entries.");
+      return null;
+    }
     const saved = await journalApi.save(entryData);
     setCurrentEntry(saved);
     setEntries(prev => {
@@ -52,6 +67,10 @@ export const JournalProvider = ({ children }) => {
   };
 
   const deleteEntry = async (id) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot delete journal entries.");
+      return;
+    }
     await journalApi.delete(id);
     setEntries(prev => prev.filter(e => e.id !== id));
     setCurrentEntry(null);

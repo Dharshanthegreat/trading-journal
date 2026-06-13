@@ -54,7 +54,7 @@
   --shadow-glow: 0 0 24px rgba(129, 140, 248, 0.15);
 
   /* Spacing */
-  --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s4: 1rem;
+  --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s3-5: 0.875rem; --s4: 1rem;
   --s5: 1.25rem; --s6: 1.5rem; --s8: 2rem; --s10: 2.5rem; --s12: 3rem;
 
   /* Radius */
@@ -355,6 +355,12 @@ body {
 }
 .btn-danger:hover {
   background: rgba(248, 113, 113, 0.2); border-color: rgba(248, 113, 113, 0.4);
+}
+.btn-secondary {
+  background: var(--bg-tertiary); border-color: var(--border-strong); color: var(--text-secondary);
+}
+.btn-secondary:hover {
+  background: var(--bg-hover); border-color: var(--border-strong); color: var(--text-primary);
 }
 .btn-sm { padding: 4px 10px; font-size: 0.7rem; }
 

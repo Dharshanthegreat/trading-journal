@@ -6,7 +6,8 @@ import {
   LogOut, Activity, TrendingUp, TrendingDown,
   Zap, CalendarDays, NotebookPen, Sun, Moon,
   Leaf, Compass, SunDim, Check, Palette,
-  MessageSquare, Wifi, Send
+  MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
+  Trophy, Wallet, Menu, X
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -25,7 +26,13 @@ import AiCoach from './pages/AiCoach';
 import TradingViewPage from './pages/TradingView';
 import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
-import { ai as aiApi } from './services/api';
+import News from './pages/News';
+import Notion from './pages/Notion';
+import Stoic from './pages/Stoic';
+import TradovateConnect from './pages/TradovateConnect';
+import Accounts from './pages/Accounts';
+import Achievements from './pages/Achievements';
+import { ai as aiApi, publicApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -105,6 +112,7 @@ const formatMessageContent = (text) => {
 /* ─── Dashboard ─────────────────────────────────── */
 const Dashboard = () => {
   const { trades, fetchTrades, analytics, fetchAnalytics, loading } = useTrades();
+  const { user } = useAuth();
   
   // Filter states
   const [dateRange, setDateRange] = useState('all');
@@ -152,7 +160,12 @@ const Dashboard = () => {
     setAiLoading(true);
 
     try {
-      const res = await aiApi.chat(newMsgs);
+      let res;
+      if (user?.isGuest) {
+        res = await publicApi.aiChat(user.guestToken, newMsgs);
+      } else {
+        res = await aiApi.chat(newMsgs);
+      }
       setMessages([...newMsgs, { role: 'assistant', content: res.content }]);
     } catch (err) {
       setMessages([...newMsgs, { role: 'assistant', content: `❌ Error: ${err.message || 'Failed to connect to NVIDIA AI'}` }]);
@@ -502,10 +515,14 @@ const Dashboard = () => {
             <span style={{ fontWeight: 700 }}>$</span>
           </button>
           
-          <div className="tz-filter-btn">
-            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>1 filter</span>
-            <button className="tz-filter-clear" onClick={handleResetFilters}>×</button>
-          </div>
+          {(dateRange !== 'all' || selectedSymbol !== 'All' || selectedSetup !== 'All' || selectedType !== 'All') && (
+            <div className="tz-filter-btn">
+              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                {[dateRange !== 'all', selectedSymbol !== 'All', selectedSetup !== 'All', selectedType !== 'All'].filter(Boolean).length} filter{[dateRange !== 'all', selectedSymbol !== 'All', selectedSetup !== 'All', selectedType !== 'All'].filter(Boolean).length > 1 ? 's' : ''}
+              </span>
+              <button className="tz-filter-clear" onClick={handleResetFilters}>×</button>
+            </div>
+          )}
           
           <div className="tz-filter-btn">
             <select value={dateRange} onChange={e => setDateRange(e.target.value)}>
@@ -544,7 +561,7 @@ const Dashboard = () => {
       {/* Resync Bar */}
       <div className="tz-resync-bar">
         <div>
-          Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : 'Jun 10, 2026 05:19 PM'}
+          Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
           <span className="tz-resync-link" onClick={() => fetchTrades({ limit: 200 })}>Resync</span>
         </div>
         <button className="tz-btn-primary" onClick={() => fetchTrades({ limit: 200 })}>
@@ -1099,19 +1116,25 @@ const Dashboard = () => {
 };
 
 /* ─── Sidebar ─────────────────────────────────── */
-const Sidebar = () => {
+const Sidebar = ({ mobileMenuOpen, onClose }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
 
   const nav = [
     { path: '/',              icon: <LayoutDashboard size={16}/>, label: 'Dashboard' },
+    { path: '/accounts',      icon: <Wallet size={16}/>,          label: 'Accounts' },
     { path: '/journal',       icon: <BookOpen size={16}/>,        label: 'Journal' },
     { path: '/calendar',      icon: <CalendarDays size={16}/>,    label: 'Calendar' },
+    { path: '/news',          icon: <Newspaper size={16}/>,       label: 'News Feed' },
+    { path: '/notion',        icon: <FileText size={16}/>,        label: 'Notion Workspace' },
+    { path: '/achievements',  icon: <Trophy size={16}/>,          label: 'Achievements' },
     { path: '/analytics',     icon: <BarChart2 size={16}/>,       label: 'Analytics' },
     { path: '/psychology',    icon: <Brain size={16}/>,           label: 'Psychology' },
+    { path: '/stoic',         icon: <Shield size={16}/>,          label: 'Stoic Mindset' },
     { path: '/ai-coach',      icon: <MessageSquare size={16}/>,   label: 'AI Coach' },
     { path: '/tradingview',   icon: <TrendingUp size={16}/>,      label: 'TV Analysis' },
     { path: '/mt5-connect',   icon: <Wifi size={16}/>,             label: 'MT5 Connect' },
+    { path: '/tradovate',     icon: <Zap size={16}/>,             label: 'Tradovate Sync' },
     { path: '/daily-journal', icon: <NotebookPen size={16}/>,     label: 'Daily Notes' },
     { path: '/charts',        icon: <ImageIcon size={16}/>,       label: 'Charts' },
   ];
@@ -1119,13 +1142,20 @@ const Sidebar = () => {
   const initials = user?.displayName?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'T';
 
   return (
-    <aside className="sidebar">
-      <div className="logo">
-        <div className="logo-icon">
-          <Activity size={16}/>
+    <>
+      <div className={`sidebar-overlay ${mobileMenuOpen ? 'active' : ''}`} onClick={onClose} />
+      <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+        <div className="logo">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', minWidth: 0, flex: 1 }}>
+            <div className="logo-icon">
+              <Activity size={16}/>
+            </div>
+            <span>Trading Journal</span>
+          </div>
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+            <X size={16} />
+          </button>
         </div>
-        <span>Trading Journal</span>
-      </div>
 
       <div className="nav-section-label">Navigation</div>
       <nav className="nav-links">
@@ -1166,16 +1196,28 @@ const Sidebar = () => {
         </button>
       </div>
     </aside>
+    </>
   );
 };
 
 /* ─── Header ─────────────────────────────────── */
-const Header = () => {
+const Header = ({ onMenuToggle }) => {
   const location = useLocation();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const [time, setTime] = useState(new Date());
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isLocal, setIsLocal] = useState(false);
+
+  useEffect(() => {
+    const checkMode = () => {
+      const mode = localStorage.getItem('trading_journal_local_mode');
+      setIsLocal(mode === 'local');
+    };
+    checkMode();
+    const interval = setInterval(checkMode, 1500);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000);
@@ -1192,10 +1234,14 @@ const Header = () => {
 
   const pageNames = {
     '/': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
+    '/news': 'News Feed', '/notion': 'Notion Workspace', '/stoic': 'Stoic Mindset',
     '/analytics': 'Analytics', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
     '/tradingview': 'TradingView Analysis', '/ai-coach': 'AI Coach',
     '/mt5-connect': 'MT5 Connect',
+    '/tradovate': 'Tradovate Connect',
+    '/accounts': 'Trading Accounts',
+    '/achievements': 'Achievements Wall',
   };
 
   const themeList = [
@@ -1212,11 +1258,35 @@ const Header = () => {
   return (
     <header className="header">
       <div className="header-breadcrumb">
+        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
+          <Menu size={18} />
+        </button>
         <span>Trading Journal</span>
         <span className="header-sep">/</span>
         <strong>{pageNames[location.pathname] || 'Page'}</strong>
       </div>
-      <div className="header-right" style={{ gap: 'var(--s3)', position: 'relative' }}>
+      <div className="header-right" style={{ gap: 'var(--s3)', position: 'relative', alignItems: 'center' }}>
+        {/* Connection status indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '0.68rem',
+          padding: '4px 8px',
+          borderRadius: 'var(--r-sm)',
+          background: isLocal ? 'var(--warn-soft)' : 'var(--profit-soft)',
+          border: `1px solid ${isLocal ? 'rgba(251, 191, 36, 0.2)' : 'var(--profit-border)'}`,
+          color: isLocal ? 'var(--warn)' : 'var(--profit)',
+          fontWeight: 600,
+          marginRight: '4px'
+        }} title={isLocal ? 'Database is offline. All data is saved inside your browser.' : 'Server Connected. Data is saved in SQLite database.'}>
+          <span className="status-dot live" style={{
+            background: isLocal ? 'var(--warn)' : 'var(--profit)',
+            boxShadow: `0 0 6px ${isLocal ? 'rgba(251,191,36,0.4)' : 'rgba(52,211,153,0.4)'}`,
+            animation: 'pulse-glow 2s infinite'
+          }} />
+          {isLocal ? 'Browser DB' : 'Cloud DB'}
+        </div>
         <span className="header-time">{format(time, 'HH:mm:ss')}</span>
         
         {/* Custom Premium Theme Selector */}
@@ -1317,8 +1387,13 @@ const Header = () => {
 
 /* ─── App Shell ─────────────────────────────────── */
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   if (loading) {
     return (
@@ -1335,7 +1410,7 @@ function AppContent() {
       </div>
     );
   }
-  const isPublicRoute = location.pathname.startsWith('/shared/');
+  const isPublicRoute = location.pathname.startsWith('/shared/') && !location.pathname.startsWith('/shared/dashboard/');
 
   if (isPublicRoute) {
     return (
@@ -1359,20 +1434,67 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <Sidebar />
+      <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <main className="main-content">
-        <Header />
+        {user?.isGuest && (
+          <div className="anim-fade-in" style={{
+            background: 'linear-gradient(90deg, #1e1b4b, #312e81, #1e1b4b)',
+            color: '#fff',
+            padding: '10px var(--s5)',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid rgba(129, 140, 248, 0.3)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1000
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1rem' }}>👀</span>
+              <span>
+                Showcase Mode (Read-Only) — Viewing <strong>{user?.displayName}</strong>'s trading workspace.
+              </span>
+            </div>
+            <button
+              onClick={logout}
+              className="btn btn-secondary"
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.72rem',
+                height: 'auto',
+                lineHeight: 1,
+                borderColor: 'rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                cursor: 'pointer',
+                borderRadius: 'var(--r-md)'
+              }}
+            >
+              Exit Showcase
+            </button>
+          </div>
+        )}
+        <Header onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
         <div className="page-container">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/shared/dashboard/:token" element={<Dashboard />} />
             <Route path="/landing" element={<LandingPage />} />
             <Route path="/journal" element={<Journal />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/news" element={<News />} />
+            <Route path="/notion" element={<Notion />} />
+            <Route path="/stoic" element={<Stoic />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/psychology" element={<Emotions />} />
             <Route path="/ai-coach" element={<AiCoach />} />
             <Route path="/tradingview" element={<TradingViewPage />} />
             <Route path="/mt5-connect" element={<MT5Connect />} />
+            <Route path="/tradovate" element={<TradovateConnect />} />
+            <Route path="/accounts" element={<Accounts />} />
+            <Route path="/achievements" element={<Achievements />} />
             <Route path="/daily-journal" element={<DailyJournal />} />
             <Route path="/charts" element={<Charts />} />
             <Route path="/settings" element={<Settings />} />

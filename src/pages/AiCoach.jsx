@@ -7,6 +7,17 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
+// Internal parser helper to turn **bold** text into HTML strong tags
+const parseBoldText = (text) => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={idx} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+};
+
 // Custom Markdown Parser to style headers, lists, and bold text without third-party dependencies
 const formatMessageContent = (text) => {
   if (!text) return null;
@@ -60,18 +71,6 @@ const formatMessageContent = (text) => {
         {parseBoldText(content)}
       </p>
     );
-  });
-};
-
-// Internal parser helper to turn **bold** text into HTML strong tags
-const parseBoldText = (text) => {
-  const parts = text.split(/\*\*([^*]+)\*\*/g);
-  return parts.map((part, idx) => {
-    // Odd indexes are the captured group inside **
-    if (idx % 2 === 1) {
-      return <strong key={idx} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part}</strong>;
-    }
-    return part;
   });
 };
 
@@ -197,7 +196,8 @@ How is your trading session going today? Feel free to ask me questions like:
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSend();
     }
   };
@@ -451,7 +451,7 @@ How is your trading session going today? Feel free to ask me questions like:
             placeholder={loading ? "Coach is generating response..." : "Ask your coach about win rate, fomo, strategy leaks..."}
             value={inputVal}
             onChange={e => setInputVal(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             disabled={loading}
             style={{
               flex: 1,
