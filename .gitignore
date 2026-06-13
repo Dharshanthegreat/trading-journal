@@ -34,3 +34,5 @@ dist-ssr
 *.db-shm
 *.db-wal
 server/data/
+
+.vercel

@@ -182,6 +182,24 @@ const handleAuth = async (url, method, body) => {
     setStorageItem('users', users);
     return { message: 'Password reset successful' };
   }
+
+  if (url === '/auth/share-dashboard' && method === 'POST') {
+    const activeUser = getActiveUser();
+    activeUser.shareToken = 'showcase-token-' + activeUser.id;
+    const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, shareToken: activeUser.shareToken } : u);
+    setStorageItem('users', updatedUsers);
+    setStorageItem('active_session', activeUser);
+    return { success: true, token: activeUser.shareToken };
+  }
+  
+  if (url === '/auth/share-dashboard' && method === 'DELETE') {
+    const activeUser = getActiveUser();
+    activeUser.shareToken = null;
+    const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, shareToken: null } : u);
+    setStorageItem('users', updatedUsers);
+    setStorageItem('active_session', activeUser);
+    return { success: true };
+  }
   
   throw { status: 404, message: 'Not Found' };
 };
@@ -275,6 +293,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     const newTrade = {
       id: newId,
+      accountId: data.accountId ? parseInt(data.accountId) : 1,
       symbol: (data.symbol || '').toUpperCase(),
       type: data.type || 'Long',
       entryPrice: parseFloat(data.entryPrice) || 0,
@@ -328,6 +347,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     const updated = {
       ...trades[tradeIndex],
+      accountId: data.accountId !== undefined ? (data.accountId ? parseInt(data.accountId) : null) : trades[tradeIndex].accountId,
       symbol: data.symbol !== undefined ? data.symbol.toUpperCase() : trades[tradeIndex].symbol,
       type: data.type !== undefined ? data.type : trades[tradeIndex].type,
       entryPrice: data.entryPrice !== undefined ? parseFloat(data.entryPrice) : trades[tradeIndex].entryPrice,
@@ -362,6 +382,26 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     await deleteLocalImage(id);
     setStorageItem(`trades_${activeUser.id}`, trades);
     return { message: 'Trade deleted' };
+  }
+
+  if (url.endsWith('/share') && method === 'POST') {
+    const id = parseInt(url.split('/')[1]);
+    const tradeIndex = trades.findIndex(t => t.id === id);
+    if (tradeIndex === -1) throw { status: 404, message: 'Trade not found' };
+    
+    trades[tradeIndex].shareToken = 'trade-token-' + id;
+    setStorageItem(`trades_${activeUser.id}`, trades);
+    return { success: true, token: trades[tradeIndex].shareToken };
+  }
+  
+  if (url.endsWith('/share') && method === 'DELETE') {
+    const id = parseInt(url.split('/')[1]);
+    const tradeIndex = trades.findIndex(t => t.id === id);
+    if (tradeIndex === -1) throw { status: 404, message: 'Trade not found' };
+    
+    trades[tradeIndex].shareToken = null;
+    setStorageItem(`trades_${activeUser.id}`, trades);
+    return { success: true };
   }
   
   if (url === '/import' && method === 'POST') {
@@ -769,6 +809,432 @@ const handleBackup = async (url, method, body) => {
   throw { status: 404, message: 'Not Found' };
 };
 
+// 6. Accounts Handler
+const handleAccounts = async (url, method, body) => {
+  const activeUser = getActiveUser();
+  let accountsList = getStorageItem(`accounts_${activeUser.id}`, null);
+  
+  if (accountsList === null || (Array.isArray(accountsList) && accountsList.length === 0)) {
+    accountsList = [{
+      id: 1,
+      accountName: 'Default Account',
+      accountType: 'Live',
+      startingBalance: activeUser.accountSize || 10000,
+      currentBalance: activeUser.accountSize || 10000,
+      totalPnL: 0,
+      tradesCount: 0,
+      currency: activeUser.currency || 'USD',
+      status: 'Active',
+      createdAt: new Date().toISOString()
+    }];
+    setStorageItem(`accounts_${activeUser.id}`, accountsList);
+  }
+
+  if (url === '' && method === 'GET') {
+    const trades = getStorageItem(`trades_${activeUser.id}`, []);
+    
+    const accountsWithStats = accountsList.map(acc => {
+      const accTrades = trades.filter(t => (t.accountId === acc.id || (!t.accountId && acc.id === 1)));
+      const totalPnL = accTrades.reduce((pnlAcc, t) => pnlAcc + (t.pnl || 0), 0);
+      const tradesCount = accTrades.length;
+      const currentBalance = (acc.startingBalance || 0) + totalPnL;
+
+      return {
+        ...acc,
+        currentBalance,
+        totalPnL,
+        tradesCount
+      };
+    });
+    return accountsWithStats;
+  }
+
+  if (url === '' && method === 'POST') {
+    const { accountName, accountType, balance, currency, status } = body;
+    if (!accountName) throw { status: 400, message: 'Account Name is required' };
+
+    const newAccount = {
+      id: Date.now(),
+      accountName,
+      accountType: accountType || 'Simulated',
+      startingBalance: parseFloat(balance) || 0,
+      currentBalance: parseFloat(balance) || 0,
+      totalPnL: 0,
+      tradesCount: 0,
+      currency: currency || 'USD',
+      status: status || 'Active',
+      createdAt: new Date().toISOString()
+    };
+    
+    accountsList = [newAccount, ...accountsList];
+    setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    return newAccount;
+  }
+
+  if (url.startsWith('/') && method === 'DELETE') {
+    const id = parseInt(url.slice(1));
+    const beforeLength = accountsList.length;
+    accountsList = accountsList.filter(acc => acc.id !== id);
+    if (accountsList.length === beforeLength) throw { status: 404, message: 'Account not found' };
+
+    setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    return { success: true, message: 'Account deleted successfully' };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
+// 7. Achievements Handler
+const handleAchievements = async (url, method, body) => {
+  const activeUser = getActiveUser();
+  let achievements = getStorageItem(`achievements_${activeUser.id}`, []);
+
+  if (url === '' && method === 'GET') {
+    return achievements;
+  }
+
+  if (url === '' && method === 'POST') {
+    let data = {};
+    let certFile = null;
+    
+    if (body instanceof FormData) {
+      for (const [k, v] of body.entries()) {
+        if (k === 'certificate') certFile = v;
+        else data[k] = v;
+      }
+    } else {
+      data = body;
+    }
+
+    const newId = Date.now();
+    let certificateUrl = null;
+    if (certFile && certFile instanceof File) {
+      certificateUrl = await saveLocalImage(newId, certFile);
+    }
+
+    const newAchievement = {
+      id: newId,
+      title: data.title || 'Untitled Achievement',
+      type: data.type || 'passed',
+      accountName: data.accountName || '',
+      amount: parseFloat(data.amount) || 0,
+      date: data.date || new Date().toISOString().split('T')[0],
+      notes: data.notes || '',
+      certificateUrl,
+      createdAt: new Date().toISOString()
+    };
+
+    achievements = [newAchievement, ...achievements];
+    setStorageItem(`achievements_${activeUser.id}`, achievements);
+    return newAchievement;
+  }
+
+  if (url.startsWith('/') && method === 'DELETE') {
+    const id = parseInt(url.slice(1));
+    const beforeLength = achievements.length;
+    achievements = achievements.filter(a => a.id !== id);
+    if (achievements.length === beforeLength) throw { status: 404, message: 'Achievement not found' };
+
+    await deleteLocalImage(id);
+    setStorageItem(`achievements_${activeUser.id}`, achievements);
+    return { success: true, message: 'Achievement deleted' };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
+// 8. Notion Handler
+const handleNotion = async (url, method, body) => {
+  const activeUser = getActiveUser();
+  let docs = getStorageItem(`notion_${activeUser.id}`, []);
+
+  if (url === '' && method === 'GET') {
+    return docs;
+  }
+
+  if (url.startsWith('/') && method === 'GET') {
+    const id = parseInt(url.slice(1));
+    const doc = docs.find(d => d.id === id);
+    if (!doc) throw { status: 404, message: 'Document not found' };
+    return doc;
+  }
+
+  if (url === '' && method === 'POST') {
+    const { title, content, icon, tags, external_url } = body;
+    const newDoc = {
+      id: Date.now(),
+      user_id: activeUser.id,
+      title: title || 'Untitled Document',
+      content: content || '',
+      icon: icon || '📄',
+      tags: Array.isArray(tags) ? tags : [],
+      external_url: external_url || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    docs = [newDoc, ...docs];
+    setStorageItem(`notion_${activeUser.id}`, docs);
+    return newDoc;
+  }
+
+  if (url.startsWith('/') && method === 'PUT') {
+    const id = parseInt(url.slice(1));
+    const idx = docs.findIndex(d => d.id === id);
+    if (idx === -1) throw { status: 404, message: 'Document not found' };
+
+    const { title, content, icon, tags, external_url } = body;
+    const updated = {
+      ...docs[idx],
+      title: title !== undefined ? title : docs[idx].title,
+      content: content !== undefined ? content : docs[idx].content,
+      icon: icon !== undefined ? icon : docs[idx].icon,
+      tags: tags !== undefined ? tags : docs[idx].tags,
+      external_url: external_url !== undefined ? external_url : docs[idx].external_url,
+      updated_at: new Date().toISOString()
+    };
+
+    docs[idx] = updated;
+    setStorageItem(`notion_${activeUser.id}`, docs);
+    return updated;
+  }
+
+  if (url.startsWith('/') && method === 'DELETE') {
+    const id = parseInt(url.slice(1));
+    const beforeLength = docs.length;
+    docs = docs.filter(d => d.id !== id);
+    if (docs.length === beforeLength) throw { status: 404, message: 'Document not found' };
+
+    setStorageItem(`notion_${activeUser.id}`, docs);
+    return { success: true, message: 'Document deleted' };
+  }
+
+  if (url.includes('/ai') && method === 'POST') {
+    const id = parseInt(url.split('/')[1]);
+    const doc = docs.find(d => d.id === id);
+    if (!doc) throw { status: 404, message: 'Document not found' };
+
+    const { messages, content } = body;
+    const documentContent = content !== undefined ? content : doc.content;
+    const documentTitle = doc.title;
+
+    const lastMessage = messages?.[messages.length - 1]?.content?.toLowerCase() || '';
+    let aiText = '';
+
+    if (lastMessage.includes('summarize') || lastMessage.includes('summary')) {
+      aiText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Document Summary]**\n\nHere is a summary of **"${documentTitle}"**:\n\n* **Core Theme**: Focused on trading setups, psychological audits, or strategy guidelines.\n* **Key Takeaway**: The layout organizes core trading process checks.\n* **Coach Tip**: Maintain strict risk ratios on setups listed in this playbook.`;
+    } else if (lastMessage.includes('improve') || lastMessage.includes('rewrite') || lastMessage.includes('polish')) {
+      aiText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Polish]**\n\nHere is a polished version of the document content:\n\n* Polish of: "${documentContent.slice(0, 100)}..."\n* Keep focus on Daily levels, patience, and 1% risk rules.`;
+    } else {
+      aiText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B]**\n\nReviewing document **"${documentTitle}"**. Let me know if you would like me to summarize, polish, or generate a checklist.`;
+    }
+
+    return {
+      role: 'assistant',
+      content: aiText
+    };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
+// 9. Stoic Handler
+const handleStoic = async (url, method, body) => {
+  const activeUser = getActiveUser();
+  let reframes = getStorageItem(`stoic_reframes_${activeUser.id}`, []);
+
+  const STOIC_QUOTES = [
+    { author: 'Seneca', quote: 'We suffer more often in imagination than in reality.', translation: 'Do not panic about potential losses or missed moves that haven\'t occurred. Trade the price actions on your screen, not your fearful projections.' },
+    { author: 'Marcus Aurelius', quote: 'You have power over your mind - not outside events. Realize this, and you will find strength.', translation: 'You cannot control where the market goes. You can only control your risk size, your stop-loss, and your response.' },
+    { author: 'Epictetus', quote: 'It\'s not what happens to you, but how you react to it that matters.', translation: 'A loss is just a statistical cost of trading. How you manage your psychology after a loss is what determines your success.' }
+  ];
+
+  if (url === '/quotes' && method === 'GET') {
+    return STOIC_QUOTES;
+  }
+
+  if (url === '/reframes' && method === 'GET') {
+    return reframes;
+  }
+
+  if (url === '/reframes' && method === 'POST') {
+    const { situation, in_control, out_of_control, stoic_reframe } = body;
+    if (!situation || !in_control || !out_of_control || !stoic_reframe) {
+      throw { status: 400, message: 'All fields are required to log a reframe.' };
+    }
+
+    const newReframe = {
+      id: Date.now(),
+      situation,
+      in_control,
+      out_of_control,
+      stoic_reframe,
+      created_at: new Date().toISOString()
+    };
+
+    reframes = [newReframe, ...reframes];
+    setStorageItem(`stoic_reframes_${activeUser.id}`, reframes);
+    return newReframe;
+  }
+
+  if (url.startsWith('/reframes/') && method === 'DELETE') {
+    const id = parseInt(url.slice('/reframes/'.length));
+    const beforeLength = reframes.length;
+    reframes = reframes.filter(r => r.id !== id);
+    if (reframes.length === beforeLength) throw { status: 404, message: 'Reframe not found' };
+
+    setStorageItem(`stoic_reframes_${activeUser.id}`, reframes);
+    return { success: true, message: 'Reframe deleted' };
+  }
+
+  if (url === '/chat' && method === 'POST') {
+    const { messages } = body;
+    const lastMsg = messages?.[messages.length - 1]?.content?.toLowerCase() || '';
+    let responseText = '';
+
+    if (lastMsg.includes('drawdown') || lastMsg.includes('loss') || lastMsg.includes('lost')) {
+      responseText = `🏛️ **[NVIDIA Stoic Mentor - Marcus Aurelius Mode]**\n\n*“The mind adapts and converts to its own purposes the obstacle to our acting.”*\n\nYour losses are statistical premiums. Keep risk small, and do not seek revenge on the market.`;
+    } else {
+      responseText = `🏛️ **[NVIDIA Stoic Mentor - Epictetus Mode]**\n\nHow can I help you navigate your trading psychology stoically today? Describe what you are experiencing.`;
+    }
+
+    return {
+      role: 'assistant',
+      content: responseText
+    };
+  }
+
+  if (url === '/analyze-situation' && method === 'POST') {
+    const { situation } = body;
+    const situationLower = situation.toLowerCase();
+    
+    let inControl = '- Following pre-market entry rules\n- Your risk management settings (e.g. 1% risk size)\n- Your emotional response to the loss (avoiding revenge trading)\n- Closing the terminal to take a break';
+    let outOfControl = '- The exact path the price takes after your entry\n- Institutional news spikes or spread widening\n- Quick slippage near your stop loss\n- The behaviors of other market participants';
+    let reframeText = '“Accept the things to which fate binds you...” — Marcus Aurelius. A stop-out is simply data, not a personal insult. Focus on executing your rules.';
+
+    if (situationLower.includes('revenge') || situationLower.includes('overtrade') || situationLower.includes('chase')) {
+      inControl = '- Closing the charts and walking away\n- Sticking to a maximum trade-per-session limit\n- Logging your emotional state before clicking buy/sell';
+      outOfControl = '- Missing the initial breakout move\n- How fast the price expands without you';
+      reframeText = '“No man is hurt but by himself.” — Diogenes. Missing a trade costs nothing but patience. Forcing an entry costs capital.';
+    }
+
+    return {
+      in_control: inControl,
+      out_of_control: outOfControl,
+      stoic_reframe: reframeText
+    };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
+// 10. News Handler
+const handleNews = async (url, method, body, queryParams = {}) => {
+  const currencies = ['USD', 'EUR', 'GBP', 'AUD', 'JPY', 'CAD', 'CHF', 'NZD'];
+  const eventTemplates = [
+    { title: 'CPI m/m', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'AUD'] },
+    { title: 'Core CPI y/y', impact: 'High', currencies: ['USD', 'EUR', 'GBP'] },
+    { title: 'Unemployment Rate', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'] },
+    { title: 'GDP q/q', impact: 'High', currencies: ['USD', 'GBP', 'EUR', 'AUD'] },
+    { title: 'Interest Rate Decision', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'AUD'] }
+  ];
+
+  if (url === '' && method === 'GET') {
+    const reqYear = queryParams.year ? parseInt(queryParams.year) : new Date().getFullYear();
+    const reqMonth = queryParams.month ? parseInt(queryParams.month) : new Date().getMonth();
+    const daysInMonth = new Date(reqYear, reqMonth + 1, 0).getDate();
+    const eventsList = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(reqYear, reqMonth, day);
+      if (date.getDay() === 0 || date.getDay() === 6) continue;
+      
+      const numEvents = 1 + ((day * 3) % 3);
+      for (let i = 0; i < numEvents; i++) {
+        const template = eventTemplates[(day + i) % eventTemplates.length];
+        const currency = template.currencies[(day + i) % template.currencies.length];
+        const val = (((day + i) * 0.17) % 3.0).toFixed(1);
+        eventsList.push({
+          title: template.title,
+          country: currency,
+          date: new Date(reqYear, reqMonth, day, 9 + i * 2, 30, 0).toISOString(),
+          impact: template.impact,
+          forecast: `${val}%`,
+          previous: `${(parseFloat(val) - 0.1).toFixed(1)}%`
+        });
+      }
+    }
+    return eventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+
+  if (url === '/analyze' && method === 'POST') {
+    const { event } = body;
+    const { title, country, forecast } = event;
+    const fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B-Instruct - Simulated Analyst]**\n\n### Economic Significance of **${title}** (${country})\n\nThis is a High-impact release. Consensus forecast is **${forecast || 'N/A'}**. Deviances will spark volatility. Protect your downside by lowering risk before release.`;
+    return {
+      role: 'assistant',
+      content: fallbackText
+    };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
+// 11. Public Showcase / Trade sharing Handler
+const handlePublic = async (url, method, body) => {
+  const parts = url.split('/');
+  
+  if (url.startsWith('/dashboard/ai/chat/')) {
+    return {
+      role: 'assistant',
+      content: `🤖 **[Public Viewer Coach Fallback]**\n\nI am analyzing this shared dashboard view. The win rate and P&L represent active local performance data.`
+    };
+  }
+
+  if (url.startsWith('/dashboard/')) {
+    const token = parts[2];
+    const userId = parseInt(token.replace('showcase-token-', ''));
+    if (!userId) throw { status: 404, message: 'Dashboard not found' };
+
+    const trades = getStorageItem(`trades_${userId}`, []);
+    const totalPnL = trades.reduce((a, t) => a + t.pnl, 0);
+    const winRate = trades.length > 0 ? (trades.filter(t => t.pnl > 0).length / trades.length * 100) : 0;
+    
+    return {
+      trades: trades.filter(t => t.shareToken),
+      analytics: {
+        summary: {
+          totalTrades: trades.length,
+          totalPnL,
+          winRate
+        }
+      }
+    };
+  }
+
+  if (url.startsWith('/trades/')) {
+    const token = parts[2];
+    const tradeId = parseInt(token.replace('trade-token-', ''));
+    if (!tradeId) throw { status: 404, message: 'Trade not found' };
+
+    const users = getStorageItem('users', []);
+    for (const u of users) {
+      const trades = getStorageItem(`trades_${u.id}`, []);
+      const found = trades.find(t => t.id === tradeId);
+      if (found) {
+        const imageBase64 = await getLocalImage(found.id);
+        return {
+          ...found,
+          imageUrl: imageBase64 || null
+        };
+      }
+    }
+    throw { status: 404, message: 'Trade not found' };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
 // ─── Core Routing Interceptor ─────────────────────────
 export const handleRequest = async (fullUrl, options = {}) => {
   const method = options.method || 'GET';
@@ -803,6 +1269,30 @@ export const handleRequest = async (fullUrl, options = {}) => {
     if (urlPath.startsWith('/backup')) {
       const subUrl = urlPath.slice('/backup'.length);
       return await handleBackup(subUrl, method, body);
+    }
+    if (urlPath.startsWith('/accounts')) {
+      const subUrl = urlPath.slice('/accounts'.length);
+      return await handleAccounts(subUrl, method, body);
+    }
+    if (urlPath.startsWith('/achievements')) {
+      const subUrl = urlPath.slice('/achievements'.length);
+      return await handleAchievements(subUrl, method, body);
+    }
+    if (urlPath.startsWith('/notion')) {
+      const subUrl = urlPath.slice('/notion'.length);
+      return await handleNotion(subUrl, method, body);
+    }
+    if (urlPath.startsWith('/stoic')) {
+      const subUrl = urlPath.slice('/stoic'.length);
+      return await handleStoic(subUrl, method, body);
+    }
+    if (urlPath.startsWith('/news')) {
+      const subUrl = urlPath.slice('/news'.length);
+      return await handleNews(subUrl, method, body, queryParams);
+    }
+    if (urlPath.startsWith('/public')) {
+      const subUrl = urlPath.slice('/public'.length);
+      return await handlePublic(subUrl, method, body);
     }
     
     // TV & MT5 MCP connection mocks
