@@ -630,6 +630,7 @@ const Settings = () => {
             { id: 'forest', name: 'Forest Pine', desc: 'Deep Emerald', icon: <Leaf size={14} />, bg: '#0b0f0d', accent: '#10b981' },
             { id: 'sunset', name: 'Sunset Amber', desc: 'Warm Charcoal', icon: <SunDim size={14} />, bg: '#120f0e', accent: '#f97316' },
             { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
+            { id: 'spiderman', name: 'Spider-Man', desc: 'Hero Red & Navy', icon: <Shield size={14} />, bg: '#0b0c14', accent: '#e23636' },
           ].map(t => (
             <div
               key={t.id}

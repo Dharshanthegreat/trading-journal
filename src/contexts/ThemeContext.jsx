@@ -11,7 +11,7 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     // List of all theme classes to clean up
-    const themeClasses = ['light-theme', 'theme-light', 'theme-nord', 'theme-forest', 'theme-sunset', 'theme-minimal'];
+    const themeClasses = ['light-theme', 'theme-light', 'theme-nord', 'theme-forest', 'theme-sunset', 'theme-minimal', 'theme-spiderman'];
     document.body.classList.remove(...themeClasses);
 
     // Apply active theme class to document body
@@ -30,7 +30,7 @@ export const ThemeProvider = ({ children }) => {
   };
 
   const toggleTheme = () => {
-    const cycle = ['dark', 'light', 'nord', 'forest', 'sunset', 'minimal'];
+    const cycle = ['dark', 'light', 'nord', 'forest', 'sunset', 'minimal', 'spiderman'];
     const idx = cycle.indexOf(theme);
     const nextTheme = cycle[(idx + 1) % cycle.length];
     setThemeState(nextTheme);

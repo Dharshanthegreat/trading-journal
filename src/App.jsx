@@ -1251,6 +1251,7 @@ const Header = ({ onMenuToggle }) => {
     { id: 'forest', name: 'Forest Pine', icon: <Leaf size={13} />, bg: '#0b0f0d', accent: '#10b981' },
     { id: 'sunset', name: 'Sunset Amber', icon: <SunDim size={13} />, bg: '#120f0e', accent: '#f97316' },
     { id: 'minimal', name: 'Minimalist', icon: <Palette size={13} />, bg: '#ffffff', accent: '#000000' },
+    { id: 'spiderman', name: 'Spider-Man', icon: <Shield size={13} />, bg: '#0b0c14', accent: '#e23636' },
   ];
 
   const currentThemeObj = themeList.find(t => t.id === theme) || themeList[0];

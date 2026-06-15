@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import {
   TrendingUp, TrendingDown, Clock, Activity, Zap,
   AlertCircle, DollarSign, Calendar, ExternalLink, ZoomIn, X,
-  Sun, Moon, Leaf, Compass, SunDim, Check, Palette
+  Sun, Moon, Leaf, Compass, SunDim, Check, Palette, Shield
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -143,6 +143,7 @@ const SharedTrade = () => {
                 {theme === 'forest' && <Leaf size={11} />}
                 {theme === 'sunset' && <SunDim size={11} />}
                 {theme === 'minimal' && <Palette size={11} />}
+                {theme === 'spiderman' && <Shield size={11} />}
                 <span style={{ fontSize: '0.68rem', fontWeight: 500 }}>
                   {theme === 'dark' && 'Dark'}
                   {theme === 'light' && 'Light'}
@@ -150,6 +151,7 @@ const SharedTrade = () => {
                   {theme === 'forest' && 'Forest'}
                   {theme === 'sunset' && 'Sunset'}
                   {theme === 'minimal' && 'Minimal'}
+                  {theme === 'spiderman' && 'Spidey'}
                 </span>
               </button>
 
@@ -179,6 +181,7 @@ const SharedTrade = () => {
                     { id: 'forest', name: 'Forest Pine', icon: <Leaf size={11} />, accent: '#10b981' },
                     { id: 'sunset', name: 'Sunset Amber', icon: <SunDim size={11} />, accent: '#f97316' },
                     { id: 'minimal', name: 'Minimalist', icon: <Palette size={11} />, accent: '#000000' },
+                    { id: 'spiderman', name: 'Spider-Man', icon: <Shield size={11} />, accent: '#e23636' },
                   ].map(t => (
                     <button
                       key={t.id}

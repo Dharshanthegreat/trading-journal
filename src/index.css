@@ -274,6 +274,55 @@ body.theme-minimal {
   --border-accent:   rgba(0, 0, 0, 0.28);
 }
 
+/* ═══ SPIDER-MAN THEME OVERRIDES ═══ */
+body.theme-spiderman {
+  --bg-primary:      #0b0c14;
+  --bg-secondary:    #10121e;
+  --bg-tertiary:     #161929;
+  --bg-elevated:     #1c2038;
+  --bg-hover:        #1e2340;
+  --bg-active:       #252a4a;
+
+  /* Surfaces */
+  --surface:         rgba(16, 18, 30, 0.92);
+  --surface-hover:   rgba(30, 35, 64, 0.9);
+  --surface-glass:   rgba(226, 54, 54, 0.04);
+  --surface-glass-h: rgba(226, 54, 54, 0.08);
+
+  /* Text */
+  --text-primary:    #f2f0f8;
+  --text-secondary:  rgba(242, 240, 248, 0.78);
+  --text-tertiary:   rgba(200, 195, 220, 0.55);
+  --text-muted:      rgba(180, 170, 210, 0.32);
+
+  /* Accent — Spider-Man Red */
+  --accent:          #e23636;
+  --accent-hover:    #c62828;
+  --accent-soft:     rgba(226, 54, 54, 0.12);
+  --accent-glow:     rgba(226, 54, 54, 0.35);
+
+  /* Status */
+  --profit:          #34d399;
+  --profit-soft:     rgba(52, 211, 153, 0.12);
+  --profit-border:   rgba(52, 211, 153, 0.25);
+  --loss:            #f87171;
+  --loss-soft:       rgba(248, 113, 113, 0.12);
+  --loss-border:     rgba(248, 113, 113, 0.25);
+  --warn:            #fbbf24;
+  --warn-soft:       rgba(251, 191, 36, 0.12);
+  --info:            #60a5fa;
+  --info-soft:       rgba(96, 165, 250, 0.12);
+
+  /* Borders — Web-inspired blue-red tint */
+  --border:          rgba(100, 120, 200, 0.08);
+  --border-mid:      rgba(100, 120, 200, 0.14);
+  --border-strong:   rgba(130, 140, 220, 0.22);
+  --border-accent:   rgba(226, 54, 54, 0.35);
+
+  /* Shadows */
+  --shadow-glow: 0 0 24px rgba(226, 54, 54, 0.18);
+}
+
 /* ═══ RESET ═══ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
