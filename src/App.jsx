@@ -1268,19 +1268,36 @@ const Header = ({ onMenuToggle }) => {
       </div>
       <div className="header-right" style={{ gap: 'var(--s3)', position: 'relative', alignItems: 'center' }}>
         {/* Connection status indicator */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontSize: '0.68rem',
-          padding: '4px 8px',
-          borderRadius: 'var(--r-sm)',
-          background: isLocal ? 'var(--warn-soft)' : 'var(--profit-soft)',
-          border: `1px solid ${isLocal ? 'rgba(251, 191, 36, 0.2)' : 'var(--profit-border)'}`,
-          color: isLocal ? 'var(--warn)' : 'var(--profit)',
-          fontWeight: 600,
-          marginRight: '4px'
-        }} title={isLocal ? 'Database is offline. All data is saved inside your browser.' : 'Server Connected. Data is saved in PostgreSQL database.'}>
+        <div 
+          onClick={() => {
+            if (isLocal) {
+              if (window.confirm("Switch to Cloud Database Mode? The app will reload and attempt to connect to your PostgreSQL server backend.")) {
+                localStorage.setItem('trading_journal_local_mode', 'cloud');
+                window.location.reload();
+              }
+            } else {
+              if (window.confirm("Switch to Offline Browser Mode? Your data will be saved locally inside this browser instead of the database server.")) {
+                localStorage.setItem('trading_journal_local_mode', 'local');
+                window.location.reload();
+              }
+            }
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.68rem',
+            padding: '4px 8px',
+            borderRadius: 'var(--r-sm)',
+            background: isLocal ? 'var(--warn-soft)' : 'var(--profit-soft)',
+            border: `1px solid ${isLocal ? 'rgba(251, 191, 36, 0.2)' : 'var(--profit-border)'}`,
+            color: isLocal ? 'var(--warn)' : 'var(--profit)',
+            fontWeight: 600,
+            marginRight: '4px',
+            cursor: 'pointer'
+          }} 
+          title={isLocal ? 'Click to switch to Cloud Mode. Currently: Database is offline. All data is saved inside your browser.' : 'Click to switch to Offline Mode. Currently: Server Connected. Data is saved in PostgreSQL database.'}
+        >
           <span className="status-dot live" style={{
             background: isLocal ? 'var(--warn)' : 'var(--profit)',
             boxShadow: `0 0 6px ${isLocal ? 'rgba(251,191,36,0.4)' : 'rgba(52,211,153,0.4)'}`,

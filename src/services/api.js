@@ -1,13 +1,16 @@
 import * as localDb from './localDb.js';
 
-const BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? '/api' : 'http://localhost:3001/api');
+const BASE = import.meta.env.VITE_API_URL || '/api';
 
-let isLocalMode = typeof window !== 'undefined' && 
-  window.location.hostname !== 'localhost' && 
-  window.location.hostname !== '127.0.0.1';
+let isLocalMode = false;
 
 if (typeof window !== 'undefined') {
-  localStorage.setItem('trading_journal_local_mode', isLocalMode ? 'local' : 'cloud');
+  const savedMode = localStorage.getItem('trading_journal_local_mode');
+  if (savedMode === 'local') {
+    isLocalMode = true;
+  } else if (!savedMode) {
+    localStorage.setItem('trading_journal_local_mode', 'cloud');
+  }
 }
 
 export const getMode = () => isLocalMode ? 'local' : 'cloud';

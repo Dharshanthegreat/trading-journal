@@ -28,6 +28,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+let dbInitialized = false;
+
+// Middleware to lazily initialize PostgreSQL tables on the first Vercel serverless request
+app.use(async (req, res, next) => {
+  if (process.env.VERCEL && !dbInitialized) {
+    try {
+      await db.initDB();
+      dbInitialized = true;
+    } catch (err) {
+      console.error('Vercel lazy DB initialization failed:', err);
+    }
+  }
+  next();
+});
+
 // ─── Middleware ──────────────────────────────────────
 app.use(cors({
   origin: (origin, callback) => {
@@ -123,17 +138,20 @@ app.use((err, req, res, next) => {
 // ─── Start (async to initialize PostgreSQL first) ────
 async function start() {
   try {
-    // Initialize PostgreSQL database tables
-    await db.initDB();
+    // Only run normal startup if not on Vercel
+    if (!process.env.VERCEL) {
+      // Initialize PostgreSQL database tables
+      await db.initDB();
 
-    app.listen(PORT, () => {
-      console.log(`\n  ⚡ Trading Journal API running at http://localhost:${PORT}`);
-      console.log(`  📊 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`  🐘 Database: PostgreSQL\n`);
-      
-      // Start background news synchronization agent
-      startNewsAgent();
-    });
+      app.listen(PORT, () => {
+        console.log(`\n  ⚡ Trading Journal API running at http://localhost:${PORT}`);
+        console.log(`  📊 Health check: http://localhost:${PORT}/api/health`);
+        console.log(`  🐘 Database: PostgreSQL\n`);
+        
+        // Start background news synchronization agent
+        startNewsAgent();
+      });
+    }
   } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);
@@ -141,3 +159,5 @@ async function start() {
 }
 
 start();
+
+export default app;
