@@ -1442,9 +1442,69 @@ export const handleRequest = async (fullUrl, options = {}) => {
       return await handleTradingView(subUrl, method, body);
     }
     if (urlPath.startsWith('/mt5')) {
-      if (urlPath === '/mt5/status') return { connected: false, serverName: 'Local server offline' };
-      if (urlPath === '/mt5/connect') return { success: false, error: 'Local backend server not running' };
-      if (urlPath === '/mt5/disconnect') return { success: true };
+      const activeUser = getActiveUser();
+      if (urlPath === '/mt5/status') {
+        const conn = getStorageItem(`mt5_connection_${activeUser.id}`, null);
+        if (conn) {
+          return { connected: true, connection: conn };
+        }
+        return { connected: false };
+      }
+      if (urlPath === '/mt5/connect') {
+        const { accountNumber, password, serverName, accountType } = body;
+        if (!accountNumber || !password || !serverName) {
+          throw { status: 400, message: 'All fields are required' };
+        }
+        if (!/^\d{4,12}$/.test(accountNumber)) {
+          throw { status: 400, message: 'Invalid account number format. Must be 4-12 digits.' };
+        }
+
+        const extractBrokerName = (srv) => {
+          const name = srv.toLowerCase();
+          if (name.includes('icmarkets')) return 'IC Markets';
+          if (name.includes('pepperstone')) return 'Pepperstone';
+          if (name.includes('exness')) return 'Exness';
+          if (name.includes('xm')) return 'XM Group';
+          if (name.includes('fxpro')) return 'FxPro';
+          if (name.includes('oanda')) return 'OANDA';
+          if (name.includes('fbs')) return 'FBS';
+          if (name.includes('roboforex')) return 'RoboForex';
+          if (name.includes('ftmo')) return 'FTMO';
+          if (name.includes('fundednext')) return 'FundedNext';
+          if (name.includes('myforexfunds')) return 'My Forex Funds';
+          if (name.includes('topstep')) return 'TopStep';
+          if (name.includes('the5ers') || name.includes('5ers')) return 'The5ers';
+          if (name.includes('trueforex')) return 'TrueForex';
+          const parts = srv.split(/[-_.\s]/);
+          return parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : 'Broker';
+        };
+
+        const connectionId = `mt5_local_${activeUser.id}_${Date.now()}`;
+        const connectionData = {
+          id: connectionId,
+          status: 'connected',
+          accountNumber: '****' + String(accountNumber).slice(-4),
+          serverName,
+          broker: extractBrokerName(serverName),
+          accountType: accountType || 'prop',
+          connectedAt: new Date().toISOString(),
+          leverage: '1:100',
+          currency: 'USD',
+          platform: 'MetaTrader 5',
+        };
+
+        setStorageItem(`mt5_connection_${activeUser.id}`, connectionData);
+
+        return {
+          success: true,
+          connection: connectionData,
+          message: 'Successfully connected to MT5 terminal (Simulated Mode)',
+        };
+      }
+      if (urlPath === '/mt5/disconnect') {
+        setStorageItem(`mt5_connection_${activeUser.id}`, null);
+        return { success: true, message: 'Disconnected from MT5' };
+      }
     }
     
     throw { status: 404, message: 'Route not mocked locally' };
