@@ -1,668 +1,853 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, ArrowUpRight, BarChart2, Brain, Database, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
+import { Activity, ArrowRight, ArrowUpRight, BarChart2, Brain, Database, Sparkles, ShieldAlert, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-/* ─── Light-Theme Interactive Particles Background ─── */
-const InteractiveBackground = () => {
+/* ═══════════════════════════════════════════════════════
+   ANIMATED CANDLESTICK CHART (Canvas)
+   ═══════════════════════════════════════════════════════ */
+const CandlestickCanvas = ({ style }) => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let animationFrameId;
+    let animId;
+    let tick = 0;
 
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    const resize = () => {
+      canvas.width = canvas.offsetWidth * 2;
+      canvas.height = canvas.offsetHeight * 2;
+      ctx.scale(2, 2);
+    };
+    resize();
+    window.addEventListener('resize', resize);
 
-    const particles = [];
-    const particleCount = Math.min(80, Math.floor((width * height) / 20000));
-    const mouse = { x: -1000, y: -1000, radius: 120 };
+    const w = () => canvas.offsetWidth;
+    const h = () => canvas.offsetHeight;
 
-    class Particle {
-      constructor() {
-        this.reset();
+    // Generate candlestick data
+    const generateCandles = () => {
+      const candles = [];
+      let price = 1850 + Math.random() * 200;
+      for (let i = 0; i < 60; i++) {
+        const change = (Math.random() - 0.48) * 30;
+        const open = price;
+        const close = price + change;
+        const high = Math.max(open, close) + Math.random() * 15;
+        const low = Math.min(open, close) - Math.random() * 15;
+        price = close;
+        candles.push({ open, close, high, low, bullish: close >= open });
       }
-
-      reset() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.35;
-        this.vy = (Math.random() - 0.5) * 0.35;
-        this.radius = Math.random() * 2 + 1;
-        this.alpha = Math.random() * 0.15 + 0.05;
-      }
-
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-
-        if (this.x < 0 || this.x > width) this.vx *= -1;
-        if (this.y < 0 || this.y > height) this.vy *= -1;
-
-        // Push away from cursor
-        const dx = mouse.x - this.x;
-        const dy = mouse.y - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < mouse.radius) {
-          const force = (mouse.radius - dist) / mouse.radius;
-          const angle = Math.atan2(dy, dx);
-          this.x -= Math.cos(angle) * force * 0.8;
-          this.y -= Math.sin(angle) * force * 0.8;
-        }
-      }
-
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 0, 0, ${this.alpha})`;
-        ctx.fill();
-      }
-    }
-
-    for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle());
-    }
-
-    const handleMouseMove = (e) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
+      return candles;
     };
 
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
+    const candles = generateCandles();
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('resize', handleResize);
+    const draw = () => {
+      tick++;
+      const W = w();
+      const H = h();
+      ctx.clearRect(0, 0, W, H);
 
-    const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Draw lines between close particles
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
       ctx.lineWidth = 0.5;
-      for (let i = 0; i < particles.length; i++) {
-        const p1 = particles[i];
-        p1.update();
-        p1.draw();
-
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < 110) {
-            const alpha = (110 - dist) / 110 * 0.08;
-            ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
+      for (let y = 0; y < H; y += H / 8) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      for (let x = 0; x < W; x += W / 12) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
       }
 
-      animationFrameId = requestAnimationFrame(animate);
+      // Normalize prices
+      const allPrices = candles.flatMap(c => [c.high, c.low]);
+      const minP = Math.min(...allPrices);
+      const maxP = Math.max(...allPrices);
+      const range = maxP - minP || 1;
+      const toY = (p) => H * 0.1 + ((maxP - p) / range) * H * 0.8;
+
+      const candleW = (W / candles.length) * 0.6;
+      const gap = W / candles.length;
+
+      // Fade-in based on tick
+      const maxVisible = Math.min(candles.length, Math.floor(tick / 2));
+
+      for (let i = 0; i < maxVisible; i++) {
+        const c = candles[i];
+        const x = i * gap + gap / 2;
+        const alpha = Math.min(1, (tick - i * 2) / 30) * 0.5;
+
+        // Wick
+        ctx.strokeStyle = c.bullish
+          ? `rgba(16, 185, 129, ${alpha})`
+          : `rgba(239, 68, 68, ${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, toY(c.high));
+        ctx.lineTo(x, toY(c.low));
+        ctx.stroke();
+
+        // Body
+        const bodyTop = toY(Math.max(c.open, c.close));
+        const bodyBottom = toY(Math.min(c.open, c.close));
+        const bodyH = Math.max(1, bodyBottom - bodyTop);
+
+        ctx.fillStyle = c.bullish
+          ? `rgba(16, 185, 129, ${alpha})`
+          : `rgba(239, 68, 68, ${alpha})`;
+        ctx.fillRect(x - candleW / 2, bodyTop, candleW, bodyH);
+      }
+
+      // Moving average line
+      if (maxVisible > 5) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
+        ctx.lineWidth = 1.5;
+        const period = 5;
+        for (let i = period; i < maxVisible; i++) {
+          let sum = 0;
+          for (let j = i - period; j < i; j++) sum += candles[j].close;
+          const avg = sum / period;
+          const x = i * gap + gap / 2;
+          const y = toY(avg);
+          if (i === period) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      animId = requestAnimationFrame(draw);
     };
 
-    animate();
+    draw();
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
     };
   }, []);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      style={{ 
-        position: 'absolute', 
-        inset: 0, 
-        width: '100%', 
-        height: '100%', 
-        pointerEvents: 'none', 
-        zIndex: 2 
-      }} 
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        ...style,
+      }}
     />
   );
 };
 
+/* ═══════════════════════════════════════════════════════
+   FLOATING STAT WIDGET
+   ═══════════════════════════════════════════════════════ */
+const FloatingStat = ({ label, value, color, delay, position }) => (
+  <div style={{
+    position: 'absolute',
+    ...position,
+    background: 'rgba(15, 15, 20, 0.7)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px',
+    padding: '10px 16px',
+    opacity: 0,
+    animation: `statFloat 8s ease-in-out infinite, fadeSlideIn 1s ease ${delay}s forwards`,
+    zIndex: 10,
+  }}>
+    <div style={{
+      fontSize: '0.55rem',
+      color: 'rgba(255,255,255,0.35)',
+      textTransform: 'uppercase',
+      letterSpacing: '1px',
+      fontWeight: 600,
+      marginBottom: '3px',
+      fontFamily: "'Inter', sans-serif",
+    }}>{label}</div>
+    <div style={{
+      fontSize: '1rem',
+      fontWeight: 700,
+      color,
+      fontFamily: "'JetBrains Mono', monospace",
+    }}>{value}</div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════════════
+   MAIN LANDING PAGE
+   ═══════════════════════════════════════════════════════ */
 const LandingPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [phase, setPhase] = useState(0);    // 0=ferrari, 1=transition, 2=dashboard
+  const [loaded, setLoaded] = useState(false);
+  const heroRef = useRef(null);
 
   useEffect(() => {
-    setIsLoaded(true);
+    setLoaded(true);
+    // Phase timeline
+    const t1 = setTimeout(() => setPhase(1), 3500);   // start transition
+    const t2 = setTimeout(() => setPhase(2), 5000);   // dashboard bg
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const handleCtaClick = () => {
-    if (user) {
-      navigate('/');
-    } else {
-      navigate('/settings');
-    }
+    navigate(user ? '/' : '/settings');
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      minHeight: '100vh', 
-      background: '#ffffff',
-      color: '#000000',
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      background: '#0a0a0e',
+      color: '#ffffff',
       fontFamily: "'Inter', sans-serif",
       position: 'relative',
-      overflowX: 'hidden'
+      overflowX: 'hidden',
     }}>
-      
-      {/* CSS Stylesheet Override */}
+
+      {/* ── Stylesheet ─────────────────────────── */}
       <style>{`
-        /* Core Animations */
-        @keyframes draw-path {
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes statFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        @keyframes ferrariDrive {
+          0% { transform: translateX(-120%) scale(1); opacity: 0; }
+          15% { opacity: 1; }
+          50% { transform: translateX(0%) scale(1.02); opacity: 1; }
+          85% { opacity: 1; }
+          100% { transform: translateX(120%) scale(1); opacity: 0; }
+        }
+        @keyframes blurWipe {
+          0% { backdrop-filter: blur(0px); background: rgba(10,10,14,0); }
+          100% { backdrop-filter: blur(40px); background: rgba(10,10,14,0.85); }
+        }
+        @keyframes gridPulse {
+          0%, 100% { opacity: 0.03; }
+          50% { opacity: 0.06; }
+        }
+        @keyframes heroShine {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes breathe {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
+        }
+        @keyframes tickerScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes draw-equity {
           to { stroke-dashoffset: 0; }
         }
-        @keyframes float-widget-slow {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-          100% { transform: translateY(0px); }
-        }
-        @keyframes float-widget-fast {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-14px); }
-          100% { transform: translateY(0px); }
-        }
-        @keyframes pulse-ring {
-          0% { transform: scale(0.95); opacity: 0.5; }
-          50% { transform: scale(1.05); opacity: 0.8; }
-          100% { transform: scale(0.95); opacity: 0.5; }
-        }
-        @keyframes slide-up {
-          from { transform: translateY(24px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes scale-in {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
+        @keyframes pulse-dot {
+          0%, 100% { r: 3; opacity: 0.6; }
+          50% { r: 5; opacity: 1; }
         }
 
-        .anim-slide-up {
-          animation: slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .anim-scale-in {
-          animation: scale-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .delay-100 { animation-delay: 100ms; }
-        .delay-200 { animation-delay: 200ms; }
-        .delay-300 { animation-delay: 300ms; }
-
-        .float-slow {
-          animation: float-widget-slow 6s ease-in-out infinite;
-        }
-        .float-fast {
-          animation: float-widget-fast 4.5s ease-in-out infinite;
+        .hero-title {
+          font-size: clamp(2.8rem, 7vw, 5.5rem);
+          font-weight: 200;
+          letter-spacing: 0.25em;
+          text-transform: uppercase;
+          color: #ffffff;
+          margin: 0;
+          line-height: 1.1;
+          text-align: center;
         }
 
-        /* Mockup interactive grid dot style */
-        .dot-matrix {
-          background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 0);
-          background-size: 16px 16px;
+        .hero-subtitle {
+          font-size: clamp(0.8rem, 1.5vw, 1.05rem);
+          font-weight: 300;
+          letter-spacing: 0.15em;
+          color: rgba(255,255,255,0.45);
+          text-align: center;
+          margin: 0;
         }
 
-        .lp-btn-hover {
-          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        .hero-btn {
+          padding: 14px 36px;
+          border-radius: 8px;
+          font-size: 0.82rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          font-family: 'Inter', sans-serif;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
         }
-        .lp-btn-hover:hover {
+        .hero-btn-primary {
+          background: #ffffff;
+          color: #0a0a0e;
+          border: none;
+          box-shadow: 0 0 40px rgba(255,255,255,0.08);
+        }
+        .hero-btn-primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
-          background-color: #1a1a1a !important;
+          box-shadow: 0 8px 40px rgba(255,255,255,0.15);
+          background: #f0f0f0;
+        }
+        .hero-btn-secondary {
+          background: transparent;
+          color: rgba(255,255,255,0.6);
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        .hero-btn-secondary:hover {
+          border-color: rgba(255,255,255,0.3);
+          color: #ffffff;
+          transform: translateY(-2px);
         }
 
-        .lp-btn-outline-hover {
-          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        .feature-card {
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 20px;
+          padding: 36px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          transition: all 0.4s ease;
         }
-        .lp-btn-outline-hover:hover {
-          transform: translateY(-2px);
-          background-color: #f9fafb !important;
-          border-color: #000000 !important;
+        .feature-card:hover {
+          background: rgba(255,255,255,0.04);
+          border-color: rgba(255,255,255,0.12);
+          transform: translateY(-4px);
+        }
+
+        .ticker-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.7rem;
+          white-space: nowrap;
         }
       `}</style>
 
-      {/* Particle Web Backdrop */}
-      <InteractiveBackground />
-
-      {/* Subtle Coordinate Grid */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        backgroundImage: `
-          linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px)
-        `,
-        backgroundSize: '50px 50px',
-        pointerEvents: 'none',
-        zIndex: 1
-      }} />
-
-      {/* ─── NAVIGATION ─── */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '72px',
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #e5e7eb',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 40px',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '6px',
-            background: '#000000',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Activity size={15} color="#fff" />
-          </div>
-          <span style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#000000' }}>Trading Journal</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          {user ? (
-            <Link to="/" style={{
-              background: '#000000',
-              color: '#ffffff',
-              borderRadius: '8px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              padding: '8px 18px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              textDecoration: 'none',
-              transition: 'background 0.2s'
-            }}>
-              Launch Dashboard <ArrowUpRight size={14} />
-            </Link>
-          ) : (
-            <Link to="/settings" style={{
-              background: '#000000',
-              color: '#ffffff',
-              borderRadius: '8px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              padding: '8px 18px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              textDecoration: 'none',
-              transition: 'background 0.2s'
-            }}>
-              Sign In
-            </Link>
-          )}
-        </div>
-      </nav>
-
-      {/* ─── HERO & DASHBOARD GRID ─── */}
-      <main style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '120px 20px 60px 20px',
-        position: 'relative',
-        zIndex: 5,
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        
-        {/* Content Layout */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-          gap: '48px', 
-          width: '100%', 
-          alignItems: 'center'
-        }}>
-          
-          {/* Left Column: Premium Copywriting */}
-          <div 
-            className={`anim-slide-up ${isLoaded ? '' : 'hide'}`} 
-            style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '24px',
-              opacity: isLoaded ? 1 : 0
-            }}
-          >
-            {/* Minimalist Tech Badge */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 12px',
-              borderRadius: '12px',
-              background: '#f3f4f6',
-              border: '1px solid #e5e7eb',
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              color: '#4b5563',
-              alignSelf: 'flex-start'
-            }}>
-              <Sparkles size={11} style={{ color: '#000000' }} /> BEHAVIORAL ANALYTICS ENGINE
-            </div>
-
-            <h1 style={{
-              fontSize: 'clamp(2.5rem, 5vw, 4.1rem)', 
-              fontWeight: 900,
-              letterSpacing: '-2px', 
-              lineHeight: 1.05, 
-              margin: 0,
-              color: '#000000'
-            }}>
-              Master Your Mind.<br />
-              <span style={{ color: '#6b7280' }}>Optimize Your Metrics.</span>
-            </h1>
-
-            <p style={{
-              fontSize: 'clamp(0.95rem, 2vw, 1.15rem)', 
-              color: '#4b5563',
-              lineHeight: 1.6, 
-              margin: 0, 
-              maxWidth: '520px',
-              fontWeight: 400
-            }}>
-              A premium trading journal engineered to eliminate emotional leaks, audit setup expectancy, and sync your performance statistics automatically.
-            </p>
-
-            {/* CTAs */}
-            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <button 
-                onClick={handleCtaClick} 
-                className="lp-btn-hover"
-                style={{
-                  background: '#000000',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  padding: '14px 32px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}
-              >
-                Launch Journal <ArrowRight size={16} />
-              </button>
-              
-              <a 
-                href="#features" 
-                className="lp-btn-outline-hover"
-                style={{
-                  background: '#ffffff',
-                  color: '#000000',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '10px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  padding: '14px 32px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  textDecoration: 'none',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                }}
-              >
-                Core Modules
-              </a>
-            </div>
-          </div>
-
-          {/* Right Column: Animated B&W Dashboard Mockup */}
-          <div 
-            className={`anim-scale-in delay-200`} 
-            style={{ 
-              position: 'relative',
-              width: '100%',
-              aspectRatio: '1.25/1',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            {/* Dashboard Outer Base */}
-            <div 
-              className="dot-matrix"
-              style={{
-                width: '90%',
-                height: '90%',
-                background: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '20px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08)',
-                position: 'relative',
-                overflow: 'hidden',
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}
-            >
-              {/* Mockup Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>
-                <div style={{ display: 'flex', gap: '5px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e5e7eb' }} />
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e5e7eb' }} />
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e5e7eb' }} />
-                </div>
-                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
-                  ANALYTICS // SESSION_ACTIVE
-                </div>
-              </div>
-
-              {/* Dynamic Self-Drawing Equity Curve SVG */}
-              <div style={{ position: 'relative', flex: 1, minHeight: '130px', margin: '10px 0' }}>
-                <svg viewBox="0 0 400 150" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                  {/* Grid Lines */}
-                  <line x1="0" y1="30" x2="400" y2="30" stroke="#f3f4f6" strokeWidth="1" />
-                  <line x1="0" y1="75" x2="400" y2="75" stroke="#f3f4f6" strokeWidth="1" />
-                  <line x1="0" y1="120" x2="400" y2="120" stroke="#f3f4f6" strokeWidth="1" />
-                  
-                  {/* Equity Line (Self drawing animation) */}
-                  <path
-                    d="M 10 130 Q 80 140 120 95 T 230 80 T 320 35 T 390 15"
-                    fill="none"
-                    stroke="#000000"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    style={{
-                      strokeDasharray: 1000,
-                      strokeDashoffset: 1000,
-                      animation: 'draw-path 2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-                      animationDelay: '0.5s'
-                    }}
-                  />
-                  
-                  {/* Pulsing endpoint dot */}
-                  <circle
-                    cx="390"
-                    cy="15"
-                    r="4"
-                    fill="#000000"
-                    style={{
-                      animation: 'pulse-ring 2s infinite'
-                    }}
-                  />
-                </svg>
-              </div>
-
-              {/* Mockup footer row */}
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <div style={{ flex: 1, background: '#fafafa', border: '1px solid #f3f4f6', padding: '8px', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '0.55rem', color: '#9ca3af', textTransform: 'uppercase' }}>Win Rate</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#000' }}>68.4%</div>
-                </div>
-                <div style={{ flex: 1, background: '#fafafa', border: '1px solid #f3f4f6', padding: '8px', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '0.55rem', color: '#9ca3af', textTransform: 'uppercase' }}>Profit Factor</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#000' }}>2.84</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Float Widget 1: AI Coach Response (Drifting) */}
-            <div 
-              className="float-slow"
-              style={{
-                position: 'absolute',
-                top: '-5%',
-                right: '0%',
-                background: 'rgba(255, 255, 255, 0.9)',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: '12px',
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                zIndex: 10
-              }}
-            >
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-              <div>
-                <div style={{ fontSize: '0.62rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>AI Coach</div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#000000' }}>Exit strategy is highly optimal.</div>
-              </div>
-            </div>
-
-            {/* Float Widget 2: Psychology Leak Warning (Drifting opposite) */}
-            <div 
-              className="float-fast"
-              style={{
-                position: 'absolute',
-                bottom: '5%',
-                left: '-2%',
-                background: 'rgba(255, 255, 255, 0.9)',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: '12px',
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                zIndex: 10
-              }}
-            >
-              <ShieldAlert size={14} style={{ color: '#000000' }} />
-              <div>
-                <div style={{ fontSize: '0.62rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>Psychology Shield</div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#000000' }}>FOMO Alert: Protected.</div>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
-      </main>
-
-      {/* ─── MODULES / FEATURES SECTION ─── */}
-      <section 
-        id="features" 
+      {/* ── HERO SECTION ───────────────────────── */}
+      <section
+        ref={heroRef}
         style={{
-          borderTop: '1px solid #f3f4f6',
-          background: '#fafafa',
-          padding: '80px 20px',
           position: 'relative',
-          zIndex: 5
+          width: '100%',
+          height: '100vh',
+          minHeight: '700px',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.5px', margin: '0 0 12px 0' }}>Engineered for Disciplined Execution</h2>
-            <p style={{ fontSize: '0.95rem', color: '#6b7280', margin: 0 }}>Advanced utilities to support your metrics and refine your psychology.</p>
+        {/* Layer 1: Ferrari Background Image */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: 'url(/ferrari-hero.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 40%',
+          opacity: phase >= 1 ? 0 : 0.7,
+          transition: 'opacity 2s cubic-bezier(0.4, 0, 0.2, 1)',
+          zIndex: 1,
+        }} />
+
+        {/* Layer 2: Cinematic vignette */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            radial-gradient(ellipse 80% 60% at 50% 45%, transparent 30%, rgba(10,10,14,0.85) 100%),
+            linear-gradient(180deg, rgba(10,10,14,0.3) 0%, transparent 30%, transparent 70%, rgba(10,10,14,0.95) 100%)
+          `,
+          zIndex: 2,
+        }} />
+
+        {/* Layer 3: Transition blur overlay */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backdropFilter: phase >= 1 ? 'blur(30px)' : 'blur(0px)',
+          background: phase >= 1 ? 'rgba(10,10,14,0.88)' : 'rgba(10,10,14,0)',
+          transition: 'all 1.8s cubic-bezier(0.4, 0, 0.2, 1)',
+          zIndex: 3,
+        }} />
+
+        {/* Layer 4: Dashboard Candlestick BG (appears after transition) */}
+        {phase >= 2 && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 4,
+            opacity: 0,
+            animation: 'fadeIn 2s ease 0.3s forwards',
+          }}>
+            <CandlestickCanvas />
+          </div>
+        )}
+
+        {/* Layer 5: Subtle grid pattern */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+          animation: 'gridPulse 8s ease-in-out infinite',
+          zIndex: 5,
+          pointerEvents: 'none',
+        }} />
+
+        {/* Layer 6: Content */}
+        <div style={{
+          position: 'relative',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '28px',
+          padding: '0 24px',
+          maxWidth: '900px',
+          width: '100%',
+        }}>
+          {/* Title */}
+          <h1
+            className="hero-title"
+            style={{
+              opacity: 0,
+              animation: loaded ? `fadeSlideIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) ${phase >= 1 ? '0s' : '1.5s'} forwards` : 'none',
+            }}
+          >
+            Trading Journal
+          </h1>
+
+          {/* Subtitle */}
+          <p
+            className="hero-subtitle"
+            style={{
+              opacity: 0,
+              animation: loaded ? `fadeSlideIn 1s ease ${phase >= 1 ? '0.3s' : '2.2s'} forwards` : 'none',
+            }}
+          >
+            Every Trade.&ensp;Every Insight.&ensp;Every Improvement.
+          </p>
+
+          {/* Buttons */}
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            opacity: 0,
+            animation: loaded ? `fadeSlideIn 1s ease ${phase >= 1 ? '0.6s' : '2.8s'} forwards` : 'none',
+          }}>
+            <button
+              className="hero-btn hero-btn-primary"
+              onClick={handleCtaClick}
+            >
+              Start Journaling <ArrowRight size={16} />
+            </button>
+            <a
+              href="#features"
+              className="hero-btn hero-btn-secondary"
+            >
+              Explore Dashboard
+            </a>
+          </div>
+        </div>
+
+        {/* Layer 7: Floating Stats (appear in dashboard phase) */}
+        {phase >= 2 && (
+          <>
+            <FloatingStat
+              label="Win Rate" value="68.4%"
+              color="#10b981" delay={1.2}
+              position={{ top: '18%', right: '8%' }}
+            />
+            <FloatingStat
+              label="Profit Factor" value="2.84"
+              color="#6366f1" delay={1.6}
+              position={{ bottom: '22%', left: '6%' }}
+            />
+            <FloatingStat
+              label="Avg R:R" value="1:2.4"
+              color="#f59e0b" delay={2.0}
+              position={{ top: '28%', left: '10%' }}
+            />
+            <FloatingStat
+              label="Total P&L" value="+$12,480"
+              color="#10b981" delay={2.4}
+              position={{ bottom: '18%', right: '10%' }}
+            />
+          </>
+        )}
+
+        {/* Bottom gradient fade */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '120px',
+          background: 'linear-gradient(transparent, #0a0a0e)',
+          zIndex: 8,
+          pointerEvents: 'none',
+        }} />
+      </section>
+
+      {/* ── MARKET TICKER ──────────────────────── */}
+      <div style={{
+        width: '100%',
+        overflow: 'hidden',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        padding: '14px 0',
+        background: 'rgba(255,255,255,0.01)',
+        position: 'relative',
+        zIndex: 5,
+        maskImage: 'linear-gradient(90deg, transparent, black 5%, black 95%, transparent)',
+        WebkitMaskImage: 'linear-gradient(90deg, transparent, black 5%, black 95%, transparent)',
+      }}>
+        <div style={{
+          display: 'flex',
+          gap: '40px',
+          animation: 'tickerScroll 40s linear infinite',
+          whiteSpace: 'nowrap',
+        }}>
+          {[
+            { s: 'EUR/USD', p: '1.0847', c: '+0.12%', up: true },
+            { s: 'GBP/USD', p: '1.2731', c: '+0.08%', up: true },
+            { s: 'USD/JPY', p: '149.82', c: '-0.15%', up: false },
+            { s: 'XAU/USD', p: '2,341.50', c: '+0.45%', up: true },
+            { s: 'BTC/USD', p: '67,234', c: '+1.23%', up: true },
+            { s: 'US500', p: '5,432', c: '-0.22%', up: false },
+            { s: 'NAS100', p: '18,921', c: '+0.67%', up: true },
+            { s: 'EUR/USD', p: '1.0847', c: '+0.12%', up: true },
+            { s: 'GBP/USD', p: '1.2731', c: '+0.08%', up: true },
+            { s: 'USD/JPY', p: '149.82', c: '-0.15%', up: false },
+            { s: 'XAU/USD', p: '2,341.50', c: '+0.45%', up: true },
+            { s: 'BTC/USD', p: '67,234', c: '+1.23%', up: true },
+            { s: 'US500', p: '5,432', c: '-0.22%', up: false },
+            { s: 'NAS100', p: '18,921', c: '+0.67%', up: true },
+          ].map((t, i) => (
+            <div key={i} className="ticker-item">
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>{t.s}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{t.p}</span>
+              <span style={{ color: t.up ? '#10b981' : '#ef4444', fontWeight: 600, fontSize: '0.62rem' }}>{t.c}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── FEATURES SECTION ───────────────────── */}
+      <section
+        id="features"
+        style={{
+          padding: '100px 24px',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          width: '100%',
+          boxSizing: 'border-box',
+          position: 'relative',
+          zIndex: 5,
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+          <h2 style={{
+            fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+            fontWeight: 200,
+            letterSpacing: '0.08em',
+            margin: '0 0 16px',
+            color: '#ffffff',
+          }}>
+            Engineered for Precision
+          </h2>
+          <p style={{
+            fontSize: '0.95rem',
+            color: 'rgba(255,255,255,0.35)',
+            margin: 0,
+            fontWeight: 300,
+            letterSpacing: '0.05em',
+          }}>
+            Advanced tools to refine your edge, audit your psychology, and compound your growth.
+          </p>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '24px',
+        }}>
+          {[
+            {
+              icon: <Brain size={20} />,
+              title: 'Psychology Audit',
+              desc: 'Log emotional tags — greed, FOMO, hesitation — for every trade. Isolate your risk curves from mental slippage.',
+            },
+            {
+              icon: <BarChart2 size={20} />,
+              title: 'Expectancy Analytics',
+              desc: 'Analyze win rates, average payouts, expectancy index, and drawdowns — categorized by setup and session.',
+            },
+            {
+              icon: <TrendingUp size={20} />,
+              title: 'MT5 & Tradovate Sync',
+              desc: 'Connect your trading accounts to automatically sync closed positions, P&L, and performance data in real-time.',
+            },
+            {
+              icon: <ShieldAlert size={20} />,
+              title: 'Stoic Mindset Engine',
+              desc: 'Reframe losses with AI-powered stoic philosophy. Build mental resilience and separate emotion from execution.',
+            },
+            {
+              icon: <Sparkles size={20} />,
+              title: 'AI Trading Coach',
+              desc: 'Get personalized insights from an AI coach trained on professional trading psychology and risk management.',
+            },
+            {
+              icon: <Database size={20} />,
+              title: 'Dual Database Control',
+              desc: 'Toggle between cloud PostgreSQL and offline browser storage. Export unified JSON backups with zero data lock-in.',
+            },
+          ].map((f, i) => (
+            <div key={i} className="feature-card">
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'rgba(255,255,255,0.5)',
+              }}>
+                {f.icon}
+              </div>
+              <h3 style={{
+                fontSize: '1rem',
+                fontWeight: 600,
+                margin: 0,
+                color: '#ffffff',
+                letterSpacing: '-0.2px',
+              }}>{f.title}</h3>
+              <p style={{
+                fontSize: '0.8rem',
+                color: 'rgba(255,255,255,0.35)',
+                margin: 0,
+                lineHeight: 1.6,
+                fontWeight: 300,
+              }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── EQUITY CURVE SHOWCASE ──────────────── */}
+      <section style={{
+        padding: '80px 24px',
+        position: 'relative',
+        zIndex: 5,
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <div style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: '20px',
+          padding: '32px',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Mockup header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+          }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+            </div>
+            <div style={{
+              fontSize: '0.6rem',
+              color: 'rgba(255,255,255,0.2)',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 600,
+              letterSpacing: '1px',
+            }}>
+              EQUITY CURVE // PERFORMANCE TRACKER
+            </div>
           </div>
 
+          {/* SVG Equity Curve */}
+          <svg viewBox="0 0 800 200" style={{ width: '100%', height: 'auto' }}>
+            {/* Grid */}
+            {[40, 80, 120, 160].map(y => (
+              <line key={y} x1="0" y1={y} x2="800" y2={y} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+            ))}
+            {/* Equity Path */}
+            <path
+              d="M 10 180 Q 80 170 140 145 T 280 120 T 380 90 T 500 70 T 600 45 T 720 25 T 790 15"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              style={{
+                strokeDasharray: 1500,
+                strokeDashoffset: 1500,
+                animation: 'draw-equity 3s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards',
+              }}
+            />
+            {/* Gradient fill */}
+            <defs>
+              <linearGradient id="eq-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M 10 180 Q 80 170 140 145 T 280 120 T 380 90 T 500 70 T 600 45 T 720 25 T 790 15 L 790 200 L 10 200 Z"
+              fill="url(#eq-grad)"
+              style={{
+                opacity: 0,
+                animation: 'fadeIn 1s ease 2.5s forwards',
+              }}
+            />
+            {/* Endpoint */}
+            <circle cx="790" cy="15" r="3" fill="#10b981" style={{ animation: 'pulse-dot 2s infinite' }} />
+          </svg>
+
+          {/* Stats row */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '24px'
+            display: 'flex',
+            gap: '12px',
+            marginTop: '20px',
+            flexWrap: 'wrap',
           }}>
-            {/* Feature 1: Psychology Audits */}
-            <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', padding: '30px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
-                <Brain size={18} />
+            {[
+              { label: 'Total Trades', value: '247' },
+              { label: 'Win Rate', value: '68.4%' },
+              { label: 'Profit Factor', value: '2.84' },
+              { label: 'Max Drawdown', value: '-4.2%' },
+            ].map((s, i) => (
+              <div key={i} style={{
+                flex: '1 1 120px',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '10px',
+                padding: '12px',
+              }}>
+                <div style={{
+                  fontSize: '0.5rem',
+                  color: 'rgba(255,255,255,0.25)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  fontWeight: 600,
+                  marginBottom: '4px',
+                }}>{s.label}</div>
+                <div style={{
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}>{s.value}</div>
               </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Psychology Audit</h3>
-              <p style={{ fontSize: '0.8rem', color: '#4b5563', margin: 0, lineHeight: 1.5 }}>
-                Log emotional tags (greed, FOMO, hesitation) for every trade. Keep your risk curves isolated from mental slippage.
-              </p>
-            </div>
-
-            {/* Feature 2: Expectancy Curves */}
-            <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', padding: '30px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
-                <BarChart2 size={18} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Expectancy Analytics</h3>
-              <p style={{ fontSize: '0.8rem', color: '#4b5563', margin: 0, lineHeight: 1.5 }}>
-                Analyze win rates, average payouts, expectancy index, and drawdowns categorized automatically by setups.
-              </p>
-            </div>
-
-            {/* Feature 3: Data Integrity */}
-            <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', padding: '30px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
-                <Database size={18} />
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Pro Max Control Center</h3>
-              <p style={{ fontSize: '0.8rem', color: '#4b5563', margin: 0, lineHeight: 1.5 }}>
-                Seamlessly export unified JSON backups. Restore or merge your database logs with no data lock-in.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
-      <footer style={{
-        borderTop: '1px solid #e5e7eb',
-        padding: '30px 20px',
+      {/* ── CTA SECTION ────────────────────────── */}
+      <section style={{
+        padding: '80px 24px 100px',
         textAlign: 'center',
-        background: '#ffffff',
-        fontSize: '0.72rem',
-        color: '#9ca3af',
         position: 'relative',
-        zIndex: 5
+        zIndex: 5,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <Activity size={12} color="#000" />
-          <span style={{ fontWeight: 700, color: '#000' }}>Trading Journal</span>
+        <h2 style={{
+          fontSize: 'clamp(1.5rem, 3.5vw, 2.4rem)',
+          fontWeight: 200,
+          letterSpacing: '0.08em',
+          margin: '0 0 16px',
+          color: '#ffffff',
+        }}>
+          Ready to Master Your Edge?
+        </h2>
+        <p style={{
+          fontSize: '0.9rem',
+          color: 'rgba(255,255,255,0.3)',
+          marginBottom: '32px',
+          fontWeight: 300,
+          letterSpacing: '0.04em',
+        }}>
+          Join disciplined traders who track every decision and compound every insight.
+        </p>
+        <button
+          className="hero-btn hero-btn-primary"
+          onClick={handleCtaClick}
+          style={{ margin: '0 auto' }}
+        >
+          Start Journaling <ArrowRight size={16} />
+        </button>
+      </section>
+
+      {/* ── FOOTER ─────────────────────────────── */}
+      <footer style={{
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        padding: '30px 24px',
+        textAlign: 'center',
+        fontSize: '0.7rem',
+        color: 'rgba(255,255,255,0.2)',
+        position: 'relative',
+        zIndex: 5,
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '8px',
+        }}>
+          <Activity size={12} color="rgba(255,255,255,0.4)" />
+          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', fontSize: '0.72rem' }}>
+            TRADING JOURNAL
+          </span>
         </div>
-        <div>&copy; {new Date().getFullYear()} Trading Journal. All rights reserved. Built for professional risk operators.</div>
+        <div style={{ letterSpacing: '0.05em' }}>
+          &copy; {new Date().getFullYear()} Trading Journal. All rights reserved. Built for professional risk operators.
+        </div>
       </footer>
 
     </div>
