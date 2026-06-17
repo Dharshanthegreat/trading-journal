@@ -37,17 +37,14 @@ router.get('/proxy', async (req, res) => {
       const baseDomain = `${parsedUrl.protocol}//${parsedUrl.host}`;
       const encodedDomain = Buffer.from(baseDomain).toString('base64url');
       
-      // Inject base tag
       const baseTag = `<base href="/api/notion/proxy-asset/${encodedDomain}/">`;
       
-      // Hook script to intercept and redirect relative fetches and XMLHttpRequests
       const hookScript = `
 <script>
   (function() {
     const encodedDomain = "${encodedDomain}";
     const prefix = "/api/notion/proxy-asset/" + encodedDomain;
     
-    // Intercept fetch
     const originalFetch = window.fetch;
     window.fetch = function(input, init) {
       if (typeof input === 'string') {
@@ -67,7 +64,6 @@ router.get('/proxy', async (req, res) => {
       return originalFetch.call(this, input, init);
     };
 
-    // Intercept XMLHttpRequest
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
       if (typeof url === 'string') {
@@ -95,7 +91,6 @@ router.get('/proxy', async (req, res) => {
         html = `${baseTag}${hookScript}${html}`;
       }
 
-      // Rewrite root-relative URLs in static HTML
       const rewritePrefix = `/api/notion/proxy-asset/${encodedDomain}/`;
       html = html.replace(/(href|src)="\/([^\/][^"]*)"/g, `$1="${rewritePrefix}$2"`);
       html = html.replace(/(href|src)='\/([^\/][^']*)'/g, `$1='${rewritePrefix}$2'`);
@@ -169,7 +164,6 @@ router.all('/proxy-asset/:encodedDomain/*splat', async (req, res) => {
     const encodedDomain = "${encodedDomain}";
     const prefix = "/api/notion/proxy-asset/" + encodedDomain;
     
-    // Intercept fetch
     const originalFetch = window.fetch;
     window.fetch = function(input, init) {
       if (typeof input === 'string') {
@@ -189,7 +183,6 @@ router.all('/proxy-asset/:encodedDomain/*splat', async (req, res) => {
       return originalFetch.call(this, input, init);
     };
 
-    // Intercept XMLHttpRequest
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
       if (typeof url === 'string') {
@@ -250,17 +243,17 @@ function checkRateLimit(userId) {
 }
 
 // ─── Get All Documents ────────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const documents = db.prepare(`
+    const result = await db.query(`
       SELECT id, user_id, title, icon, tags, external_url, created_at, updated_at 
       FROM notion_documents 
-      WHERE user_id = ? 
+      WHERE user_id = $1 
       ORDER BY updated_at DESC
-    `).all(req.user.id);
+    `, [req.user.id]);
     
     // Parse tags JSON string
-    const parsed = documents.map(doc => ({
+    const parsed = result.rows.map(doc => ({
       ...doc,
       tags: JSON.parse(doc.tags || '[]')
     }));
@@ -273,17 +266,18 @@ router.get('/', (req, res) => {
 });
 
 // ─── Get Single Document ──────────────────────────────
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const document = db.prepare(`
+    const result = await db.query(`
       SELECT * FROM notion_documents 
-      WHERE id = ? AND user_id = ?
-    `).get(req.params.id, req.user.id);
+      WHERE id = $1 AND user_id = $2
+    `, [req.params.id, req.user.id]);
 
-    if (!document) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
+    const document = result.rows[0];
     res.json({
       ...document,
       tags: JSON.parse(document.tags || '[]')
@@ -295,7 +289,7 @@ router.get('/:id', (req, res) => {
 });
 
 // ─── Create Document ──────────────────────────────────
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { title, content, icon, tags, external_url } = req.body;
     
@@ -305,12 +299,13 @@ router.post('/', (req, res) => {
     const docTags = JSON.stringify(tags || []);
     const docExternalUrl = external_url || null;
 
-    const result = db.prepare(`
+    const result = await db.query(`
       INSERT INTO notion_documents (user_id, title, content, icon, tags, external_url, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).run(req.user.id, docTitle, docContent, docIcon, docTags, docExternalUrl);
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+      RETURNING *
+    `, [req.user.id, docTitle, docContent, docIcon, docTags, docExternalUrl]);
 
-    const doc = db.prepare('SELECT * FROM notion_documents WHERE id = ?').get(result.lastInsertRowid);
+    const doc = result.rows[0];
     res.status(201).json({
       ...doc,
       tags: JSON.parse(doc.tags || '[]')
@@ -322,51 +317,53 @@ router.post('/', (req, res) => {
 });
 
 // ─── Update Document ──────────────────────────────────
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { title, content, icon, tags, external_url } = req.body;
 
-    const existing = db.prepare(`
-      SELECT id FROM notion_documents WHERE id = ? AND user_id = ?
-    `).get(req.params.id, req.user.id);
+    const existing = await db.query(`
+      SELECT id FROM notion_documents WHERE id = $1 AND user_id = $2
+    `, [req.params.id, req.user.id]);
 
-    if (!existing) {
+    if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
     const updates = [];
     const values = [];
+    let paramIndex = 1;
 
     if (title !== undefined) {
-      updates.push('title = ?');
+      updates.push(`title = $${paramIndex++}`);
       values.push(title);
     }
     if (content !== undefined) {
-      updates.push('content = ?');
+      updates.push(`content = $${paramIndex++}`);
       values.push(content);
     }
     if (icon !== undefined) {
-      updates.push('icon = ?');
+      updates.push(`icon = $${paramIndex++}`);
       values.push(icon);
     }
     if (tags !== undefined) {
-      updates.push('tags = ?');
+      updates.push(`tags = $${paramIndex++}`);
       values.push(JSON.stringify(tags));
     }
     if (external_url !== undefined) {
-      updates.push('external_url = ?');
+      updates.push(`external_url = $${paramIndex++}`);
       values.push(external_url);
     }
 
-    updates.push("updated_at = datetime('now')");
+    updates.push('updated_at = NOW()');
 
-    const sql = `UPDATE notion_documents SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`;
-    db.prepare(sql).run(...values, req.params.id, req.user.id);
+    const sql = `UPDATE notion_documents SET ${updates.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex}`;
+    values.push(req.params.id, req.user.id);
+    await db.query(sql, values);
 
-    const updated = db.prepare('SELECT * FROM notion_documents WHERE id = ?').get(req.params.id);
+    const updated = await db.query('SELECT * FROM notion_documents WHERE id = $1', [req.params.id]);
     res.json({
-      ...updated,
-      tags: JSON.parse(updated.tags || '[]')
+      ...updated.rows[0],
+      tags: JSON.parse(updated.rows[0].tags || '[]')
     });
   } catch (err) {
     console.error('Update document error:', err);
@@ -375,17 +372,17 @@ router.put('/:id', (req, res) => {
 });
 
 // ─── Delete Document ──────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const doc = db.prepare(`
-      SELECT id FROM notion_documents WHERE id = ? AND user_id = ?
-    `).get(req.params.id, req.user.id);
+    const result = await db.query(`
+      SELECT id FROM notion_documents WHERE id = $1 AND user_id = $2
+    `, [req.params.id, req.user.id]);
 
-    if (!doc) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    db.prepare('DELETE FROM notion_documents WHERE id = ?').run(req.params.id);
+    await db.query('DELETE FROM notion_documents WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'Document deleted' });
   } catch (err) {
     console.error('Delete document error:', err);
@@ -403,15 +400,15 @@ router.post('/:id/ai', async (req, res) => {
       return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
     }
 
-    const doc = db.prepare(`
-      SELECT title, content FROM notion_documents WHERE id = ? AND user_id = ?
-    `).get(req.params.id, req.user.id);
+    const result = await db.query(`
+      SELECT title, content FROM notion_documents WHERE id = $1 AND user_id = $2
+    `, [req.params.id, req.user.id]);
 
-    if (!doc) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    // Use current unsaved text content passed from client if available, else database content
+    const doc = result.rows[0];
     const documentContent = content !== undefined ? content : doc.content;
     const documentTitle = doc.title;
 
@@ -452,15 +449,15 @@ Keep answers concise, actionable, and focus on producing a high-performance trad
         throw new Error(`NVIDIA API Catalog returned error status ${response.status}: ${errText}`);
       }
 
-      const result = await response.json();
-      const responseContent = result.choices[0]?.message?.content || 'No response generated.';
+      const apiResult = await response.json();
+      const responseContent = apiResult.choices[0]?.message?.content || 'No response generated.';
       return res.json({
         role: 'assistant',
         content: responseContent
       });
     }
 
-    // Fallback: Simulated Llama-3.1-Nemotron-70B-Instruct response for documents
+    // Fallback: Simulated response
     const lastMessage = (Array.isArray(messages) && messages.length > 0)
       ? messages[messages.length - 1]?.content || ''
       : '';
@@ -468,45 +465,13 @@ Keep answers concise, actionable, and focus on producing a high-performance trad
     
     let fallbackText = '';
     if (lastMessageLower.includes('summarize') || lastMessageLower.includes('summary')) {
-      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Document Summary]**
-
-Here is a brief executive summary of your document **"${documentTitle}"**:
-
-* **Core Concept**: Focusing on structured trade recording, execution notes, and refining risk rules.
-* **Key Strengths**: The layout isolates key setup details, checklist targets, and session outcomes.
-* **Refinement Opportunities**: Consider outlining exact risk limits (e.g. max daily drawdown) and adding rules for market context changes (breakout vs range).`;
+      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Document Summary]**\n\nHere is a brief executive summary of your document **"${documentTitle}"**:\n\n* **Core Concept**: Focusing on structured trade recording, execution notes, and refining risk rules.\n* **Key Strengths**: The layout isolates key setup details, checklist targets, and session outcomes.\n* **Refinement Opportunities**: Consider outlining exact risk limits and adding rules for market context changes.`;
     } else if (lastMessageLower.includes('improve') || lastMessageLower.includes('rewrite') || lastMessageLower.includes('polish')) {
-      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Polish]**
-
-Here is a polished version of your document content:
-
-### Refined Trading Session Notes
-* **Market Outlook**: Focus on key daily liquidity pools and higher timeframe levels before execution.
-* **Risk Protocol**: Reduce risk exposure by 50% on low-confidence patterns. Always set a hard stop-loss.
-* **Execution Goal**: Execute with patience, avoiding FOMO-induced entries at raw breakouts.`;
+      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Polish]**\n\nHere is a polished version of your document content:\n\n### Refined Trading Session Notes\n* **Market Outlook**: Focus on key daily liquidity pools and higher timeframe levels before execution.\n* **Risk Protocol**: Reduce risk exposure by 50% on low-confidence patterns. Always set a hard stop-loss.\n* **Execution Goal**: Execute with patience, avoiding FOMO-induced entries at raw breakouts.`;
     } else if (lastMessageLower.includes('checklist') || lastMessageLower.includes('plan') || lastMessageLower.includes('strategy')) {
-      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Trading Plan Draft]**
-
-### Draft Trading Playbook Outline
-Based on your document **"${documentTitle}"**, here is a standard checklist outline to copy into your notes:
-
-1. **Pre-Market Filter**
-   - [ ] Check high-impact news releases scheduled for the session.
-   - [ ] Plot key 4H and Daily support/resistance levels.
-2. **Execution Parameters**
-   - [ ] Verify 5-minute setup trigger condition is met.
-   - [ ] Double-check stop-loss is set at invalidation.
-3. **Risk Verification**
-   - [ ] Confirm position sizing aligns with 1% max risk.`;
+      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B - Fallback Trading Plan Draft]**\n\n### Draft Trading Playbook Outline\nBased on your document **"${documentTitle}"**, here is a standard checklist outline:\n\n1. **Pre-Market Filter**\n   - [ ] Check high-impact news releases.\n   - [ ] Plot key 4H and Daily support/resistance levels.\n2. **Execution Parameters**\n   - [ ] Verify 5-minute setup trigger condition is met.\n   - [ ] Double-check stop-loss is set at invalidation.\n3. **Risk Verification**\n   - [ ] Confirm position sizing aligns with 1% max risk.`;
     } else {
-      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B]**
-      
-I am reviewing your document **"${documentTitle}"** which currently has **${documentContent?.length || 0} characters** of notes.
-
-How would you like to build on this?
-* Ask me to: *"Write a checklist for this setup"*
-* Ask me to: *"Summarize my session notes"*
-* Ask me to: *"Improve the writing of this page"*`;
+      fallbackText = `🤖 **[NVIDIA Llama-3.1-Nemotron-70B]**\n\nI am reviewing your document **"${documentTitle}"** which currently has **${documentContent?.length || 0} characters** of notes.\n\nHow would you like to build on this?\n* Ask me to: *"Write a checklist for this setup"*\n* Ask me to: *"Summarize my session notes"*\n* Ask me to: *"Improve the writing of this page"*`;
     }
 
     res.json({

@@ -758,7 +758,7 @@ I can assist you with contract calculations, position sizing limits, margin aler
                       Sync Futures Orders
                     </h4>
                     <p style={{ margin: '3px 0 0', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
-                      Fetches closed positions for E-mini contracts (NQ, ES, CL) and inserts them into SQLite.
+                      Fetches closed positions for E-mini contracts (NQ, ES, CL) and inserts them into PostgreSQL.
                     </p>
                   </div>
 

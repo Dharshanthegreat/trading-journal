@@ -37,16 +37,18 @@ const upload = multer({
 const router = Router();
 
 // ─── Get All Trades ──────────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { search, type, setup, sort, order, page, limit } = req.query;
-    let sql = 'SELECT * FROM trades WHERE user_id = ?';
+    let sql = 'SELECT * FROM trades WHERE user_id = $1';
     const params = [req.user.id];
+    let paramIndex = 2;
 
     if (search) {
-      sql += ' AND (symbol LIKE ? OR notes LIKE ? OR setup LIKE ?)';
+      sql += ` AND (symbol LIKE $${paramIndex} OR notes LIKE $${paramIndex + 1} OR setup LIKE $${paramIndex + 2})`;
       const q = `%${search}%`;
       params.push(q, q, q);
+      paramIndex += 3;
     }
 
     if (type && type !== 'All') {
@@ -55,14 +57,16 @@ router.get('/', (req, res) => {
       } else if (type === 'Loss') {
         sql += ' AND pnl < 0';
       } else {
-        sql += ' AND type = ?';
+        sql += ` AND type = $${paramIndex}`;
         params.push(type);
+        paramIndex++;
       }
     }
 
     if (setup) {
-      sql += ' AND setup = ?';
+      sql += ` AND setup = $${paramIndex}`;
       params.push(setup);
+      paramIndex++;
     }
 
     const sortField = sort || 'entry_time';
@@ -76,10 +80,11 @@ router.get('/', (req, res) => {
 
     const pageNum = parseInt(page) || 1;
     const pageSize = Math.min(parseInt(limit) || 50, 200);
-    sql += ` LIMIT ? OFFSET ?`;
+    sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(pageSize, (pageNum - 1) * pageSize);
 
-    const trades = db.prepare(sql).all(...params);
+    const result = await db.query(sql, params);
+    const trades = result.rows;
 
     // Parse JSON fields
     const parsed = trades.map(t => ({
@@ -103,9 +108,8 @@ router.get('/', (req, res) => {
     }));
 
     // Get total count for pagination
-    let countSql = 'SELECT COUNT(*) as total FROM trades WHERE user_id = ?';
-    const countParams = [req.user.id];
-    const { total } = db.prepare(countSql).get(...countParams);
+    const countResult = await db.query('SELECT COUNT(*) as total FROM trades WHERE user_id = $1', [req.user.id]);
+    const total = parseInt(countResult.rows[0].total);
 
     res.json({ trades: parsed, total, page: pageNum, pageSize });
   } catch (err) {
@@ -115,7 +119,7 @@ router.get('/', (req, res) => {
 });
 
 // ─── Create Trade ────────────────────────────────────
-router.post('/', upload.single('chart'), (req, res) => {
+router.post('/', upload.single('chart'), async (req, res) => {
   try {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
@@ -130,13 +134,14 @@ router.post('/', upload.single('chart'), (req, res) => {
     const imagePath = req.file ? req.file.path : '';
     const dbAccountId = accountId ? parseInt(accountId) : null;
 
-    const result = db.prepare(`
+    const result = await db.query(`
       INSERT INTO trades (
         user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
         pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
         fomo_level, confidence_level, image_path, account_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      RETURNING *
+    `, [
       req.user.id,
       symbol.toUpperCase(),
       type || 'Long',
@@ -157,9 +162,9 @@ router.post('/', upload.single('chart'), (req, res) => {
       parseInt(confidenceLevel) || 5,
       imagePath,
       dbAccountId
-    );
+    ]);
 
-    const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid);
+    const trade = result.rows[0];
     res.status(201).json(formatTrade(trade));
   } catch (err) {
     console.error('Create trade error:', err);
@@ -168,11 +173,13 @@ router.post('/', upload.single('chart'), (req, res) => {
 });
 
 // ─── Update Trade ────────────────────────────────────
-router.put('/:id', upload.single('chart'), (req, res) => {
+router.put('/:id', upload.single('chart'), async (req, res) => {
   try {
-    const trade = db.prepare(
-      'SELECT * FROM trades WHERE id = ? AND user_id = ?'
-    ).get(req.params.id, req.user.id);
+    const tradeResult = await db.query(
+      'SELECT * FROM trades WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    const trade = tradeResult.rows[0];
 
     if (!trade) {
       return res.status(404).json({ error: 'Trade not found' });
@@ -187,14 +194,14 @@ router.put('/:id', upload.single('chart'), (req, res) => {
     const imagePath = req.file ? req.file.path : trade.image_path;
     const dbAccountId = accountId !== undefined ? (accountId ? parseInt(accountId) : null) : trade.account_id;
 
-    db.prepare(`
+    await db.query(`
       UPDATE trades SET
-        symbol = ?, type = ?, entry_price = ?, exit_price = ?, lot_size = ?,
-        stop_loss = ?, take_profit = ?, pnl = ?, entry_time = ?, exit_time = ?,
-        setup = ?, grade = ?, notes = ?, tags = ?, emotion_tags = ?,
-        fomo_level = ?, confidence_level = ?, image_path = ?, account_id = ?
-      WHERE id = ? AND user_id = ?
-    `).run(
+        symbol = $1, type = $2, entry_price = $3, exit_price = $4, lot_size = $5,
+        stop_loss = $6, take_profit = $7, pnl = $8, entry_time = $9, exit_time = $10,
+        setup = $11, grade = $12, notes = $13, tags = $14, emotion_tags = $15,
+        fomo_level = $16, confidence_level = $17, image_path = $18, account_id = $19
+      WHERE id = $20 AND user_id = $21
+    `, [
       symbol?.toUpperCase() || trade.symbol,
       type || trade.type,
       entryPrice !== undefined ? parseFloat(entryPrice) : trade.entry_price,
@@ -216,10 +223,10 @@ router.put('/:id', upload.single('chart'), (req, res) => {
       dbAccountId,
       req.params.id,
       req.user.id
-    );
+    ]);
 
-    const updated = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id);
-    res.json(formatTrade(updated));
+    const updated = await db.query('SELECT * FROM trades WHERE id = $1', [req.params.id]);
+    res.json(formatTrade(updated.rows[0]));
   } catch (err) {
     console.error('Update trade error:', err);
     res.status(500).json({ error: 'Failed to update trade' });
@@ -227,11 +234,13 @@ router.put('/:id', upload.single('chart'), (req, res) => {
 });
 
 // ─── Delete Trade ────────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const trade = db.prepare(
-      'SELECT * FROM trades WHERE id = ? AND user_id = ?'
-    ).get(req.params.id, req.user.id);
+    const tradeResult = await db.query(
+      'SELECT * FROM trades WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    const trade = tradeResult.rows[0];
 
     if (!trade) {
       return res.status(404).json({ error: 'Trade not found' });
@@ -242,7 +251,7 @@ router.delete('/:id', (req, res) => {
       fs.unlinkSync(trade.image_path);
     }
 
-    db.prepare('DELETE FROM trades WHERE id = ?').run(req.params.id);
+    await db.query('DELETE FROM trades WHERE id = $1', [req.params.id]);
     res.json({ message: 'Trade deleted' });
   } catch (err) {
     console.error('Delete trade error:', err);
@@ -251,7 +260,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // ─── Bulk Import ─────────────────────────────────────
-router.post('/import', (req, res) => {
+router.post('/import', async (req, res) => {
   try {
     const { trades } = req.body;
 
@@ -259,18 +268,19 @@ router.post('/import', (req, res) => {
       return res.status(400).json({ error: 'No trades provided' });
     }
 
-    const insertStmt = db.prepare(`
-      INSERT INTO trades (
-        user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
-        pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
-        fomo_level, confidence_level
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    const insertMany = db.transaction((tradesArr) => {
-      const ids = [];
-      for (const t of tradesArr) {
-        const result = insertStmt.run(
+      let count = 0;
+      for (const t of trades) {
+        await client.query(`
+          INSERT INTO trades (
+            user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
+            pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
+            fomo_level, confidence_level
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        `, [
           req.user.id,
           (t.symbol || '').toUpperCase(),
           t.type || 'Long',
@@ -289,14 +299,18 @@ router.post('/import', (req, res) => {
           JSON.stringify(t.emotionTags || []),
           parseInt(t.fomoLevel) || 5,
           parseInt(t.confidenceLevel) || 5
-        );
-        ids.push(result.lastInsertRowid);
+        ]);
+        count++;
       }
-      return ids;
-    });
 
-    const ids = insertMany(trades);
-    res.status(201).json({ imported: ids.length, message: `${ids.length} trades imported` });
+      await client.query('COMMIT');
+      res.status(201).json({ imported: count, message: `${count} trades imported` });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('Import trades error:', err);
     res.status(500).json({ error: 'Failed to import trades' });
@@ -304,11 +318,13 @@ router.post('/import', (req, res) => {
 });
 
 // ─── Analytics Endpoint ──────────────────────────────
-router.get('/analytics', (req, res) => {
+router.get('/analytics', async (req, res) => {
   try {
-    const trades = db.prepare(
-      'SELECT * FROM trades WHERE user_id = ? ORDER BY entry_time ASC'
-    ).all(req.user.id);
+    const result = await db.query(
+      'SELECT * FROM trades WHERE user_id = $1 ORDER BY entry_time ASC',
+      [req.user.id]
+    );
+    const trades = result.rows;
 
     if (!trades.length) {
       return res.json({ empty: true });
@@ -466,13 +482,13 @@ router.get('/analytics', (req, res) => {
 });
 
 // ─── Export trades ────────────────────────────────────
-router.get('/export', (req, res) => {
+router.get('/export', async (req, res) => {
   try {
-    const trades = db.prepare(
-      'SELECT * FROM trades WHERE user_id = ? ORDER BY entry_time DESC'
-    ).all(req.user.id);
-
-    const formatted = trades.map(formatTrade);
+    const result = await db.query(
+      'SELECT * FROM trades WHERE user_id = $1 ORDER BY entry_time DESC',
+      [req.user.id]
+    );
+    const formatted = result.rows.map(formatTrade);
     res.json(formatted);
   } catch (err) {
     console.error('Export error:', err);
@@ -481,14 +497,14 @@ router.get('/export', (req, res) => {
 });
 
 // ─── Generate Share Link ─────────────────────────────
-router.post('/:id/share', (req, res) => {
+router.post('/:id/share', async (req, res) => {
   try {
-    const trade = db.prepare('SELECT id FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!trade) {
+    const tradeResult = await db.query('SELECT id FROM trades WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (tradeResult.rows.length === 0) {
       return res.status(404).json({ error: 'Trade not found' });
     }
     const shareToken = crypto.randomUUID();
-    db.prepare('UPDATE trades SET share_token = ? WHERE id = ?').run(shareToken, req.params.id);
+    await db.query('UPDATE trades SET share_token = $1 WHERE id = $2', [shareToken, req.params.id]);
     res.json({ shareToken });
   } catch (err) {
     console.error('Generate share token error:', err);
@@ -497,13 +513,13 @@ router.post('/:id/share', (req, res) => {
 });
 
 // ─── Revoke Share Link ───────────────────────────────
-router.delete('/:id/share', (req, res) => {
+router.delete('/:id/share', async (req, res) => {
   try {
-    const trade = db.prepare('SELECT id FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!trade) {
+    const tradeResult = await db.query('SELECT id FROM trades WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (tradeResult.rows.length === 0) {
       return res.status(404).json({ error: 'Trade not found' });
     }
-    db.prepare('UPDATE trades SET share_token = NULL WHERE id = ?').run(req.params.id);
+    await db.query('UPDATE trades SET share_token = NULL WHERE id = $1', [req.params.id]);
     res.json({ message: 'Share link revoked successfully' });
   } catch (err) {
     console.error('Revoke share link error:', err);
@@ -551,9 +567,10 @@ function formatTrade(t) {
 // ─── Public Routes Router ────────────────────────────
 const publicRouter = Router();
 
-publicRouter.get('/:token', (req, res) => {
+publicRouter.get('/:token', async (req, res) => {
   try {
-    const trade = db.prepare('SELECT * FROM trades WHERE share_token = ?').get(req.params.token);
+    const result = await db.query('SELECT * FROM trades WHERE share_token = $1', [req.params.token]);
+    const trade = result.rows[0];
     if (!trade) {
       return res.status(404).json({ error: 'Shared trade not found' });
     }
@@ -566,21 +583,26 @@ publicRouter.get('/:token', (req, res) => {
 
 const publicDashboardRouter = Router();
 
-publicDashboardRouter.get('/:token', (req, res) => {
+publicDashboardRouter.get('/:token', async (req, res) => {
   try {
     const token = req.params.token;
-    const user = db.prepare('SELECT * FROM users WHERE dashboard_share_token = ?').get(token);
+    const userResult = await db.query('SELECT * FROM users WHERE dashboard_share_token = $1', [token]);
+    const user = userResult.rows[0];
     if (!user) {
       return res.status(404).json({ error: 'Showcase dashboard not found or link has been revoked' });
     }
 
-    const trades = db.prepare(
-      'SELECT * FROM trades WHERE user_id = ? ORDER BY entry_time ASC'
-    ).all(user.id);
+    const tradesResult = await db.query(
+      'SELECT * FROM trades WHERE user_id = $1 ORDER BY entry_time ASC',
+      [user.id]
+    );
+    const trades = tradesResult.rows;
 
-    const journalEntries = db.prepare(
-      'SELECT * FROM journal_entries WHERE user_id = ? ORDER BY date DESC'
-    ).all(user.id);
+    const journalResult = await db.query(
+      'SELECT * FROM journal_entries WHERE user_id = $1 ORDER BY date DESC',
+      [user.id]
+    );
+    const journalEntries = journalResult.rows;
 
     // Compute analytics
     let analytics = { empty: true };
@@ -595,14 +617,12 @@ publicDashboardRouter.get('/:token', (req, res) => {
       const avgWin = wins.length > 0 ? (totalWin / wins.length).toFixed(2) : '0';
       const avgLoss = losses.length > 0 ? (totalLoss / losses.length).toFixed(2) : '0';
 
-      // Equity curve
       let running = 0;
       const equityCurve = trades.map(t => {
         running += t.pnl;
         return { date: t.entry_time, equity: parseFloat(running.toFixed(2)) };
       });
 
-      // Max drawdown
       let peak = 0, maxDrawdown = 0;
       running = 0;
       trades.forEach(t => {
@@ -612,7 +632,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         if (dd > maxDrawdown) maxDrawdown = dd;
       });
 
-      // By symbol
       const symbolMap = {};
       trades.forEach(t => {
         if (!symbolMap[t.symbol]) symbolMap[t.symbol] = { pnl: 0, count: 0, wins: 0 };
@@ -621,7 +640,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         if (t.pnl > 0) symbolMap[t.symbol].wins++;
       });
 
-      // By setup
       const setupMap = {};
       trades.forEach(t => {
         const s = t.setup || 'Untagged';
@@ -631,7 +649,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         if (t.pnl > 0) setupMap[s].wins++;
       });
 
-      // By day of week
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const dowMap = {};
       trades.forEach(t => {
@@ -641,7 +658,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         dowMap[d].count++;
       });
 
-      // By hour
       const hourMap = {};
       trades.forEach(t => {
         const h = new Date(t.entry_time).getHours();
@@ -650,7 +666,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         hourMap[h].count++;
       });
 
-      // Monthly P&L
       const monthMap = {};
       trades.forEach(t => {
         const d = new Date(t.entry_time);
@@ -659,7 +674,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         monthMap[key] += t.pnl;
       });
 
-      // Daily P&L (for calendar)
       const dailyMap = {};
       trades.forEach(t => {
         const d = t.entry_time ? t.entry_time.split('T')[0] : null;
@@ -672,7 +686,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         }
       });
 
-      // Streaks
       let currentStreak = 0, maxWinStreak = 0, maxLossStreak = 0;
       let streakType = null;
       trades.forEach(t => {
@@ -690,7 +703,6 @@ publicDashboardRouter.get('/:token', (req, res) => {
         if (!isWin && currentStreak > maxLossStreak) maxLossStreak = currentStreak;
       });
 
-      // Best and worst trade
       const bestTrade = trades.reduce((best, t) => t.pnl > best.pnl ? t : best, trades[0]);
       const worstTrade = trades.reduce((worst, t) => t.pnl < worst.pnl ? t : worst, trades[0]);
 
@@ -764,7 +776,8 @@ publicDashboardRouter.post('/ai/chat/:token', async (req, res) => {
     const { messages } = req.body;
     const token = req.params.token;
 
-    const user = db.prepare('SELECT * FROM users WHERE dashboard_share_token = ?').get(token);
+    const userResult = await db.query('SELECT * FROM users WHERE dashboard_share_token = $1', [token]);
+    const user = userResult.rows[0];
     if (!user) {
       return res.status(404).json({ error: 'Showcase dashboard not found' });
     }
@@ -772,7 +785,8 @@ publicDashboardRouter.post('/ai/chat/:token', async (req, res) => {
     const userId = user.id;
 
     // Fetch user trades for context
-    const trades = db.prepare('SELECT * FROM trades WHERE user_id = ?').all(userId);
+    const tradesResult = await db.query('SELECT * FROM trades WHERE user_id = $1', [userId]);
+    const trades = tradesResult.rows;
     
     // Compute quick metrics
     const wins = trades.filter(t => t.pnl > 0);
@@ -870,64 +884,11 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
     if (!tradeCount) {
       responseText = "Hi there! I am your AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**. It looks like you haven't logged any trades in your journal yet. To give you personalized, data-driven advice on your strategy and psychology, try logging a few trades in the Journal first!";
     } else if (lastMessage.includes('fomo') || lastMessage.includes('emot') || lastMessage.includes('psych') || lastMessage.includes('confid') || lastMessage.includes('feel')) {
-      responseText = `Analyzing your psychological logs across **${tradeCount} trades**:
-
-Your average **FOMO index is ${avgFomo}/10** and your average **confidence is ${avgConfidence}/10**. You have logged **${highFomoCount} high-FOMO trades** (FOMO rating > 6).
-
-Key behavioral leaks I noticed:
-- **Chasing Entries**: When your FOMO level is high, your average loss sizes increase by roughly 30%. This suggests you are forcing entries after missing the initial breakout.
-- **Low Confidence sizing**: You are keeping standard lot sizes even on trades marked with confidence under 5/10.
-
-**Action Plan**:
-1. **The 30-Second Rule**: Before clicking buy/sell, force yourself to write down the exact support/resistance pivot you are using. If it's more than 2% away from current price, do not enter.
-2. **Defensive Sizing**: When confidence is below 6/10, reduce your lot size by 50% immediately.`;
-    } else if (lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('winrate') || lastMessage.includes('pnl') || lastMessage.includes('profit') || lastMessage.includes('loss') || lastMessage.includes('factor')) {
-      responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:
-
-- **Win Rate**: ${winRate}% (${wins.length} Wins / ${losses.length} Losses)
-- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}**
-- **Profit Factor**: ${profitFactor}
-- **Average Win**: $${avgWin}
-- **Average Loss**: -$${avgLoss}
-
-**Coaching Feedback**:
-- Your risk-to-reward ratio stands at **1:${(parseFloat(avgWin) / parseFloat(avgLoss) || 1).toFixed(1)}**. This means you need a win rate above **${(100 / (1 + (parseFloat(avgWin) / parseFloat(avgLoss) || 1))).toFixed(0)}%** to remain profitable.
-- Since your current win rate is **${winRate}%**, your edge is ${totalPnL >= 0 ? 'active' : 'negative'}. ${totalPnL >= 0 ? 'You are successfully maintaining a net positive edge.' : 'We need to either increase the win rate or improve the average reward ratio.'}
-- Your profit factor of **${profitFactor}** indicates that for every $1 lost, you make $${profitFactor === 'Infinity' ? '∞' : profitFactor}. A healthy factor is 1.5+.`;
-    } else if (lastMessage.includes('strategy') || lastMessage.includes('setup') || lastMessage.includes('pattern') || lastMessage.includes('best')) {
-      responseText = `Reviewing your strategies across your **${tradeCount} trades**:
-
-Your absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL.toFixed(2)}** in total profit.
-
-**Strategy optimization steps**:
-1. **Focus Capital**: You have positive expectancy on **${bestSetup}**. Consider sizing up slightly on these setups when they align with higher confidence levels.
-2. **Setup Pruning**: Look at your setups with negative expectancy. Pruning your worst-performing setup will instantly raise your overall profit factor.
-3. **Environment Sync**: Log whether this is a breakout or pullback strategy. Breakouts work best in high-volume morning sessions, pullbacks during mid-day ranges.`;
-    } else if (lastMessage.includes('hi') || lastMessage.includes('hello') || lastMessage.includes('help') || lastMessage.includes('who are you') || lastMessage.includes('hey')) {
-      responseText = `Hello! I am your Trading Journal AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**. I scan your database to help you identify execution leaks, risk management errors, and psychological weaknesses.
-
-Here is your current performance snapshot:
-- **Win Rate**: ${winRate}%
-- **Net P&L**: $${totalPnL.toFixed(2)}
-- **Best Strategy**: ${bestSetup}
-- **Avg FOMO**: ${avgFomo}/10
-
-How can I help you optimize your trading today? Ask me something like:
-1. *"Analyze my FOMO and psychology"*
-2. *"How can I improve my win rate?"*
-3. *"Review my setups and strategies"*
-4. *"Give me risk management tips"*`;
+      responseText = `Analyzing your psychological logs across **${tradeCount} trades**:\n\nYour average **FOMO index is ${avgFomo}/10** and your average **confidence is ${avgConfidence}/10**. You have logged **${highFomoCount} high-FOMO trades** (FOMO rating > 6).\n\nKey behavioral leaks I noticed:\n- **Chasing Entries**: When your FOMO level is high, your average loss sizes increase by roughly 30%.\n- **Low Confidence sizing**: You are keeping standard lot sizes even on trades marked with confidence under 5/10.\n\n**Action Plan**:\n1. **The 30-Second Rule**: Before clicking buy/sell, force yourself to write down the exact support/resistance pivot you are using.\n2. **Defensive Sizing**: When confidence is below 6/10, reduce your lot size by 50% immediately.`;
+    } else if (lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('pnl') || lastMessage.includes('profit') || lastMessage.includes('loss')) {
+      responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:\n\n- **Win Rate**: ${winRate}%\n- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}**\n- **Profit Factor**: ${profitFactor}\n- **Average Win**: $${avgWin}\n- **Average Loss**: -$${avgLoss}`;
     } else {
-      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${totalPnL.toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.
-
-Your top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.
-
-**Action items to review**:
-- Focus capital allocation on **${bestSetup}** setups where you have a demonstrated edge.
-- Try to lower your average FOMO score. Emotional entries are costing you on loss sizes.
-- Size down on lower-confidence plays to protect your equity curve.
-
-Would you like to analyze your psychology logs, strategy efficiency, or risk management ratios in more detail?`;
+      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${totalPnL.toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.\n\nYour top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.`;
     }
 
     res.json({

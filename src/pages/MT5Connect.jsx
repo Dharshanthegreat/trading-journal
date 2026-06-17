@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { mt5 } from '../services/api';
 import {
   Wifi, WifiOff, Shield, Zap, TrendingUp, Lock,
@@ -259,6 +259,20 @@ const MT5Connect = () => {
   const [connection, setConnection] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const dropdownRef = useRef(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch existing connection status on mount
   useEffect(() => {
@@ -269,15 +283,87 @@ const MT5Connect = () => {
     }).catch(() => {});
   }, []);
 
-  // Popular servers for autocomplete
-  const popularServers = accountType === 'prop' ? [
-    'FTMO-Server', 'FundedNext-Live', 'The5ers-Server', 'TopStep-Live',
-    'MyForexFunds-Server', 'TrueForex-Live',
-  ] : [
-    'ICMarkets-Live01', 'Pepperstone-Edge01', 'Exness-Real9',
-    'XMGlobal-Real', 'FxPro-Real', 'OANDA-Live',
-    'FBS-Real', 'RoboForex-ECN',
-  ];
+  // Comprehensive prop firms and brokers lists
+  const popularServers = useMemo(() => {
+    return accountType === 'prop' ? [
+      { name: 'FTMO', server: 'FTMO-Server' },
+      { name: 'FundedNext', server: 'FundedNext-Live' },
+      { name: 'The5ers', server: 'The5ers-Server' },
+      { name: 'Topstep', server: 'TopStep-Live' },
+      { name: 'Funding Pips', server: 'FundingPips-Server' },
+      { name: 'Alpha Capital Group', server: 'AlphaCapitalGroup-Server' },
+      { name: 'FunderPro', server: 'FunderPro-Server' },
+      { name: 'E8 Funding', server: 'E8Funding-Server' },
+      { name: 'MyFundedFX', server: 'MyFundedFX-Server' },
+      { name: 'Blue Guardian', server: 'BlueGuardian-Server' },
+      { name: 'Funded Trading Plus', server: 'FundedTradingPlus-Server' },
+      { name: 'Goat Funded Trader', server: 'GoatFundedTrader-Server' },
+      { name: 'True Forex Funds', server: 'TrueForex-Live' },
+      { name: 'Apex Trader Funding', server: 'ApexTraderFunding-Server' },
+      { name: 'Bespoke Funding', server: 'BespokeFunding-Server' },
+      { name: 'Rocket21', server: 'Rocket21-Server' },
+      { name: 'Lark Funding', server: 'LarkFunding-Server' },
+      { name: 'Instant Funding', server: 'InstantFunding-Server' },
+      { name: 'Audacity Capital', server: 'AudacityCapital-Server' },
+      { name: 'City Traders Imperium', server: 'CityTradersImperium-Server' },
+      { name: 'Glow Node', server: 'GlowNode-Server' },
+      { name: 'Skilled Funded Traders', server: 'SkilledFundedTraders-Server' },
+      { name: 'Maven Trading', server: 'Maven100-Server' },
+      { name: 'Axi Select', server: 'Axi-Select-Server' },
+      { name: 'Quantec', server: 'Quantec-Server' },
+      { name: 'FT9ja', server: 'FT9ja-Server' },
+      { name: 'Sovereign Funding', server: 'SovereignFunding-Server' },
+      { name: 'Next Step Funding', server: 'NextStep-Server' },
+      { name: 'ProFx', server: 'ProFx-Server' },
+      { name: 'Sabre Trade', server: 'SabreTrade-Server' },
+      { name: 'Traddoo', server: 'Traddoo-Server' }
+    ] : [
+      { name: 'IC Markets', server: 'ICMarkets-Live01' },
+      { name: 'Pepperstone', server: 'Pepperstone-Edge01' },
+      { name: 'Exness', server: 'Exness-Real9' },
+      { name: 'XM Global', server: 'XMGlobal-Real' },
+      { name: 'FxPro', server: 'FxPro-Real' },
+      { name: 'OANDA', server: 'OANDA-Live' },
+      { name: 'FBS', server: 'FBS-Real' },
+      { name: 'RoboForex', server: 'RoboForex-ECN' },
+      { name: 'ThinkMarkets', server: 'ThinkMarkets-Live' },
+      { name: 'Tickmill', server: 'Tickmill-Live' },
+      { name: 'FP Markets', server: 'FPMarkets-Live' },
+      { name: 'HotForex', server: 'HotForex-Live' },
+      { name: 'OctaFX', server: 'OctaFX-Real' },
+      { name: 'Admiral Markets', server: 'AdmiralMarkets-Live' },
+      { name: 'AvaTrade', server: 'Avatrade-Live' },
+      { name: 'Forex.com', server: 'Forex.com-Live' },
+      { name: 'Interactive Brokers', server: 'InteractiveBrokers-Live' },
+      { name: 'Saxo Bank', server: 'SaxoBank-Live' },
+      { name: 'IG Markets', server: 'IG-Live' },
+      { name: 'Swissquote', server: 'Swissquote-Live' }
+    ];
+  }, [accountType]);
+
+  // Quick select chips displayed below the input
+  const quickChips = useMemo(() => {
+    return accountType === 'prop' ? [
+      { name: 'FTMO', server: 'FTMO-Server' },
+      { name: 'FundedNext', server: 'FundedNext-Live' },
+      { name: 'Topstep', server: 'TopStep-Live' },
+      { name: 'Funding Pips', server: 'FundingPips-Server' },
+    ] : [
+      { name: 'IC Markets', server: 'ICMarkets-Live01' },
+      { name: 'Pepperstone', server: 'Pepperstone-Edge01' },
+      { name: 'Exness', server: 'Exness-Real9' },
+    ];
+  }, [accountType]);
+
+  // Filter servers based on user query
+  const filteredServers = useMemo(() => {
+    if (!serverName.trim()) return popularServers;
+    const query = serverName.toLowerCase();
+    return popularServers.filter(s => 
+      s.name.toLowerCase().includes(query) || 
+      s.server.toLowerCase().includes(query)
+    );
+  }, [serverName, popularServers]);
 
   const handleConnect = useCallback(async (e) => {
     e.preventDefault();
@@ -532,51 +618,118 @@ const MT5Connect = () => {
                 </div>
 
                 {/* Server Name */}
-                <div>
+                <div style={{ position: 'relative' }} ref={dropdownRef}>
                   <label style={labelStyle}>Server Name</label>
                   <div style={{ position: 'relative' }}>
                     <Server size={15} style={{
                       position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
                       color: 'var(--text-muted)',
                       opacity: 0.6,
+                      zIndex: 10,
                     }} />
                     <input
                       type="text"
                       value={serverName}
-                      onChange={e => setServerName(e.target.value)}
-                      placeholder="e.g. ICMarkets-Live01"
-                      style={inputStyle}
-                      onFocus={e => {
-                        e.target.style.borderColor = accountType === 'prop' ? 'var(--accent)' : 'var(--warn)';
-                        e.target.style.boxShadow = accountType === 'prop' ? '0 0 0 3px var(--accent-soft)' : '0 0 0 3px var(--warn-soft)';
+                      onChange={e => {
+                        setServerName(e.target.value);
+                        setDropdownOpen(true);
                       }}
-                      onBlur={e => {
-                        e.target.style.borderColor = 'var(--border)';
-                        e.target.style.boxShadow = 'none';
+                      onFocus={() => setDropdownOpen(true)}
+                      placeholder={accountType === 'prop' ? "Search prop firm or enter server name" : "Search broker or enter server name"}
+                      style={inputStyle}
+                      onKeyDown={e => {
+                        if (e.key === 'Escape') {
+                          setDropdownOpen(false);
+                        }
                       }}
                     />
+
+                    {/* Autocomplete Search Dropdown */}
+                    {dropdownOpen && (
+                      <div
+                        className="glass anim-fade-up"
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 4px)',
+                          left: 0,
+                          right: 0,
+                          maxHeight: '240px',
+                          overflowY: 'auto',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-mid)',
+                          borderRadius: '10px',
+                          boxShadow: 'var(--shadow-lg)',
+                          zIndex: 1000,
+                          padding: '6px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                          scrollbarWidth: 'thin',
+                        }}
+                      >
+                        {filteredServers.length > 0 ? (
+                          filteredServers.map((s, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setServerName(s.server);
+                                setDropdownOpen(false);
+                              }}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                width: '100%',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: serverName === s.server ? 'var(--bg-active)' : 'transparent',
+                                color: 'var(--text-primary)',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'background var(--t-fast)'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                              onMouseLeave={e => e.currentTarget.style.background = serverName === s.server ? 'var(--bg-active)' : 'transparent'}
+                            >
+                              <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{s.name}</span>
+                              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', marginTop: '2px' }}>{s.server}</span>
+                            </button>
+                          ))
+                        ) : (
+                          <div style={{ padding: '12px', textTransform: 'uppercase', color: 'var(--text-muted)', fontSize: '0.65rem', textAlign: 'center', fontWeight: 600 }}>
+                            Custom server: "{serverName}"
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
                   {/* Quick server chips */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                    {popularServers.map(s => (
-                      <button key={s} type="button"
-                        onClick={() => setServerName(s)}
+                    {quickChips.map(s => (
+                      <button key={s.server} type="button"
+                        onClick={() => {
+                          setServerName(s.server);
+                          setDropdownOpen(false);
+                        }}
                         style={{
                           padding: '3px 10px', borderRadius: '6px',
-                          background: serverName === s 
+                          background: serverName === s.server 
                             ? (accountType === 'prop' ? 'var(--accent-soft)' : 'var(--warn-soft)') 
                             : 'var(--bg-primary)',
-                          border: `1px solid ${serverName === s 
+                          border: `1px solid ${serverName === s.server 
                             ? (accountType === 'prop' ? 'var(--accent)' : 'var(--warn)') 
                             : 'var(--border)'}`,
-                          color: serverName === s 
+                          color: serverName === s.server 
                             ? (accountType === 'prop' ? 'var(--accent)' : 'var(--warn)') 
                             : 'var(--text-tertiary)',
                           fontSize: '0.58rem', fontWeight: 500, cursor: 'pointer',
                           fontFamily: 'JetBrains Mono, monospace',
                           transition: 'all 0.2s ease',
                         }}>
-                        {s}
+                        {s.name}
                       </button>
                     ))}
                   </div>

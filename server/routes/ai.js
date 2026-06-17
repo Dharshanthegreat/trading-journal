@@ -7,7 +7,7 @@ const router = Router();
 
 // Simple in-memory rate limiter (max 15 AI requests per minute per user)
 const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT_WINDOW = 60_000;
 const RATE_LIMIT_MAX = 15;
 
 function checkRateLimit(userId) {
@@ -33,7 +33,8 @@ router.post('/chat', async (req, res) => {
     }
 
     // Fetch user trades for context
-    const trades = db.prepare('SELECT * FROM trades WHERE user_id = ?').all(userId);
+    const result = await db.query('SELECT * FROM trades WHERE user_id = $1', [userId]);
+    const trades = result.rows;
     const metrics = computeMetrics(trades);
     const { tradeCount, winRate, totalPnL, profitFactor, avgWin, avgLoss, avgFomo, avgConfidence, highFomoCount, bestSetup, wins, losses, bestPnL } = metrics;
 
@@ -41,7 +42,6 @@ router.post('/chat', async (req, res) => {
     const apiKey = process.env.NVIDIA_API_KEY;
 
     if (apiKey) {
-      // Build context-aware system prompt for Llama-3.1-Nemotron-70B-Instruct
       const systemPrompt = `You are a professional trading coach powered by NVIDIA Llama-3.1-Nemotron-70B-Instruct.
 You have direct access to the user's live trading journal statistics:
 - Total Trades Logged: ${tradeCount}
@@ -57,7 +57,6 @@ You have direct access to the user's live trading journal statistics:
 
 Your goal is to analyze the user's questions, guide their strategy, correct their risk management, and optimize their psychology based on these metrics. Be extremely analytical, encouraging, and clear. Format all responses in clean Markdown. Keep answers concise, actionable, and focus heavily on reducing psychological leaks and emotional trades.`;
 
-      // Call NVIDIA API
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -80,8 +79,8 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
         throw new Error(`NVIDIA API Catalog returned error status ${response.status}: ${errText}`);
       }
 
-      const result = await response.json();
-      const responseContent = result.choices[0]?.message?.content || 'No response generated.';
+      const apiResult = await response.json();
+      const responseContent = apiResult.choices[0]?.message?.content || 'No response generated.';
       return res.json({
         role: 'assistant',
         content: responseContent
@@ -95,64 +94,15 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
     if (!tradeCount) {
       responseText = "Hi there! I am your AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**. It looks like you haven't logged any trades in your journal yet. To give you personalized, data-driven advice on your strategy and psychology, try logging a few trades in the Journal first!";
     } else if (lastMessage.includes('fomo') || lastMessage.includes('emot') || lastMessage.includes('psych') || lastMessage.includes('confid') || lastMessage.includes('feel')) {
-      responseText = `Analyzing your psychological logs across **${tradeCount} trades**:
-
-Your average **FOMO index is ${avgFomo}/10** and your average **confidence is ${avgConfidence}/10**. You have logged **${highFomoCount} high-FOMO trades** (FOMO rating > 6).
-
-Key behavioral leaks I noticed:
-- **Chasing Entries**: When your FOMO level is high, your average loss sizes increase by roughly 30%. This suggests you are forcing entries after missing the initial breakout.
-- **Low Confidence sizing**: You are keeping standard lot sizes even on trades marked with confidence under 5/10.
-
-**Action Plan**:
-1. **The 30-Second Rule**: Before clicking buy/sell, force yourself to write down the exact support/resistance pivot you are using. If it's more than 2% away from current price, do not enter.
-2. **Defensive Sizing**: When confidence is below 6/10, reduce your lot size by 50% immediately.`;
+      responseText = `Analyzing your psychological logs across **${tradeCount} trades**:\n\nYour average **FOMO index is ${avgFomo}/10** and your average **confidence is ${avgConfidence}/10**. You have logged **${highFomoCount} high-FOMO trades** (FOMO rating > 6).\n\nKey behavioral leaks I noticed:\n- **Chasing Entries**: When your FOMO level is high, your average loss sizes increase by roughly 30%.\n- **Low Confidence sizing**: You are keeping standard lot sizes even on trades marked with confidence under 5/10.\n\n**Action Plan**:\n1. **The 30-Second Rule**: Before clicking buy/sell, force yourself to write down the exact support/resistance pivot you are using.\n2. **Defensive Sizing**: When confidence is below 6/10, reduce your lot size by 50% immediately.`;
     } else if (lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('winrate') || lastMessage.includes('pnl') || lastMessage.includes('profit') || lastMessage.includes('loss') || lastMessage.includes('factor')) {
-      responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:
-
-- **Win Rate**: ${winRate}% (${wins} Wins / ${losses} Losses)
-- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${(+totalPnL).toFixed(2)}**
-- **Profit Factor**: ${profitFactor}
-- **Average Win**: $${avgWin}
-- **Average Loss**: -$${avgLoss}
-
-**Coaching Feedback**:
-- Your risk-to-reward ratio stands at **1:${(parseFloat(avgWin) / parseFloat(avgLoss) || 1).toFixed(1)}**. This means you need a win rate above **${(100 / (1 + (parseFloat(avgWin) / parseFloat(avgLoss) || 1))).toFixed(0)}%** to remain profitable.
-- Since your current win rate is **${winRate}%**, your edge is ${totalPnL >= 0 ? 'active' : 'negative'}. ${totalPnL >= 0 ? 'You are successfully maintaining a net positive edge.' : 'We need to either increase the win rate or improve the average reward ratio.'}
-- Your profit factor of **${profitFactor}** indicates that for every $1 lost, you make $${profitFactor === 'Infinity' ? '∞' : profitFactor}. A healthy factor is 1.5+.`;
+      responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:\n\n- **Win Rate**: ${winRate}% (${wins} Wins / ${losses} Losses)\n- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${(+totalPnL).toFixed(2)}**\n- **Profit Factor**: ${profitFactor}\n- **Average Win**: $${avgWin}\n- **Average Loss**: -$${avgLoss}\n\n**Coaching Feedback**:\n- Your risk-to-reward ratio stands at **1:${(parseFloat(avgWin) / parseFloat(avgLoss) || 1).toFixed(1)}**.\n- Your profit factor of **${profitFactor}** indicates that for every $1 lost, you make $${profitFactor === 'Infinity' ? '∞' : profitFactor}. A healthy factor is 1.5+.`;
     } else if (lastMessage.includes('strategy') || lastMessage.includes('setup') || lastMessage.includes('pattern') || lastMessage.includes('best')) {
-      responseText = `Reviewing your strategies across your **${tradeCount} trades**:
-
-Your absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL != null && isFinite(bestPnL) ? (+bestPnL).toFixed(2) : '0.00'}** in total profit.
-
-**Strategy optimization steps**:
-1. **Focus Capital**: You have positive expectancy on **${bestSetup}**. Consider sizing up slightly on these setups when they align with higher confidence levels.
-2. **Setup Pruning**: Look at your setups with negative expectancy. Pruning your worst-performing setup will instantly raise your overall profit factor.
-3. **Environment Sync**: Log whether this is a breakout or pullback strategy. Breakouts work best in high-volume morning sessions, pullbacks during mid-day ranges.`;
+      responseText = `Reviewing your strategies across your **${tradeCount} trades**:\n\nYour absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL != null && isFinite(bestPnL) ? (+bestPnL).toFixed(2) : '0.00'}** in total profit.\n\n**Strategy optimization steps**:\n1. **Focus Capital**: You have positive expectancy on **${bestSetup}**.\n2. **Setup Pruning**: Pruning your worst-performing setup will instantly raise your overall profit factor.\n3. **Environment Sync**: Log whether this is a breakout or pullback strategy.`;
     } else if (lastMessage.includes('hi') || lastMessage.includes('hello') || lastMessage.includes('help') || lastMessage.includes('who are you') || lastMessage.includes('hey')) {
-      responseText = `Hello! I am your Trading Journal AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**. I scan your database to help you identify execution leaks, risk management errors, and psychological weaknesses.
-
-Here is your current performance snapshot:
-- **Win Rate**: ${winRate}%
-- **Net P&L**: $${(+totalPnL).toFixed(2)}
-- **Best Strategy**: ${bestSetup}
-- **Avg FOMO**: ${avgFomo}/10
-
-How can I help you optimize your trading today? Ask me something like:
-1. *"Analyze my FOMO and psychology"*
-2. *"How can I improve my win rate?"*
-3. *"Review my setups and strategies"*
-4. *"Give me risk management tips"*`;
+      responseText = `Hello! I am your Trading Journal AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**.\n\nHere is your current performance snapshot:\n- **Win Rate**: ${winRate}%\n- **Net P&L**: $${(+totalPnL).toFixed(2)}\n- **Best Strategy**: ${bestSetup}\n- **Avg FOMO**: ${avgFomo}/10\n\nHow can I help you optimize your trading today?`;
     } else {
-      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${(+totalPnL).toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.
-
-Your top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.
-
-**Action items to review**:
-- Focus capital allocation on **${bestSetup}** setups where you have a demonstrated edge.
-- Try to lower your average FOMO score. Emotional entries are costing you on loss sizes.
-- Size down on lower-confidence plays to protect your equity curve.
-
-Would you like to analyze your psychology logs, strategy efficiency, or risk management ratios in more detail?`;
+      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${(+totalPnL).toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.\n\nYour top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.\n\n**Action items to review**:\n- Focus capital allocation on **${bestSetup}** setups.\n- Try to lower your average FOMO score.\n- Size down on lower-confidence plays.`;
     }
 
     res.json({

@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import db from './db.js';
 import authRoutes from './routes/auth.js';
 import tradeRoutes, { publicRouter as publicTradeRoutes, publicDashboardRouter } from './routes/trades.js';
 import journalRoutes from './routes/journal.js';
@@ -119,11 +120,24 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ─── Start ───────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n  ⚡ Trading Journal API running at http://localhost:${PORT}`);
-  console.log(`  📊 Health check: http://localhost:${PORT}/api/health\n`);
-  
-  // Start background news synchronization agent
-  startNewsAgent();
-});
+// ─── Start (async to initialize PostgreSQL first) ────
+async function start() {
+  try {
+    // Initialize PostgreSQL database tables
+    await db.initDB();
+
+    app.listen(PORT, () => {
+      console.log(`\n  ⚡ Trading Journal API running at http://localhost:${PORT}`);
+      console.log(`  📊 Health check: http://localhost:${PORT}/api/health`);
+      console.log(`  🐘 Database: PostgreSQL\n`);
+      
+      // Start background news synchronization agent
+      startNewsAgent();
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+start();

@@ -21,19 +21,20 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user exists
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existing) {
+    const existing = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const result = db.prepare(
-      'INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)'
-    ).run(email, passwordHash, displayName || 'Trader');
+    const result = await db.query(
+      'INSERT INTO users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING *',
+      [email, passwordHash, displayName || 'Trader']
+    );
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+    const user = result.rows[0];
     const token = generateToken(user);
 
     res.cookie('token', token, {
@@ -70,7 +71,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -108,10 +110,10 @@ router.post('/login', async (req, res) => {
 });
 
 // ─── Get Current User ────────────────────────────────
-router.get('/me', authenticateToken, (req, res) => {
-  // This route uses the auth middleware applied in server.js
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -132,20 +134,21 @@ router.get('/me', authenticateToken, (req, res) => {
 });
 
 // ─── Update Profile ──────────────────────────────────
-router.put('/profile', authenticateToken, (req, res) => {
+router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const { displayName, accountSize, currency, riskPercent } = req.body;
 
-    db.prepare(`
+    await db.query(`
       UPDATE users SET
-        display_name = COALESCE(?, display_name),
-        account_size = COALESCE(?, account_size),
-        currency = COALESCE(?, currency),
-        risk_percent = COALESCE(?, risk_percent)
-      WHERE id = ?
-    `).run(displayName, accountSize, currency, riskPercent, req.user.id);
+        display_name = COALESCE($1, display_name),
+        account_size = COALESCE($2, account_size),
+        currency = COALESCE($3, currency),
+        risk_percent = COALESCE($4, risk_percent)
+      WHERE id = $5
+    `, [displayName, accountSize, currency, riskPercent, req.user.id]);
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
     res.json({
       id: user.id,
       email: user.email,
@@ -162,10 +165,10 @@ router.put('/profile', authenticateToken, (req, res) => {
 });
 
 // ─── Generate Showcase Link ──────────────────────────
-router.post('/share-dashboard', authenticateToken, (req, res) => {
+router.post('/share-dashboard', authenticateToken, async (req, res) => {
   try {
     const token = crypto.randomUUID();
-    db.prepare('UPDATE users SET dashboard_share_token = ? WHERE id = ?').run(token, req.user.id);
+    await db.query('UPDATE users SET dashboard_share_token = $1 WHERE id = $2', [token, req.user.id]);
     res.json({ dashboardShareToken: token });
   } catch (err) {
     console.error('Share dashboard error:', err);
@@ -174,9 +177,9 @@ router.post('/share-dashboard', authenticateToken, (req, res) => {
 });
 
 // ─── Revoke Showcase Link ────────────────────────────
-router.delete('/share-dashboard', authenticateToken, (req, res) => {
+router.delete('/share-dashboard', authenticateToken, async (req, res) => {
   try {
-    db.prepare('UPDATE users SET dashboard_share_token = NULL WHERE id = ?').run(req.user.id);
+    await db.query('UPDATE users SET dashboard_share_token = NULL WHERE id = $1', [req.user.id]);
     res.json({ message: 'Showcase link revoked' });
   } catch (err) {
     console.error('Revoke dashboard error:', err);
@@ -195,8 +198,8 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (!user) {
+    const result = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'No user registered with this email' });
     }
 
@@ -282,7 +285,7 @@ router.post('/reset-password', async (req, res) => {
     const passwordHash = await bcrypt.hash(newPassword, salt);
 
     // Update in database
-    db.prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(passwordHash, email);
+    await db.query('UPDATE users SET password_hash = $1 WHERE email = $2', [passwordHash, email]);
     
     // Clear code
     resetCodes.delete(email);
@@ -307,7 +310,8 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -320,7 +324,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(newPassword, salt);
 
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, req.user.id);
+    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, req.user.id]);
 
     res.json({ message: 'Password updated successfully' });
   } catch (err) {

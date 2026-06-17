@@ -1280,7 +1280,7 @@ const Header = ({ onMenuToggle }) => {
           color: isLocal ? 'var(--warn)' : 'var(--profit)',
           fontWeight: 600,
           marginRight: '4px'
-        }} title={isLocal ? 'Database is offline. All data is saved inside your browser.' : 'Server Connected. Data is saved in SQLite database.'}>
+        }} title={isLocal ? 'Database is offline. All data is saved inside your browser.' : 'Server Connected. Data is saved in PostgreSQL database.'}>
           <span className="status-dot live" style={{
             background: isLocal ? 'var(--warn)' : 'var(--profit)',
             boxShadow: `0 0 6px ${isLocal ? 'rgba(251,191,36,0.4)' : 'rgba(52,211,153,0.4)'}`,

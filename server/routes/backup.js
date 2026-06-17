@@ -4,18 +4,21 @@ import db from '../db.js';
 const router = Router();
 
 // ─── Export Backup ───────────────────────────────────
-router.get('/export', (req, res) => {
+router.get('/export', async (req, res) => {
   try {
     const userId = req.user.id;
     
     // Get user details
-    const user = db.prepare('SELECT display_name, account_size, currency, risk_percent, email FROM users WHERE id = ?').get(userId);
+    const userResult = await db.query('SELECT display_name, account_size, currency, risk_percent, email FROM users WHERE id = $1', [userId]);
+    const user = userResult.rows[0];
     
     // Get trades
-    const trades = db.prepare('SELECT * FROM trades WHERE user_id = ?').all(userId);
+    const tradesResult = await db.query('SELECT * FROM trades WHERE user_id = $1', [userId]);
+    const trades = tradesResult.rows;
     
     // Get journal entries
-    const journalEntries = db.prepare('SELECT * FROM journal_entries WHERE user_id = ?').all(userId);
+    const journalResult = await db.query('SELECT * FROM journal_entries WHERE user_id = $1', [userId]);
+    const journalEntries = journalResult.rows;
     
     // Safe JSON parser
     const safeParse = (str) => {
@@ -77,7 +80,7 @@ router.get('/export', (req, res) => {
 });
 
 // ─── Import Backup ───────────────────────────────────
-router.post('/import', (req, res) => {
+router.post('/import', async (req, res) => {
   try {
     const userId = req.user.id;
     const { trades, journalEntries, user, mode } = req.body;
@@ -86,26 +89,28 @@ router.post('/import', (req, res) => {
       return res.status(400).json({ error: 'Invalid backup format' });
     }
     
-    const importMode = mode || 'merge'; // 'merge' or 'overwrite'
+    const importMode = mode || 'merge';
     
-    // Execute all database updates in a single, transaction-safe block
-    const executeImport = db.transaction(() => {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+
       // 1. Update user settings if present
       if (user) {
-        db.prepare(`
+        await client.query(`
           UPDATE users SET
-            display_name = COALESCE(?, display_name),
-            account_size = COALESCE(?, account_size),
-            currency = COALESCE(?, currency),
-            risk_percent = COALESCE(?, risk_percent)
-          WHERE id = ?
-        `).run(
+            display_name = COALESCE($1, display_name),
+            account_size = COALESCE($2, account_size),
+            currency = COALESCE($3, currency),
+            risk_percent = COALESCE($4, risk_percent)
+          WHERE id = $5
+        `, [
           user.displayName !== undefined ? user.displayName : null,
           user.accountSize !== undefined ? parseFloat(user.accountSize) : null,
           user.currency !== undefined ? user.currency : null,
           user.riskPercent !== undefined ? parseFloat(user.riskPercent) : null,
           userId
-        );
+        ]);
       }
       
       let tradesImported = 0;
@@ -113,32 +118,29 @@ router.post('/import', (req, res) => {
       
       // 2. Clear out data if Overwrite mode is selected
       if (importMode === 'overwrite') {
-        db.prepare('DELETE FROM trades WHERE user_id = ?').run(userId);
-        db.prepare('DELETE FROM journal_entries WHERE user_id = ?').run(userId);
+        await client.query('DELETE FROM trades WHERE user_id = $1', [userId]);
+        await client.query('DELETE FROM journal_entries WHERE user_id = $1', [userId]);
       }
       
       // 3. Import Trades
-      const insertTrade = db.prepare(`
-        INSERT INTO trades (
-          user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
-          pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
-          fomo_level, confidence_level, image_path, share_token
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      // For merges, index active entries to skip duplicates
-      const existingTrades = db.prepare('SELECT entry_time, symbol FROM trades WHERE user_id = ?').all(userId);
+      const existingTradesResult = await client.query('SELECT entry_time, symbol FROM trades WHERE user_id = $1', [userId]);
       const existingTradeKeys = new Set(
-        existingTrades.map(t => `${t.entry_time}_${t.symbol.toUpperCase()}`)
+        existingTradesResult.rows.map(t => `${t.entry_time}_${t.symbol.toUpperCase()}`)
       );
       
       for (const t of trades) {
         const key = `${t.entryTime}_${(t.symbol || '').toUpperCase()}`;
         if (importMode === 'merge' && existingTradeKeys.has(key)) {
-          continue; // Skip duplicates in merge mode
+          continue;
         }
         
-        insertTrade.run(
+        await client.query(`
+          INSERT INTO trades (
+            user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
+            pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
+            fomo_level, confidence_level, image_path, share_token
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        `, [
           userId,
           (t.symbol || '').toUpperCase(),
           t.type || 'Long',
@@ -159,31 +161,22 @@ router.post('/import', (req, res) => {
           parseInt(t.confidenceLevel) || 5,
           t.imagePath || '',
           t.shareToken || null
-        );
+        ]);
         tradesImported++;
       }
       
       // 4. Import Journal Entries
-      const insertJournal = db.prepare(`
-        INSERT INTO journal_entries (
-          user_id, date, pre_market, session_notes, lessons, mistakes, goals, mood, rating
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      const updateJournal = db.prepare(`
-        UPDATE journal_entries SET
-          pre_market = ?, session_notes = ?, lessons = ?, mistakes = ?,
-          goals = ?, mood = ?, rating = ?, updated_at = datetime('now')
-        WHERE user_id = ? AND date = ?
-      `);
-      
-      const existingJournals = db.prepare('SELECT date FROM journal_entries WHERE user_id = ?').all(userId);
-      const existingJournalDates = new Set(existingJournals.map(j => j.date));
+      const existingJournalsResult = await client.query('SELECT date FROM journal_entries WHERE user_id = $1', [userId]);
+      const existingJournalDates = new Set(existingJournalsResult.rows.map(j => j.date));
       
       for (const j of journalEntries) {
         if (importMode === 'merge' && existingJournalDates.has(j.date)) {
-          // Merge strategy updates matching dates rather than duplicating or skipping
-          updateJournal.run(
+          await client.query(`
+            UPDATE journal_entries SET
+              pre_market = $1, session_notes = $2, lessons = $3, mistakes = $4,
+              goals = $5, mood = $6, rating = $7, updated_at = NOW()
+            WHERE user_id = $8 AND date = $9
+          `, [
             j.preMarket || '',
             j.sessionNotes || '',
             j.lessons || '',
@@ -193,10 +186,13 @@ router.post('/import', (req, res) => {
             parseInt(j.rating) || 5,
             userId,
             j.date
-          );
+          ]);
           journalsImported++;
         } else {
-          insertJournal.run(
+          await client.query(`
+            INSERT INTO journal_entries (user_id, date, pre_market, session_notes, lessons, mistakes, goals, mood, rating)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          `, [
             userId,
             j.date,
             j.preMarket || '',
@@ -206,21 +202,24 @@ router.post('/import', (req, res) => {
             j.goals || '',
             j.mood || 'neutral',
             parseInt(j.rating) || 5
-          );
+          ]);
           journalsImported++;
         }
       }
       
-      return { tradesImported, journalsImported };
-    });
-    
-    const result = executeImport();
-    res.json({
-      message: `Restore completed in ${importMode} mode.`,
-      tradesImported: result.tradesImported,
-      journalsImported: result.journalsImported
-    });
-    
+      await client.query('COMMIT');
+      
+      res.json({
+        message: `Restore completed in ${importMode} mode.`,
+        tradesImported,
+        journalsImported
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('Backup import error:', err);
     res.status(500).json({ error: err.message || 'Failed to import backup data' });

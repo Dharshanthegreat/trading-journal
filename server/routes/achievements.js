@@ -36,11 +36,11 @@ const upload = multer({
 const router = Router();
 
 // ─── Get All Achievements ─────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const achievements = db.prepare('SELECT * FROM achievements WHERE user_id = ? ORDER BY date DESC').all(req.user.id);
+    const result = await db.query('SELECT * FROM achievements WHERE user_id = $1 ORDER BY date DESC', [req.user.id]);
     
-    const formatted = achievements.map(a => ({
+    const formatted = result.rows.map(a => ({
       id: a.id,
       title: a.title,
       type: a.type,
@@ -60,7 +60,7 @@ router.get('/', (req, res) => {
 });
 
 // ─── Create Achievement ───────────────────────────────
-router.post('/', upload.single('certificate'), (req, res) => {
+router.post('/', upload.single('certificate'), async (req, res) => {
   try {
     const { title, type, accountName, amount, date, notes } = req.body;
     const userId = req.user.id;
@@ -71,21 +71,22 @@ router.post('/', upload.single('certificate'), (req, res) => {
 
     const imagePath = req.file ? req.file.path : '';
 
-    const result = db.prepare(`
+    const result = await db.query(`
       INSERT INTO achievements (user_id, title, type, account_name, amount, date, certificate_image_path, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [
       userId,
       title,
-      type, // 'passed', 'payout', 'failed'
+      type,
       accountName || '',
       parseFloat(amount) || 0,
       date,
       imagePath,
       notes || ''
-    );
+    ]);
 
-    const a = db.prepare('SELECT * FROM achievements WHERE id = ?').get(result.lastInsertRowid);
+    const a = result.rows[0];
     res.status(201).json({
       id: a.id,
       title: a.title,
@@ -104,12 +105,13 @@ router.post('/', upload.single('certificate'), (req, res) => {
 });
 
 // ─── Delete Achievement ───────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const achievementId = req.params.id;
     const userId = req.user.id;
 
-    const a = db.prepare('SELECT * FROM achievements WHERE id = ? AND user_id = ?').get(achievementId, userId);
+    const result = await db.query('SELECT * FROM achievements WHERE id = $1 AND user_id = $2', [achievementId, userId]);
+    const a = result.rows[0];
     if (!a) {
       return res.status(404).json({ error: 'Achievement not found' });
     }
@@ -123,7 +125,7 @@ router.delete('/:id', (req, res) => {
       }
     }
 
-    db.prepare('DELETE FROM achievements WHERE id = ?').run(achievementId);
+    await db.query('DELETE FROM achievements WHERE id = $1', [achievementId]);
     res.json({ success: true, message: 'Achievement deleted' });
   } catch (err) {
     console.error('Delete achievement error:', err);

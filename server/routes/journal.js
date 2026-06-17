@@ -4,10 +4,10 @@ import db from '../db.js';
 const router = Router();
 
 // ─── Get Journal Entries ─────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { month, year } = req.query;
-    let entries;
+    let result;
 
     if (month && year) {
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -15,21 +15,21 @@ router.get('/', (req, res) => {
       const endYear = endMonth > 12 ? parseInt(year) + 1 : year;
       const endDate = `${endYear}-${String(endMonth > 12 ? 1 : endMonth).padStart(2, '0')}-01`;
 
-      entries = db.prepare(`
+      result = await db.query(`
         SELECT * FROM journal_entries
-        WHERE user_id = ? AND date >= ? AND date < ?
+        WHERE user_id = $1 AND date >= $2 AND date < $3
         ORDER BY date DESC
-      `).all(req.user.id, startDate, endDate);
+      `, [req.user.id, startDate, endDate]);
     } else {
-      entries = db.prepare(`
+      result = await db.query(`
         SELECT * FROM journal_entries
-        WHERE user_id = ?
+        WHERE user_id = $1
         ORDER BY date DESC
         LIMIT 50
-      `).all(req.user.id);
+      `, [req.user.id]);
     }
 
-    res.json(entries);
+    res.json(result.rows);
   } catch (err) {
     console.error('Get journal entries error:', err);
     res.status(500).json({ error: 'Failed to get journal entries' });
@@ -37,17 +37,18 @@ router.get('/', (req, res) => {
 });
 
 // ─── Get Entry by Date ───────────────────────────────
-router.get('/:date', (req, res) => {
+router.get('/:date', async (req, res) => {
   try {
-    const entry = db.prepare(
-      'SELECT * FROM journal_entries WHERE user_id = ? AND date = ?'
-    ).get(req.user.id, req.params.date);
+    const result = await db.query(
+      'SELECT * FROM journal_entries WHERE user_id = $1 AND date = $2',
+      [req.user.id, req.params.date]
+    );
 
-    if (!entry) {
+    if (result.rows.length === 0) {
       return res.json(null);
     }
 
-    res.json(entry);
+    res.json(result.rows[0]);
   } catch (err) {
     console.error('Get journal entry error:', err);
     res.status(500).json({ error: 'Failed to get journal entry' });
@@ -55,7 +56,7 @@ router.get('/:date', (req, res) => {
 });
 
 // ─── Create or Update Entry ──────────────────────────
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { date, pre_market, session_notes, lessons, mistakes, goals, mood, rating } = req.body;
 
@@ -64,36 +65,37 @@ router.post('/', (req, res) => {
     }
 
     // Upsert
-    const existing = db.prepare(
-      'SELECT id FROM journal_entries WHERE user_id = ? AND date = ?'
-    ).get(req.user.id, date);
+    const existing = await db.query(
+      'SELECT id FROM journal_entries WHERE user_id = $1 AND date = $2',
+      [req.user.id, date]
+    );
 
-    if (existing) {
-      db.prepare(`
+    if (existing.rows.length > 0) {
+      await db.query(`
         UPDATE journal_entries SET
-          pre_market = ?, session_notes = ?, lessons = ?, mistakes = ?,
-          goals = ?, mood = ?, rating = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `).run(
+          pre_market = $1, session_notes = $2, lessons = $3, mistakes = $4,
+          goals = $5, mood = $6, rating = $7, updated_at = NOW()
+        WHERE id = $8
+      `, [
         pre_market || '', session_notes || '', lessons || '', mistakes || '',
-        goals || '', mood || 'neutral', rating || 5, existing.id
-      );
+        goals || '', mood || 'neutral', rating || 5, existing.rows[0].id
+      ]);
 
-      const entry = db.prepare('SELECT * FROM journal_entries WHERE id = ?').get(existing.id);
-      return res.json(entry);
+      const entry = await db.query('SELECT * FROM journal_entries WHERE id = $1', [existing.rows[0].id]);
+      return res.json(entry.rows[0]);
     }
 
-    const result = db.prepare(`
+    const result = await db.query(`
       INSERT INTO journal_entries (user_id, date, pre_market, session_notes, lessons, mistakes, goals, mood, rating)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [
       req.user.id, date,
       pre_market || '', session_notes || '', lessons || '', mistakes || '',
       goals || '', mood || 'neutral', rating || 5
-    );
+    ]);
 
-    const entry = db.prepare('SELECT * FROM journal_entries WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(entry);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Create journal entry error:', err);
     res.status(500).json({ error: 'Failed to save journal entry' });
@@ -101,17 +103,18 @@ router.post('/', (req, res) => {
 });
 
 // ─── Delete Entry ────────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const entry = db.prepare(
-      'SELECT * FROM journal_entries WHERE id = ? AND user_id = ?'
-    ).get(req.params.id, req.user.id);
+    const result = await db.query(
+      'SELECT * FROM journal_entries WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
 
-    if (!entry) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    db.prepare('DELETE FROM journal_entries WHERE id = ?').run(req.params.id);
+    await db.query('DELETE FROM journal_entries WHERE id = $1', [req.params.id]);
     res.json({ message: 'Entry deleted' });
   } catch (err) {
     console.error('Delete journal entry error:', err);

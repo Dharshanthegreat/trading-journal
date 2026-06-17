@@ -4,16 +4,16 @@ import db from '../db.js';
 const router = Router();
 
 // ─── Get All Accounts ──────────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
-    const accounts = db.prepare('SELECT * FROM accounts WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+    const accountsResult = await db.query('SELECT * FROM accounts WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
 
     // Compute live stats for each account
-    const accountsWithStats = accounts.map(acc => {
-      const trades = db.prepare('SELECT pnl FROM trades WHERE user_id = ? AND account_id = ?').all(userId, acc.id);
-      const totalPnL = trades.reduce((accPnL, t) => accPnL + (t.pnl || 0), 0);
-      const tradesCount = trades.length;
+    const accountsWithStats = await Promise.all(accountsResult.rows.map(async (acc) => {
+      const tradesResult = await db.query('SELECT pnl FROM trades WHERE user_id = $1 AND account_id = $2', [userId, acc.id]);
+      const totalPnL = tradesResult.rows.reduce((accPnL, t) => accPnL + (t.pnl || 0), 0);
+      const tradesCount = tradesResult.rows.length;
       const currentBalance = (acc.balance || 0) + totalPnL;
 
       return {
@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
         status: acc.status || 'Active',
         createdAt: acc.created_at,
       };
-    });
+    }));
 
     res.json(accountsWithStats);
   } catch (err) {
@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
 });
 
 // ─── Create Account ────────────────────────────────────
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { accountName, accountType, balance, currency, status } = req.body;
     const userId = req.user.id;
@@ -52,12 +52,13 @@ router.post('/', (req, res) => {
     const accCurrency = currency || 'USD';
     const accStatus = status || 'Active';
 
-    const result = db.prepare(`
+    const result = await db.query(`
       INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(userId, accountName, accType, startBalance, accCurrency, accStatus);
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus]);
 
-    const newAccount = db.prepare('SELECT * FROM accounts WHERE id = ?').get(result.lastInsertRowid);
+    const newAccount = result.rows[0];
     res.status(201).json({
       id: newAccount.id,
       accountName: newAccount.account_name,
@@ -77,17 +78,17 @@ router.post('/', (req, res) => {
 });
 
 // ─── Delete Account ────────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const accountId = req.params.id;
     const userId = req.user.id;
 
-    const account = db.prepare('SELECT id FROM accounts WHERE id = ? AND user_id = ?').get(accountId, userId);
-    if (!account) {
+    const result = await db.query('SELECT id FROM accounts WHERE id = $1 AND user_id = $2', [accountId, userId]);
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    db.prepare('DELETE FROM accounts WHERE id = ?').run(accountId);
+    await db.query('DELETE FROM accounts WHERE id = $1', [accountId]);
     res.json({ success: true, message: 'Account deleted successfully' });
   } catch (err) {
     console.error('Delete account error:', err);

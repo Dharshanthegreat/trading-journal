@@ -248,7 +248,7 @@ How is your trading session going today? Feel free to ask me questions like:
             <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>Coaching Core</strong>
           </div>
           <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-            I inspect your local SQLite database of {trades.length} trades to help discover psychological bottlenecks and strategy edge calculations.
+            I inspect your PostgreSQL database of {trades.length} trades to help discover psychological bottlenecks and strategy edge calculations.
           </p>
         </div>
 

@@ -14,24 +14,24 @@ export async function syncNewsData() {
       throw new Error('Invalid calendar payload (not an array)');
     }
 
-    // Prepare upsert statement
-    const upsertStmt = db.prepare(`
-      INSERT INTO economic_news (id, title, country, date, impact, forecast, previous, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(id) DO UPDATE SET
-        forecast = excluded.forecast,
-        previous = excluded.previous,
-        impact = excluded.impact,
-        updated_at = datetime('now')
-    `);
-
     // Execute in a transaction for performance and consistency
-    const runSync = db.transaction((eventList) => {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+
       let count = 0;
-      for (const e of eventList) {
+      for (const e of events) {
         // Generate a stable composite ID
         const id = `${e.title}_${e.date}_${e.country}`.trim();
-        upsertStmt.run(
+        await client.query(`
+          INSERT INTO economic_news (id, title, country, date, impact, forecast, previous, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          ON CONFLICT(id) DO UPDATE SET
+            forecast = EXCLUDED.forecast,
+            previous = EXCLUDED.previous,
+            impact = EXCLUDED.impact,
+            updated_at = NOW()
+        `, [
           id,
           e.title || 'Untitled Event',
           e.country || '',
@@ -39,15 +39,19 @@ export async function syncNewsData() {
           e.impact || 'Low',
           e.forecast || '',
           e.previous || ''
-        );
+        ]);
         count++;
       }
-      return count;
-    });
 
-    const synchronizedCount = runSync(events);
-    console.log(`[News Agent] Successfully synchronized ${synchronizedCount} economic news events to SQLite.`);
-    return synchronizedCount;
+      await client.query('COMMIT');
+      console.log(`[News Agent] Successfully synchronized ${count} economic news events to PostgreSQL.`);
+      return count;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('[News Agent] Synchronization failed:', err);
     throw err;

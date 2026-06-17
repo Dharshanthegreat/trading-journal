@@ -60,15 +60,15 @@ router.get('/quotes', (req, res) => {
 });
 
 // ─── Get Dichotomy Reframings ────────────────────────
-router.get('/reframes', (req, res) => {
+router.get('/reframes', async (req, res) => {
   try {
-    const entries = db.prepare(`
+    const result = await db.query(`
       SELECT * FROM stoic_reframings 
-      WHERE user_id = ? 
+      WHERE user_id = $1 
       ORDER BY id DESC 
       LIMIT 30
-    `).all(req.user.id);
-    res.json(entries);
+    `, [req.user.id]);
+    res.json(result.rows);
   } catch (err) {
     console.error('Get reframings error:', err);
     res.status(500).json({ error: 'Failed to retrieve Stoic reframings' });
@@ -76,17 +76,17 @@ router.get('/reframes', (req, res) => {
 });
 
 // ─── Delete Reframing Entry ──────────────────────────
-router.delete('/reframes/:id', (req, res) => {
+router.delete('/reframes/:id', async (req, res) => {
   try {
-    const entry = db.prepare(`
-      SELECT id FROM stoic_reframings WHERE id = ? AND user_id = ?
-    `).get(req.params.id, req.user.id);
+    const result = await db.query(`
+      SELECT id FROM stoic_reframings WHERE id = $1 AND user_id = $2
+    `, [req.params.id, req.user.id]);
 
-    if (!entry) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    db.prepare('DELETE FROM stoic_reframings WHERE id = ?').run(req.params.id);
+    await db.query('DELETE FROM stoic_reframings WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'Reframe deleted' });
   } catch (err) {
     console.error('Delete reframe error:', err);
@@ -95,7 +95,7 @@ router.delete('/reframes/:id', (req, res) => {
 });
 
 // ─── Save Reframing Entry ────────────────────────────
-router.post('/reframes', (req, res) => {
+router.post('/reframes', async (req, res) => {
   try {
     const { situation, in_control, out_of_control, stoic_reframe } = req.body;
     
@@ -103,13 +103,13 @@ router.post('/reframes', (req, res) => {
       return res.status(400).json({ error: 'All fields are required to log a reframe.' });
     }
 
-    const result = db.prepare(`
+    const result = await db.query(`
       INSERT INTO stoic_reframings (user_id, situation, in_control, out_of_control, stoic_reframe, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).run(req.user.id, situation, in_control, out_of_control, stoic_reframe);
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      RETURNING *
+    `, [req.user.id, situation, in_control, out_of_control, stoic_reframe]);
 
-    const doc = db.prepare('SELECT * FROM stoic_reframings WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(doc);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Save reframe error:', err);
     res.status(500).json({ error: 'Failed to save reframe' });
@@ -168,41 +168,18 @@ Adhere to these style principles:
       });
     }
 
-    // Fallback: Simulated Llama-3.1-Nemotron-70B Stoic Mentor Engine
+    // Fallback
     const lastMsg = (Array.isArray(messages) && messages.length > 0)
       ? messages[messages.length - 1]?.content?.toLowerCase() || ''
       : '';
     let fallbackText = '';
 
     if (lastMsg.includes('drawdown') || lastMsg.includes('loss') || lastMsg.includes('lost')) {
-      fallbackText = `🏛️ **[NVIDIA Stoic Mentor - Marcus Aurelius Mode]**
-
-*“The mind adapts and converts to its own purposes the obstacle to our acting.”*
-
-When you encounter a drawdown, consider the following dichotomy:
-1. **Outside Your Control**: The market distribution of wins and losses, execution slippage, broker spreads.
-2. **Within Your Control**: Your trade sizes, moving your stop-losses, stopping trading for the day to clear your mind.
-
-Your losses are not failures; they are the statistical premium you pay to operate your edge in the markets. Close the charts, take a deep breath, and do not seek revenge on an indifferent market.`;
+      fallbackText = `🏛️ **[NVIDIA Stoic Mentor - Marcus Aurelius Mode]**\n\n*"The mind adapts and converts to its own purposes the obstacle to our acting."*\n\nWhen you encounter a drawdown, consider the following dichotomy:\n1. **Outside Your Control**: The market distribution of wins and losses, execution slippage, broker spreads.\n2. **Within Your Control**: Your trade sizes, moving your stop-losses, stopping trading for the day to clear your mind.\n\nYour losses are not failures; they are the statistical premium you pay to operate your edge in the markets.`;
     } else if (lastMsg.includes('fomo') || lastMsg.includes('chasing') || lastMsg.includes('greed')) {
-      fallbackText = `🏛️ **[NVIDIA Stoic Mentor - Seneca Mode]**
-
-*“Wealth consists not in having great possessions, but in having few wants.”*
-
-Chasing entries due to FOMO represents a desire to possess what is not yours. The market is infinite and will offer endless breakouts. 
-To control greed:
-- Accept that missing a trade does not diminish your worth.
-- Commit to entering only at your strict trigger zones.
-- Celebrate missing trades that do not fit your rules; that is a victory of discipline.`;
+      fallbackText = `🏛️ **[NVIDIA Stoic Mentor - Seneca Mode]**\n\n*"Wealth consists not in having great possessions, but in having few wants."*\n\nChasing entries due to FOMO represents a desire to possess what is not yours. The market is infinite and will offer endless breakouts.\nTo control greed:\n- Accept that missing a trade does not diminish your worth.\n- Commit to entering only at your strict trigger zones.\n- Celebrate missing trades that do not fit your rules; that is a victory of discipline.`;
     } else {
-      fallbackText = `🏛️ **[NVIDIA Stoic Mentor - Epictetus Mode]**
-
-*“First say to yourself what you would be; and then do what you have to do.”*
-
-I am here to help you navigate the mental friction of the trading session. Tell me:
-- Did you just exit a trade early out of fear?
-- Are you feeling the urge to increase position sizing after a loss?
-- Describe your current state, and let us break down what is in your power.`;
+      fallbackText = `🏛️ **[NVIDIA Stoic Mentor - Epictetus Mode]**\n\n*"First say to yourself what you would be; and then do what you have to do."*\n\nI am here to help you navigate the mental friction of the trading session. Tell me:\n- Did you just exit a trade early out of fear?\n- Are you feeling the urge to increase position sizing after a loss?\n- Describe your current state, and let us break down what is in your power.`;
     }
 
     res.json({
@@ -232,14 +209,14 @@ router.post('/analyze-situation', async (req, res) => {
     const apiKey = process.env.NVIDIA_API_KEY;
 
     const systemPrompt = `You are a Stoic Sage and trading psychologist powered by NVIDIA Llama-3.1-Nemotron-70B-Instruct.
-The user will describe a frustrating or challenging trading situation (e.g. "I got stopped out and then the market went in my direction").
+The user will describe a frustrating or challenging trading situation.
 Your task is to analyze this situation and divide it into two clear, bulleted lists:
-1. What was IN THE TRADER'S CONTROL (e.g. entry criteria, position sizing, stop-loss level, emotional reaction).
-2. What was OUT OF THE TRADER'S CONTROL (e.g. news events, market direction, spread size, slippage).
+1. What was IN THE TRADER'S CONTROL.
+2. What was OUT OF THE TRADER'S CONTROL.
 
-Then, provide a Stoic Reframe (Stoic Guidance) that advises the trader on how to handle this outcome with absolute equanimity, patience, and logic, referencing Seneca, Marcus Aurelius, or Epictetus.
+Then, provide a Stoic Reframe that advises the trader on how to handle this outcome with absolute equanimity.
 
-You MUST respond in a clean JSON string with EXACTLY this structure and NO surrounding markdown tags or additional text, so it can be parsed cleanly:
+You MUST respond in a clean JSON string with EXACTLY this structure:
 {
   "in_control": "- Bullet points of items in control...",
   "out_of_control": "- Bullet points of items out of control...",
@@ -271,29 +248,26 @@ You MUST respond in a clean JSON string with EXACTLY this structure and NO surro
 
       const result = await response.json();
       const contentText = result.choices[0]?.message?.content || '{}';
-      
-      // Clean up potential markdown code block wrappers
       const cleanJsonStr = contentText.replace(/```json/g, '').replace(/```/g, '').trim();
       
       try {
         const parsed = JSON.parse(cleanJsonStr);
         return res.json(parsed);
       } catch (e) {
-        console.warn('Failed to parse AI response as JSON, falling back to simulated parser:', contentText);
-        // Fallback to text parsing if JSON fails
+        console.warn('Failed to parse AI response as JSON, falling back:', contentText);
       }
     }
 
-    // Fallback: Simulated Llama-3.1-Nemotron-70B Situation Analyzer
+    // Fallback
     const situationLower = situation.toLowerCase();
     let inControl = '- Following pre-market entry rules\n- Your risk management settings (e.g. 1% risk size)\n- Your emotional response to the loss (avoiding revenge trading)\n- Closing the terminal to take a break';
     let outOfControl = '- The exact path the price takes after your entry\n- Institutional news spikes or spread widening\n- Quick slippage near your stop loss\n- The behaviors of other market participants';
-    let reframeText = '“Accept the things to which fate binds you, and love the people with whom fate brings you together, but do so with all your heart.” — Marcus Aurelius. The market does not know you exist, nor does it care. A stop-out is simply data, not a personal insult. Focus on executing your rules, and yield outcomes to the market.';
+    let reframeText = '"Accept the things to which fate binds you, and love the people with whom fate brings you together, but do so with all your heart." — Marcus Aurelius. The market does not know you exist, nor does it care. A stop-out is simply data, not a personal insult.';
 
     if (situationLower.includes('revenge') || situationLower.includes('overtrade') || situationLower.includes('chase')) {
       inControl = '- Closing the charts and walking away\n- Sticking to a maximum trade-per-session limit\n- Logging your emotional state before clicking buy/sell\n- Adhering to your entry checklist';
       outOfControl = '- Missing the initial breakout move\n- How fast the price expands without you\n- The market offering or not offering a pullback entry';
-      reframeText = '“No man is hurt but by himself.” — Diogenes. Missing a trade costs nothing but patience. Forcing an entry costs you capital. Reframe missed trades not as lost wealth, but as opportunities to practice self-control.';
+      reframeText = '"No man is hurt but by himself." — Diogenes. Missing a trade costs nothing but patience. Forcing an entry costs you capital.';
     }
 
     res.json({
