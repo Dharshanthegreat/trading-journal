@@ -90,7 +90,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Serve uploaded chart images
-const uploadsDir = path.join(__dirname, 'data', 'uploads');
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'data', 'uploads');
 app.use('/api/uploads', express.static(uploadsDir));
 
 // ─── Health Check ────────────────────────────────────
