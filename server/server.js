@@ -54,7 +54,8 @@ app.use(cors({
       'http://localhost:4173',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:4173',
-      'https://deft-salmiakki-522460.netlify.app'
+      'https://deft-salmiakki-522460.netlify.app',
+      'https://trading-journal-kappa-eight.vercel.app'
     ];
 
     if (allowedOrigins.includes(origin)) {
@@ -74,7 +75,10 @@ app.use(cors({
                         /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
                         /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname);
 
-      if (isTunnel || isLocalIp) {
+      const isVercel = hostname === 'trading-journal-kappa-eight.vercel.app' ||
+                       hostname.endsWith('.vercel.app');
+
+      if (isTunnel || isLocalIp || isVercel) {
         return callback(null, true);
       }
     } catch (e) {
