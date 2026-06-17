@@ -4,7 +4,7 @@ import {
   Wifi, WifiOff, Shield, Zap, TrendingUp, Lock,
   Server, Hash, Eye, EyeOff, ChevronRight, CheckCircle2,
   XCircle, AlertTriangle, Activity, BarChart2, Globe,
-  ArrowRight, Layers, Clock, LogOut
+  ArrowRight, Layers, Clock, LogOut, RefreshCw
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════
