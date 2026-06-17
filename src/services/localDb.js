@@ -1505,6 +1505,62 @@ export const handleRequest = async (fullUrl, options = {}) => {
         setStorageItem(`mt5_connection_${activeUser.id}`, null);
         return { success: true, message: 'Disconnected from MT5' };
       }
+      if (urlPath === '/mt5/sync-trades') {
+        const conn = getStorageItem(`mt5_connection_${activeUser.id}`, null);
+        if (!conn) {
+          throw { status: 400, message: 'No active MT5 connection found. Connect your account first.' };
+        }
+
+        const now = new Date();
+        const mockTrades = [
+          {
+            id: Date.now(),
+            symbol: 'EURUSD', type: 'Long', entryPrice: 1.08250, exitPrice: 1.08550,
+            lotSize: 1.5, stopLoss: 1.07900, takeProfit: 1.09000, pnl: 450.00,
+            entryTime: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(),
+            exitTime: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+            setup: 'Double Bottom Support', grade: 'A',
+            notes: `MT5 API Auto-Sync (Local Mode): EUR/USD buy bounce from 4H support on server ${conn.serverName}.`,
+            tags: ['MT5-Sync', 'EURUSD', 'Support'],
+            emotionTags: [], fomoLevel: 5, confidenceLevel: 5, accountId: null,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: Date.now() + 1,
+            symbol: 'GBPUSD', type: 'Short', entryPrice: 1.27250, exitPrice: 1.26850,
+            lotSize: 2.0, stopLoss: 1.27600, takeProfit: 1.26500, pnl: 800.00,
+            entryTime: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+            exitTime: new Date(now.getTime() - 1.5 * 60 * 60 * 1000).toISOString(),
+            setup: 'EMA Rejection', grade: 'B',
+            notes: `MT5 API Auto-Sync (Local Mode): GBP/USD short rejection on 15M EMA on server ${conn.serverName}.`,
+            tags: ['MT5-Sync', 'GBPUSD', 'Short'],
+            emotionTags: [], fomoLevel: 5, confidenceLevel: 5, accountId: null,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: Date.now() + 2,
+            symbol: 'XAUUSD', type: 'Long', entryPrice: 2340.50, exitPrice: 2334.20,
+            lotSize: 1.0, stopLoss: 2332.00, takeProfit: 2355.00, pnl: -630.00,
+            entryTime: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(),
+            exitTime: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
+            setup: 'Breakout Fail', grade: 'C',
+            notes: `MT5 API Auto-Sync (Local Mode): Stopped out early on gold false breakout on server ${conn.serverName}.`,
+            tags: ['MT5-Sync', 'XAUUSD'],
+            emotionTags: [], fomoLevel: 5, confidenceLevel: 5, accountId: null,
+            createdAt: new Date().toISOString()
+          }
+        ];
+
+        const trades = getStorageItem(`trades_${activeUser.id}`, []);
+        const newTrades = [...mockTrades, ...trades];
+        setStorageItem(`trades_${activeUser.id}`, newTrades);
+
+        return {
+          success: true,
+          count: mockTrades.length,
+          message: `Successfully synchronized ${mockTrades.length} Forex/CFD trades from MT5 server!`,
+        };
+      }
     }
     
     throw { status: 404, message: 'Route not mocked locally' };

@@ -268,6 +268,8 @@ export const mt5 = {
   disconnect: () =>
     request('/mt5/disconnect', { method: 'POST' }),
   status: () => request('/mt5/status'),
+  syncTrades: () =>
+    request('/mt5/sync-trades', { method: 'POST' }),
 };
 
 // ─── Backup ──────────────────────────────────────────

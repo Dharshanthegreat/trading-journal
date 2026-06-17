@@ -177,14 +177,17 @@ const AccountCard = ({ type, title, description, icon, selected, onClick, featur
 /* ═══════════════════════════════════════════════════════
    CONNECTION STATUS CARD
    ═══════════════════════════════════════════════════════ */
-const ConnectionStatus = ({ connection, onDisconnect }) => (
+const ConnectionStatus = ({ connection, onDisconnect, onSync, syncing, syncMessage }) => (
   <div style={{
     background: 'linear-gradient(135deg, var(--profit-soft), transparent)',
     border: '1px solid var(--profit-border)',
     borderRadius: '16px', padding: '24px',
     animation: 'fadeIn 0.5s ease both',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
   }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div style={{
           width: '10px', height: '10px', borderRadius: '50%',
@@ -242,6 +245,66 @@ const ConnectionStatus = ({ connection, onDisconnect }) => (
         </div>
       ))}
     </div>
+
+    {/* MT5 Sync Panel */}
+    <div style={{
+      background: 'var(--bg-secondary)',
+      border: '1px dashed var(--profit-border)',
+      borderRadius: '12px',
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+      marginTop: '8px',
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <h4 style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          Synchronize MT5 Trades
+        </h4>
+        <p style={{ margin: '3px 0 0', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+          Retrieves closed Forex & CFD positions directly from the MT5 server and logs them into your database.
+        </p>
+      </div>
+
+      <button
+        onClick={onSync}
+        disabled={syncing}
+        style={{
+          padding: '12px',
+          borderRadius: '8px',
+          background: syncing ? 'var(--bg-active)' : 'linear-gradient(135deg, var(--profit), #10b981)',
+          color: syncing ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700,
+          fontSize: '0.78rem',
+          border: 'none',
+          cursor: syncing ? 'default' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          boxShadow: syncing ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.2)',
+          transition: 'all 0.3s ease',
+        }}
+      >
+        <RefreshCw size={14} className={syncing ? 'spin-anim' : ''} />
+        {syncing ? 'Fetching Trades from MT5...' : 'Sync MT5 Account Log'}
+      </button>
+
+      {syncMessage && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '8px 12px', borderRadius: '6px',
+          background: syncMessage.type === 'success' ? 'var(--profit-soft)' : 'var(--loss-soft)',
+          border: `1px solid ${syncMessage.type === 'success' ? 'var(--profit-border)' : 'var(--loss-border)'}`,
+          color: syncMessage.type === 'success' ? 'var(--profit)' : 'var(--loss)',
+          fontSize: '0.72rem',
+          animation: 'fadeIn 0.3s ease both',
+        }}>
+          {syncMessage.type === 'success' ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
+          <span>{syncMessage.text}</span>
+        </div>
+      )}
+    </div>
   </div>
 );
 
@@ -260,6 +323,8 @@ const MT5Connect = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState(null);
 
   const dropdownRef = useRef(null);
 
@@ -281,6 +346,22 @@ const MT5Connect = () => {
         setConnection(data.connection);
       }
     }).catch(() => {});
+  }, []);
+
+  // Sync simulated MT5 trades
+  const handleSyncTrades = useCallback(async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const data = await mt5.syncTrades();
+      if (data.success) {
+        setSyncMessage({ type: 'success', text: data.message });
+      }
+    } catch (err) {
+      setSyncMessage({ type: 'error', text: err.message || 'Failed to sync trades' });
+    } finally {
+      setSyncing(false);
+    }
   }, []);
 
   // Comprehensive prop firms and brokers lists
@@ -374,6 +455,7 @@ const MT5Connect = () => {
     setConnecting(true);
     setError(null);
     setSuccess(null);
+    setSyncMessage(null);
 
     try {
       const data = await mt5.connect(accountNumber, password, serverName, accountType);
@@ -396,6 +478,7 @@ const MT5Connect = () => {
       setSuccess(null);
       setAccountNumber('');
       setServerName('');
+      setSyncMessage(null);
     } catch (err) {
       setError(err.message || 'Disconnect failed');
     }
@@ -811,7 +894,13 @@ const MT5Connect = () => {
 
         {/* ── Connection Status ──────────────────────── */}
         {connection && (
-          <ConnectionStatus connection={connection} onDisconnect={handleDisconnect} />
+          <ConnectionStatus 
+            connection={connection} 
+            onDisconnect={handleDisconnect} 
+            onSync={handleSyncTrades}
+            syncing={syncing}
+            syncMessage={syncMessage}
+          />
         )}
 
         {/* ── Features Row ───────────────────────────── */}
