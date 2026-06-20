@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { notion as notionApi, BASE } from '../services/api';
+import { notion as notionApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FileText, Plus, Search, Trash2, Sparkles, Cpu, Send, Brain, Info,
@@ -962,29 +962,7 @@ const Notion = () => {
                     </a>
                   </div>
                 </div>
-                {/* LIVE EMBED IFRAME */}
-                <div style={{ flex: 1.6, position: 'relative', background: '#191919', borderBottom: '1px solid var(--border)' }}>
-                  <iframe
-                    src={(() => {
-                      try {
-                        const parsed = new URL(externalUrl);
-                        const parts = parsed.pathname.split('/');
-                        const slug = parts[parts.length - 1] || '';
-                        return `${BASE}/notion/proxy/${slug}?url=${encodeURIComponent(externalUrl)}`;
-                      } catch (e) {
-                        return `${BASE}/notion/proxy?url=${encodeURIComponent(externalUrl)}`;
-                      }
-                    })()}
-                    title={title}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      background: '#191919',
-                    }}
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
-                  />
-                </div>
+
 
                 {/* PERSONAL WORKSPACE NOTES */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'var(--s5)', background: 'var(--bg-primary)' }}>
