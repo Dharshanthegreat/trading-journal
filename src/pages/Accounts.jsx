@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink
+  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink, FileText
 } from 'lucide-react';
 
 const Accounts = () => {
