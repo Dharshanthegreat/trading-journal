@@ -43,6 +43,7 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import './App.css';
 import useMagneticButtons from './hooks/useMagneticButtons';
+import CustomCursor from './components/ui/CustomCursor';
 
 // Internal parser helper to turn **bold** text into HTML strong tags
 const parseBoldText = (text) => {
@@ -1472,6 +1473,7 @@ function AppContent() {
   if (isPublicRoute) {
     return (
       <div style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
+        <CustomCursor />
         <Routes>
           <Route path="/shared/trade/:token" element={<SharedTrade />} />
         </Routes>
@@ -1481,21 +1483,30 @@ function AppContent() {
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/landing" element={<LandingPage />} />
-        <Route path="*" element={<LoginPage />} />
-      </Routes>
+      <>
+        <CustomCursor />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/landing" element={<LandingPage />} />
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
+      </>
     );
   }
 
   const isLanding = location.pathname === '/' || location.pathname === '/landing';
   if (isLanding) {
-    return <LandingPage />;
+    return (
+      <>
+        <CustomCursor />
+        <LandingPage />
+      </>
+    );
   }
 
   return (
     <div className="app-container">
+      <CustomCursor />
       <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <main className="main-content">
         {user?.isGuest && (
