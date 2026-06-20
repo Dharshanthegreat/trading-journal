@@ -964,31 +964,34 @@ const Notion = () => {
                 </div>
 
 
-                {/* PERSONAL WORKSPACE NOTES */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'var(--s5)', background: 'var(--bg-primary)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Review Notes & Reflection</span>
-                    <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Auto-saves locally</span>
+                {/* Clean, Premium Placeholder for Linked Notion Page */}
+                <div style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 'var(--s8)',
+                  textAlign: 'center',
+                  background: 'var(--bg-primary)'
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: 'var(--accent-soft)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--accent)',
+                    marginBottom: 'var(--s4)'
+                  }}>
+                    <ExternalLink size={20} />
                   </div>
-                  <textarea
-                    value={content}
-                    onChange={handleContentChange}
-                    placeholder="Write down summaries, goals, or reflections about this linked Notion workspace here..."
-                    style={{
-                      flex: 1,
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--r-md)',
-                      resize: 'none',
-                      outline: 'none',
-                      fontSize: '0.8rem',
-                      lineHeight: '1.6',
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'inherit',
-                      width: '100%',
-                      padding: '10px 12px'
-                    }}
-                  />
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Linked to Notion</h4>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', maxWidth: '280px', lineHeight: '1.4' }}>
+                    This document is synced with an external Notion resource. Use the buttons above to copy the link or open it in your browser.
+                  </p>
                 </div>
               </div>
             ) : (
