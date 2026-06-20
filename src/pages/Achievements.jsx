@@ -200,7 +200,7 @@ const Achievements = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <h4 style={{ fontSize: '0.82rem', fontWeight: 700, margin: '0 0 2px 0', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{cert.title}</h4>
                         <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--profit)', fontFamily: 'JetBrains Mono' }}>
-                          ${cert.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          ${(cert.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <span style={{ fontSize: '0.65rem', color: 'var(--profit)', fontWeight: 600 }}>{cert.accountName || 'Funded Account'}</span>
@@ -409,7 +409,7 @@ const Achievements = () => {
                 <div className="glass-deep" style={{ padding: '12px', borderRadius: 'var(--r-md)', textAlign: 'center', background: 'var(--profit-soft)' }}>
                   <span style={{ fontSize: '0.58rem', color: 'var(--profit)', textTransform: 'uppercase', fontWeight: 600 }}>Payout Claimed</span>
                   <div style={{ fontWeight: 800, fontSize: '1.4rem', color: 'var(--profit)', fontFamily: 'JetBrains Mono' }}>
-                    ${selectedAchievement.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ${(selectedAchievement.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
               )}

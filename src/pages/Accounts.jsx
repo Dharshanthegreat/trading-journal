@@ -129,10 +129,11 @@ const Accounts = () => {
     }
   };
 
-  const totalBalance = accounts.reduce((acc, curr) => acc + (curr.currentBalance || 0), 0);
-  const activeCount = accounts.filter(a => a.status === 'Active').length;
-  const passedCount = accounts.filter(a => a.status === 'Passed').length;
-  const failedCount = accounts.filter(a => a.status === 'Failed').length;
+  const accountsArray = Array.isArray(accounts) ? accounts : [];
+  const totalBalance = accountsArray.reduce((acc, curr) => acc + (curr.currentBalance || 0), 0);
+  const activeCount = accountsArray.filter(a => a.status === 'Active').length;
+  const passedCount = accountsArray.filter(a => a.status === 'Passed').length;
+  const failedCount = accountsArray.filter(a => a.status === 'Failed').length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
@@ -191,7 +192,7 @@ const Accounts = () => {
             <div key={i} className="glass skeleton" style={{ height: '220px', borderRadius: 'var(--r-lg)' }} />
           ))}
         </div>
-      ) : accounts.length === 0 ? (
+      ) : accountsArray.length === 0 ? (
         <div className="glass empty-state" style={{ padding: 'var(--s12)' }}>
           <Wallet size={32} style={{ opacity: 0.3 }} />
           <div className="empty-title">No trading accounts logged</div>
@@ -199,8 +200,8 @@ const Accounts = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s5)' }}>
-          {accounts.map(acc => {
-            const isProfit = acc.totalPnL >= 0;
+          {accountsArray.map(acc => {
+            const isProfit = (acc.totalPnL || 0) >= 0;
             return (
               <div
                 key={acc.id}
@@ -251,13 +252,13 @@ const Accounts = () => {
                   <div>
                     <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Starting Balance</span>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}>
-                      ${acc.startingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ${(acc.startingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </div>
                   <div>
                     <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Balance</span>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: acc.currentBalance >= acc.startingBalance ? 'var(--profit)' : 'var(--loss)' }}>
-                      ${acc.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)' }}>
+                      ${(acc.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>

@@ -915,7 +915,7 @@ const handleAccounts = async (url, method, body) => {
   const activeUser = getActiveUser();
   let accountsList = getStorageItem(`accounts_${activeUser.id}`, null);
   
-  if (accountsList === null || (Array.isArray(accountsList) && accountsList.length === 0)) {
+  if (!Array.isArray(accountsList) || accountsList.length === 0) {
     accountsList = [{
       id: 1,
       accountName: 'Default Account',
@@ -930,6 +930,23 @@ const handleAccounts = async (url, method, body) => {
       createdAt: new Date().toISOString()
     }];
     setStorageItem(`accounts_${activeUser.id}`, accountsList);
+  } else {
+    // Migration: make sure all stored local database accounts have startingBalance
+    let migrated = false;
+    accountsList = accountsList.map(acc => {
+      if (acc.startingBalance === undefined) {
+        acc.startingBalance = acc.balance !== undefined ? parseFloat(acc.balance) : (activeUser.accountSize || 10000);
+        migrated = true;
+      }
+      if (acc.currentBalance === undefined) {
+        acc.currentBalance = acc.startingBalance;
+        migrated = true;
+      }
+      return acc;
+    });
+    if (migrated) {
+      setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    }
   }
 
   if (url === '' && method === 'GET') {
