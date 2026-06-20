@@ -1228,65 +1228,8 @@
   line-height: 1.4;
 }
 
-/* ═══ CUSTOM CURSOR EFFECTS ═══ */
-.custom-cursor-dot-wrapper,
-.custom-cursor-ring-wrapper {
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 10000;
-  will-change: transform;
-}
-.custom-cursor-ring-wrapper {
-  z-index: 9999;
-}
-
-.custom-cursor-dot-inner {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--accent, #818cf8);
-  transform: translate(-50%, -50%) scale(1);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 8px var(--accent-glow);
-}
-
-.custom-cursor-dot-inner.hovered {
-  transform: translate(-50%, -50%) scale(0);
-}
-
-.custom-cursor-ring-inner {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(129, 140, 248, 0.45);
-  background-color: rgba(129, 140, 248, 0.02);
-  transform: translate(-50%, -50%) scale(1);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.custom-cursor-ring-inner.hovered {
-  width: 48px;
-  height: 48px;
-  background-color: rgba(129, 140, 248, 0.12);
-  border-color: rgba(129, 140, 248, 0.85);
-  box-shadow: 0 0 16px rgba(129, 140, 248, 0.2);
-}
-
-/* Hide default pointer cursor on desktop device screens */
-@media (min-width: 769px) {
-  body, a, button, input, textarea, select, [role="button"], .btn, .hero-btn, .clickable {
-    cursor: none !important;
-  }
-}
-
-/* Hide custom cursor on mobile touch screens */
-@media (max-width: 768px) {
-  .custom-cursor-dot-wrapper,
-  .custom-cursor-ring-wrapper {
-    display: none !important;
-  }
-}
+/* ═══ SPLASH CURSOR ═══ */
+/* WebGL fluid canvas handles the splash trail effect.
+   The default browser arrow cursor remains visible. */
 
 
