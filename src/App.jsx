@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, BarChart2, Brain,
   Image as ImageIcon, Settings as SettingsIcon,
