@@ -67,6 +67,7 @@ async function initDB() {
         image_path TEXT DEFAULT '',
         share_token TEXT UNIQUE,
         account_id INTEGER,
+        notion_link TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT NOW()
       );
 
@@ -128,6 +129,7 @@ async function initDB() {
         balance DOUBLE PRECISION DEFAULT 10000.0,
         currency TEXT DEFAULT 'USD',
         status TEXT DEFAULT 'Active',
+        notion_link TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT NOW()
       );
 

@@ -203,7 +203,7 @@ const LandingPage = () => {
   }, []);
 
   const handleCtaClick = () => {
-    navigate(user ? '/' : '/settings');
+    navigate(user ? '/dashboard' : '/settings');
   };
 
   return (

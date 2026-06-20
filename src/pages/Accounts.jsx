@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins
+  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink
 } from 'lucide-react';
 
 const Accounts = () => {
@@ -16,8 +16,14 @@ const Accounts = () => {
     accountType: 'Simulated',
     balance: '10000',
     currency: 'USD',
-    status: 'Active'
+    status: 'Active',
+    notionLink: ''
   });
+  const [editingLinkId, setEditingLinkId] = useState(null);
+  const [tempLink, setTempLink] = useState('');
+  const [activePlaybook, setActivePlaybook] = useState(null);
+  const [loadingPlaybook, setLoadingPlaybook] = useState(false);
+  const [playbookError, setPlaybookError] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,7 +58,8 @@ const Accounts = () => {
         accountType: formData.accountType,
         balance: parseFloat(formData.balance) || 0,
         currency: formData.currency,
-        status: formData.status
+        status: formData.status,
+        notionLink: formData.notionLink
       });
       setShowForm(false);
       setFormData({
@@ -60,13 +67,55 @@ const Accounts = () => {
         accountType: 'Simulated',
         balance: '10000',
         currency: 'USD',
-        status: 'Active'
+        status: 'Active',
+        notionLink: ''
       });
       fetchAccounts();
     } catch (err) {
       setError(err.message || 'Failed to create account');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startEditLink = (acc) => {
+    setEditingLinkId(acc.id);
+    setTempLink(acc.notionLink || '');
+  };
+
+  const saveLink = async (id) => {
+    try {
+      const account = accounts.find(a => a.id === id);
+      if (!account) return;
+      await accountsApi.update(id, {
+        accountName: account.accountName,
+        accountType: account.accountType,
+        balance: account.startingBalance,
+        currency: account.currency,
+        status: account.status,
+        notionLink: tempLink.trim()
+      });
+      setEditingLinkId(null);
+      fetchAccounts();
+    } catch (err) {
+      console.error('Failed to update account link:', err);
+      setError(err.message || 'Failed to update Notion Link');
+    }
+  };
+
+  const fetchPlaybook = async (acc) => {
+    setActivePlaybook({ title: acc.accountName, url: acc.notionLink, summary: '' });
+    setLoadingPlaybook(true);
+    setPlaybookError('');
+    try {
+      const { notion } = await import('../services/api');
+      const result = await notion.readLink(acc.notionLink);
+      setActivePlaybook({ title: acc.accountName, url: acc.notionLink, summary: result.summary });
+    } catch (err) {
+      console.error('Failed to read Notion playbook:', err);
+      setPlaybookError(err.message || 'Failed to read Notion page content. Ensure the link is correct and page is public.');
+    } finally {
+      setLoadingPlaybook(false);
     }
   };
 
@@ -227,6 +276,52 @@ const Accounts = () => {
                   </div>
                 </div>
 
+                {/* Notion Page Link Integration */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '4px' }}>
+                  {acc.notionLink ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
+                        <Globe size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                        <a href={acc.notionLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={acc.notionLink}>
+                          Notion Playbook
+                        </a>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <button onClick={() => fetchPlaybook(acc)} className="btn btn-sm btn-ghost" style={{ padding: '2px 4px', fontSize: '0.6rem', height: '20px', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <FileText size={10} /> AI
+                        </button>
+                        <button onClick={() => startEditLink(acc)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center' }} title="Edit Link">
+                          ✏️
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      {editingLinkId === acc.id ? (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <input
+                            className="input"
+                            style={{ fontSize: '0.65rem', padding: '2px 6px', height: '22px', flex: 1 }}
+                            placeholder="Paste Notion link..."
+                            value={tempLink}
+                            onChange={e => setTempLink(e.target.value)}
+                          />
+                          <button onClick={() => saveLink(acc.id)} className="btn btn-primary" style={{ padding: '0 6px', fontSize: '0.6rem', height: '22px' }}>
+                            Save
+                          </button>
+                          <button onClick={() => setEditingLinkId(null)} className="btn btn-ghost" style={{ padding: '0 4px', fontSize: '0.6rem', height: '22px' }}>
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setEditingLinkId(acc.id); setTempLink(''); }} className="btn btn-sm btn-ghost" style={{ width: '100%', padding: '4px', fontSize: '0.62rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-md)' }}>
+                          + Link Notion Workspace
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', paddingTop: '4px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Coins size={11} /> {acc.currency}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CalendarDays size={11} /> Since {acc.createdAt ? acc.createdAt.split(' ')[0] : '—'}</span>
@@ -280,6 +375,17 @@ const Accounts = () => {
                     placeholder="50000"
                     value={formData.balance}
                     onChange={e => setFormData({ ...formData, balance: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Notion Page Link (Optional)</label>
+                  <input
+                    className="input"
+                    type="url"
+                    placeholder="e.g. https://notion.so/my-playbook"
+                    value={formData.notionLink}
+                    onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
                   />
                 </div>
 
@@ -341,6 +447,67 @@ const Accounts = () => {
             <div style={{ display: 'flex', gap: 'var(--s3)', justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
               <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirm)}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notion Playbook Modal */}
+      {activePlaybook && (
+        <div className="modal-overlay" onClick={() => setActivePlaybook(null)}>
+          <div className="glass-deep modal-panel" style={{ width: 500, maxWidth: '90vw', padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: 'var(--s4)' }}>
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} style={{ color: 'var(--accent)' }} />
+                <span>AI Playbook Audit</span>
+              </div>
+              <button className="modal-close" onClick={() => setActivePlaybook(null)}><X size={18} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 2px 0', color: 'var(--text-primary)' }}>
+                  Account: {activePlaybook.title}
+                </h4>
+                {activePlaybook.url && (
+                  <a href={activePlaybook.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    {activePlaybook.url.length > 50 ? `${activePlaybook.url.substring(0, 50)}...` : activePlaybook.url} <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+
+              <div style={{
+                minHeight: '160px',
+                background: 'rgba(0,0,0,0.15)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r-md)',
+                padding: 'var(--s4)',
+                fontSize: '0.78rem',
+                lineHeight: 1.6,
+                color: 'var(--text-secondary)',
+                overflowY: 'auto',
+                maxHeight: '350px'
+              }}>
+                {loadingPlaybook ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '120px', gap: '10px' }}>
+                    <span className="spin-anim" style={{ display: 'inline-block', fontSize: '1.5rem' }}>⚡</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>AI Agent scraping & reading Notion page...</span>
+                  </div>
+                ) : playbookError ? (
+                  <div style={{ color: 'var(--loss)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ fontWeight: 700 }}>Extraction Failed</div>
+                    <div>{playbookError}</div>
+                  </div>
+                ) : (
+                  <div className="markdown-body" style={{ whiteSpace: 'pre-wrap' }}>
+                    {activePlaybook.summary}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--s5)' }}>
+              <button className="btn btn-ghost" onClick={() => setActivePlaybook(null)}>Close</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, BarChart2, Brain,
   Image as ImageIcon, Settings as SettingsIcon,
@@ -1121,7 +1121,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
   const { logout, user } = useAuth();
 
   const nav = [
-    { path: '/',              icon: <LayoutDashboard size={16}/>, label: 'Dashboard' },
+    { path: '/dashboard',     icon: <LayoutDashboard size={16}/>, label: 'Dashboard' },
     { path: '/accounts',      icon: <Wallet size={16}/>,          label: 'Accounts' },
     { path: '/journal',       icon: <BookOpen size={16}/>,        label: 'Journal' },
     { path: '/calendar',      icon: <CalendarDays size={16}/>,    label: 'Calendar' },
@@ -1233,7 +1233,7 @@ const Header = ({ onMenuToggle }) => {
   }, [dropdownOpen]);
 
   const pageNames = {
-    '/': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
+    '/': 'Landing Page', '/dashboard': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
     '/news': 'News Feed', '/notion': 'Notion Workspace', '/stoic': 'Stoic Mindset',
     '/analytics': 'Analytics', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
@@ -1446,6 +1446,11 @@ function AppContent() {
     );
   }
 
+  const isLanding = location.pathname === '/' || location.pathname === '/landing';
+  if (isLanding) {
+    return <LandingPage />;
+  }
+
   return (
     <div className="app-container">
       <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
@@ -1493,9 +1498,8 @@ function AppContent() {
         <Header onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
         <div className="page-container">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/shared/dashboard/:token" element={<Dashboard />} />
-            <Route path="/landing" element={<LandingPage />} />
             <Route path="/journal" element={<Journal />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/news" element={<News />} />
@@ -1512,6 +1516,7 @@ function AppContent() {
             <Route path="/daily-journal" element={<DailyJournal />} />
             <Route path="/charts" element={<Charts />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </main>

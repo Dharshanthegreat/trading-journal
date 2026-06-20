@@ -344,6 +344,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       emotionTags: Array.isArray(data.emotionTags) ? data.emotionTags : [],
       fomoLevel: parseInt(data.fomoLevel) || 5,
       confidenceLevel: parseInt(data.confidenceLevel) || 5,
+      notionLink: data.notionLink || '',
       createdAt: new Date().toISOString(),
       imageKeys,
       imageUrl,
@@ -456,6 +457,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       emotionTags: data.emotionTags !== undefined ? data.emotionTags : oldTrade.emotionTags,
       fomoLevel: data.fomoLevel !== undefined ? parseInt(data.fomoLevel) : oldTrade.fomoLevel,
       confidenceLevel: data.confidenceLevel !== undefined ? parseInt(data.confidenceLevel) : oldTrade.confidenceLevel,
+      notionLink: data.notionLink !== undefined ? data.notionLink : oldTrade.notionLink,
       imageKeys,
       imageUrl,
       imageUrls
@@ -924,6 +926,7 @@ const handleAccounts = async (url, method, body) => {
       tradesCount: 0,
       currency: activeUser.currency || 'USD',
       status: 'Active',
+      notionLink: '',
       createdAt: new Date().toISOString()
     }];
     setStorageItem(`accounts_${activeUser.id}`, accountsList);
@@ -949,7 +952,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, balance, currency, status } = body;
+    const { accountName, accountType, balance, currency, status, notionLink } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const newAccount = {
@@ -962,12 +965,34 @@ const handleAccounts = async (url, method, body) => {
       tradesCount: 0,
       currency: currency || 'USD',
       status: status || 'Active',
+      notionLink: notionLink || '',
       createdAt: new Date().toISOString()
     };
     
     accountsList = [newAccount, ...accountsList];
     setStorageItem(`accounts_${activeUser.id}`, accountsList);
     return newAccount;
+  }
+
+  if (url.startsWith('/') && method === 'PUT') {
+    const id = parseInt(url.slice(1));
+    const { accountName, accountType, balance, currency, status, notionLink } = body;
+    const idx = accountsList.findIndex(acc => acc.id === id);
+    if (idx === -1) throw { status: 404, message: 'Account not found' };
+
+    const updatedAccount = {
+      ...accountsList[idx],
+      accountName: accountName !== undefined ? accountName : accountsList[idx].accountName,
+      accountType: accountType !== undefined ? accountType : accountsList[idx].accountType,
+      startingBalance: balance !== undefined ? parseFloat(balance) : accountsList[idx].startingBalance,
+      currency: currency !== undefined ? currency : accountsList[idx].currency,
+      status: status !== undefined ? status : accountsList[idx].status,
+      notionLink: notionLink !== undefined ? notionLink : accountsList[idx].notionLink
+    };
+
+    accountsList[idx] = updatedAccount;
+    setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    return updatedAccount;
   }
 
   if (url.startsWith('/') && method === 'DELETE') {
@@ -1150,6 +1175,29 @@ const handleNotion = async (url, method, body) => {
       role: 'assistant',
       content: aiText
     };
+  }
+
+  if (url === '/read-link' && method === 'POST') {
+    const { url: targetUrl } = body;
+    if (!targetUrl) throw { status: 400, message: 'URL is required' };
+    
+    let pageTitle = 'Notion Page';
+    try {
+      const parsed = new URL(targetUrl);
+      pageTitle = parsed.pathname.split('/').pop()?.replace(/-/g, ' ') || 'Notion Page';
+    } catch (e) {}
+
+    const summary = `### 📓 [Local AI Agent] Notion Page Analysis: "${pageTitle}"
+
+* **Status**: Connected & Simulated Offline
+* **Source**: \`${targetUrl}\`
+* **Account/Strategy Summary**:
+  - Focus on structured trade recording, execution notes, and refining risk rules.
+  - Recommended maximum risk per trade: **1%**.
+  - Review setup guidelines daily before starting sessions.
+* **Suggested Actions**: Open the Notion page directly to review full checklists and playbook parameters.`;
+
+    return { summary };
   }
 
   throw { status: 404, message: 'Not Found' };

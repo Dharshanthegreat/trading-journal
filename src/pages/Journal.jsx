@@ -6,7 +6,7 @@ import Tesseract from 'tesseract.js';
 import {
   Plus, X, Search, Trash2,
   ArrowUpRight, ArrowDownRight,
-  Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn
+  Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn, Globe
 } from 'lucide-react';
 
 const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
@@ -21,6 +21,7 @@ const defaultForm = () => ({
   setup: '', notes: '', tags: '', emotionTags: [],
   fomoLevel: 5, confidenceLevel: 5, grade: 'B',
   accountId: '',
+  notionLink: '',
 });
 
 const Journal = () => {
@@ -41,6 +42,11 @@ const Journal = () => {
   const [accounts, setAccounts] = useState([]);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrMessage, setOcrMessage] = useState('');
+  const [extractingNotion, setExtractingNotion] = useState(false);
+  const [notionMessage, setNotionMessage] = useState('');
+  const [activePlaybook, setActivePlaybook] = useState(null);
+  const [loadingPlaybook, setLoadingPlaybook] = useState(false);
+  const [playbookError, setPlaybookError] = useState('');
 
   const parseOcrText = (text) => {
     const result = {
@@ -159,6 +165,49 @@ const Journal = () => {
     }
   };
 
+  const extractNotionLink = async () => {
+    if (!formData.notionLink.trim()) {
+      alert('Please enter a valid Notion Link first.');
+      return;
+    }
+    setExtractingNotion(true);
+    setNotionMessage('AI Agent reading Notion page...');
+    try {
+      const { notion } = await import('../services/api');
+      const result = await notion.readLink(formData.notionLink);
+      setFormData(prev => ({
+        ...prev,
+        notes: prev.notes
+          ? `${prev.notes}\n\n--- 📓 AI Playbook Checklist ---\n${result.summary}`
+          : `--- 📓 AI Playbook Checklist ---\n${result.summary}`
+      }));
+      setNotionMessage('Successfully imported playbook rules into notes!');
+    } catch (err) {
+      console.error('Failed to parse Notion link:', err);
+      setNotionMessage('Failed to extract: ensure link is correct & page public.');
+    } finally {
+      setExtractingNotion(false);
+      setTimeout(() => setNotionMessage(''), 4000);
+    }
+  };
+
+  const fetchPlaybook = async (trade) => {
+    if (!trade.notionLink) return;
+    setActivePlaybook({ title: `${trade.symbol} Trade Setup`, url: trade.notionLink, summary: '' });
+    setLoadingPlaybook(true);
+    setPlaybookError('');
+    try {
+      const { notion } = await import('../services/api');
+      const result = await notion.readLink(trade.notionLink);
+      setActivePlaybook({ title: `${trade.symbol} Trade Setup`, url: trade.notionLink, summary: result.summary });
+    } catch (err) {
+      console.error('Failed to read Notion playbook:', err);
+      setPlaybookError(err.message || 'Failed to read Notion page content. Ensure the link is correct and page is public.');
+    } finally {
+      setLoadingPlaybook(false);
+    }
+  };
+
 
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
@@ -188,6 +237,7 @@ const Journal = () => {
       confidenceLevel: trade.confidenceLevel || 5,
       grade: trade.grade || 'B',
       accountId: trade.accountId || '',
+      notionLink: trade.notionLink || '',
     });
     setEditingTrade(trade);
     setSelectedTrade(null);
@@ -282,6 +332,7 @@ const Journal = () => {
         fomoLevel: formData.fomoLevel,
         confidenceLevel: formData.confidenceLevel,
         accountId: formData.accountId || null,
+        notionLink: formData.notionLink
       };
 
       if (editingTrade) {
@@ -474,6 +525,34 @@ const Journal = () => {
                       <option key={acc.id} value={acc.id}>{acc.accountName}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="form-field full">
+                  <label className="form-label">Notion Strategy / Checklist Link</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      className="input"
+                      type="url"
+                      style={{ flex: 1 }}
+                      placeholder="e.g. https://notion.so/my-strategy-setup"
+                      value={formData.notionLink}
+                      onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={extractNotionLink}
+                      disabled={extractingNotion}
+                      className="btn btn-ghost"
+                      style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}
+                    >
+                      {extractingNotion ? 'Reading...' : 'Extract Setup via AI'}
+                    </button>
+                  </div>
+                  {notionMessage && (
+                    <div style={{ fontSize: '0.68rem', color: notionMessage.includes('Failed') ? 'var(--loss)' : 'var(--accent)', marginTop: '4px', fontWeight: 600 }}>
+                      ⚡ {notionMessage}
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-field full">
@@ -730,6 +809,19 @@ const Journal = () => {
                       { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
                       { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
                       { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' },
+                      {
+                        label: 'Notion Playbook',
+                        value: currentSelectedTrade.notionLink ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <a href={currentSelectedTrade.notionLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              View <ExternalLink size={10} />
+                            </a>
+                            <button onClick={() => fetchPlaybook(currentSelectedTrade)} className="btn btn-sm btn-ghost" style={{ padding: '1px 4px', fontSize: '0.6rem', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              AI
+                            </button>
+                          </div>
+                        ) : '—'
+                      }
                     ].map(item => (
                       <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingBottom: 'var(--s1.5)', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
@@ -877,6 +969,67 @@ const Journal = () => {
             <div style={{ display: 'flex', gap: 'var(--s3)', justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
               <button className="btn btn-danger" onClick={() => confirmDelete(deleteConfirm)}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notion Playbook Modal */}
+      {activePlaybook && (
+        <div className="modal-overlay" onClick={() => setActivePlaybook(null)}>
+          <div className="glass-deep modal-panel" style={{ width: 500, maxWidth: '90vw', padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: 'var(--s4)' }}>
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} style={{ color: 'var(--accent)' }} />
+                <span>AI Playbook Audit</span>
+              </div>
+              <button className="modal-close" onClick={() => setActivePlaybook(null)}><X size={18} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 2px 0', color: 'var(--text-primary)' }}>
+                  {activePlaybook.title}
+                </h4>
+                {activePlaybook.url && (
+                  <a href={activePlaybook.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    {activePlaybook.url.length > 50 ? `${activePlaybook.url.substring(0, 50)}...` : activePlaybook.url} <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+
+              <div style={{
+                minHeight: '160px',
+                background: 'rgba(0,0,0,0.15)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r-md)',
+                padding: 'var(--s4)',
+                fontSize: '0.78rem',
+                lineHeight: 1.6,
+                color: 'var(--text-secondary)',
+                overflowY: 'auto',
+                maxHeight: '350px'
+              }}>
+                {loadingPlaybook ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '120px', gap: '10px' }}>
+                    <span className="spin-anim" style={{ display: 'inline-block', fontSize: '1.5rem' }}>⚡</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>AI Agent scraping & reading Notion page...</span>
+                  </div>
+                ) : playbookError ? (
+                  <div style={{ color: 'var(--loss)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ fontWeight: 700 }}>Extraction Failed</div>
+                    <div>{playbookError}</div>
+                  </div>
+                ) : (
+                  <div className="markdown-body" style={{ whiteSpace: 'pre-wrap' }}>
+                    {activePlaybook.summary}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--s5)' }}>
+              <button className="btn btn-ghost" onClick={() => setActivePlaybook(null)}>Close</button>
             </div>
           </div>
         </div>

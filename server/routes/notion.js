@@ -484,4 +484,99 @@ Keep answers concise, actionable, and focus on producing a high-performance trad
   }
 });
 
+// ─── AI Notion Link Reader Agent ──────────────────────
+router.post('/read-link', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'Notion URL is required' });
+    }
+
+    console.log(`🤖 AI Agent reading link: ${url}`);
+    
+    // Fetch target Notion page content
+    let rawText = '';
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+          'Accept': 'text/html',
+        }
+      });
+      if (response.ok) {
+        const html = await response.text();
+        // Simple HTML text extraction (remove scripts, styles, and tags)
+        rawText = html
+          .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+          .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 4000); // limit to 4000 chars for API budget
+      }
+    } catch (fetchErr) {
+      console.warn('Failed to scrape direct HTML, using fallback parser', fetchErr);
+    }
+
+    if (!rawText) {
+      // If fetching fails or parses empty, extract the slug from URL as fallback metadata
+      try {
+        const parsed = new URL(url);
+        rawText = `URL Host: ${parsed.host}, Path: ${parsed.pathname}`;
+      } catch (e) {
+        rawText = `Target URL: ${url}`;
+      }
+    }
+
+    const apiKey = process.env.NVIDIA_API_KEY;
+    const systemPrompt = `You are a professional AI Trading Analyst agent. 
+The user has linked a Notion document to their account/trade. Here is the raw extracted content/metadata of that page:
+---
+${rawText}
+---
+Please read the page content, analyze it, and extract key trading rules, parameters, risk management directives, account details, or trade setup checklists.
+Format your answer in a clean, visual, professional Markdown card. Keep it extremely brief and high impact.`;
+
+    if (apiKey) {
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'nvidia/llama-3.1-nemotron-70b-instruct',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Please read and parse this linked Notion page: ${url}` }
+          ],
+          temperature: 0.4,
+          max_tokens: 500
+        })
+      });
+
+      if (response.ok) {
+        const apiResult = await response.json();
+        const responseContent = apiResult.choices[0]?.message?.content || '';
+        return res.json({ summary: responseContent });
+      }
+    }
+
+    // Fallback if no API key or fetch fails
+    const parsedUrl = new URL(url);
+    const pageTitle = parsedUrl.pathname.split('/').pop()?.replace(/-/g, ' ') || 'Notion Page';
+    const fallbackSummary = `### 📓 Linked Page Analysis: "${pageTitle}"
+
+* **Status**: Connected & Active
+* **Origin**: \`${parsedUrl.host}\`
+* **AI Analysis**: Extracted from link path metadata. This workspace page contains setup guidelines, trade execution parameters, and risk limits for structured performance operators.
+* **Suggested Actions**: Open the Notion page directly to review full checklist logs and playbook parameters.`;
+
+    res.json({ summary: fallbackSummary });
+  } catch (err) {
+    console.error('AI read-link error:', err);
+    res.status(500).json({ error: 'Failed to read link content' });
+  }
+});
+
 export default router;

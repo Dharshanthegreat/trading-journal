@@ -26,6 +26,7 @@ router.get('/', async (req, res) => {
         tradesCount,
         currency: acc.currency || 'USD',
         status: acc.status || 'Active',
+        notionLink: acc.notion_link || '',
         createdAt: acc.created_at,
       };
     }));
@@ -40,7 +41,7 @@ router.get('/', async (req, res) => {
 // ─── Create Account ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status } = req.body;
+    const { accountName, accountType, balance, currency, status, notionLink } = req.body;
     const userId = req.user.id;
 
     if (!accountName) {
@@ -53,10 +54,10 @@ router.post('/', async (req, res) => {
     const accStatus = status || 'Active';
 
     const result = await db.query(`
-      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [userId, accountName, accType, startBalance, accCurrency, accStatus]);
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '']);
 
     const newAccount = result.rows[0];
     res.status(201).json({
@@ -69,11 +70,53 @@ router.post('/', async (req, res) => {
       tradesCount: 0,
       currency: newAccount.currency,
       status: newAccount.status,
+      notionLink: newAccount.notion_link || '',
       createdAt: newAccount.created_at,
     });
   } catch (err) {
     console.error('Create account error:', err);
     res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+// ─── Update Account ────────────────────────────────────
+router.put('/:id', async (req, res) => {
+  try {
+    const { accountName, accountType, balance, currency, status, notionLink } = req.body;
+    const accountId = req.params.id;
+    const userId = req.user.id;
+
+    const existing = await db.query('SELECT id FROM accounts WHERE id = $1 AND user_id = $2', [accountId, userId]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    const result = await db.query(`
+      UPDATE accounts 
+      SET account_name = COALESCE($1, account_name),
+          account_type = COALESCE($2, account_type),
+          balance = COALESCE($3, balance),
+          currency = COALESCE($4, currency),
+          status = COALESCE($5, status),
+          notion_link = COALESCE($6, notion_link)
+      WHERE id = $7 AND user_id = $8
+      RETURNING *
+    `, [accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, accountId, userId]);
+
+    const updatedAccount = result.rows[0];
+    res.json({
+      id: updatedAccount.id,
+      accountName: updatedAccount.account_name,
+      accountType: updatedAccount.account_type,
+      startingBalance: updatedAccount.balance,
+      currency: updatedAccount.currency,
+      status: updatedAccount.status,
+      notionLink: updatedAccount.notion_link || '',
+      createdAt: updatedAccount.created_at,
+    });
+  } catch (err) {
+    console.error('Update account error:', err);
+    res.status(500).json({ error: 'Failed to update account' });
   }
 });
 

@@ -207,6 +207,11 @@ export const notion = {
       method: 'POST',
       body: JSON.stringify({ messages, content }),
     }),
+  readLink: (url) =>
+    request('/notion/read-link', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
 };
 
 // ─── Stoic Mindset ───────────────────────────────────
@@ -291,6 +296,11 @@ export const accounts = {
   create: (data) =>
     request('/accounts', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id, data) =>
+    request(`/accounts/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
   delete: (id) =>

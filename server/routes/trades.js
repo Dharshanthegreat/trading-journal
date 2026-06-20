@@ -104,8 +104,8 @@ router.get('/', async (req, res) => {
         exitTime: t.exit_time,
         fomoLevel: t.fomo_level,
         confidenceLevel: t.confidence_level,
-        imagePath: t.image_path,
         accountId: t.account_id,
+        notionLink: t.notion_link || '',
         emotionTags: safeParseJSON(t.emotion_tags, []),
         imageUrl: imgData.imageUrl,
         imageUrls: imgData.imageUrls,
@@ -129,7 +129,7 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId
+      fomoLevel, confidenceLevel, accountId, notionLink
     } = req.body;
 
     if (!symbol) {
@@ -159,8 +159,8 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
       INSERT INTO trades (
         user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
         pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
-        fomo_level, confidence_level, image_path, account_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        fomo_level, confidence_level, image_path, account_id, notion_link
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING *
     `, [
       req.user.id,
@@ -182,7 +182,8 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
       parseInt(fomoLevel) || 5,
       parseInt(confidenceLevel) || 5,
       imagePathValue,
-      dbAccountId
+      dbAccountId,
+      notionLink || ''
     ]);
 
     const trade = result.rows[0];
@@ -209,7 +210,7 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId, existingImages
+      fomoLevel, confidenceLevel, accountId, existingImages, notionLink
     } = req.body;
 
     let imagePaths = [];
@@ -265,8 +266,9 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
         symbol = $1, type = $2, entry_price = $3, exit_price = $4, lot_size = $5,
         stop_loss = $6, take_profit = $7, pnl = $8, entry_time = $9, exit_time = $10,
         setup = $11, grade = $12, notes = $13, tags = $14, emotion_tags = $15,
-        fomo_level = $16, confidence_level = $17, image_path = $18, account_id = $19
-      WHERE id = $20 AND user_id = $21
+        fomo_level = $16, confidence_level = $17, image_path = $18, account_id = $19,
+        notion_link = $20
+      WHERE id = $21 AND user_id = $22
     `, [
       symbol?.toUpperCase() || trade.symbol,
       type || trade.type,
@@ -287,6 +289,7 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
       confidenceLevel !== undefined ? parseInt(confidenceLevel) : trade.confidence_level,
       imagePathValue,
       dbAccountId,
+      notionLink !== undefined ? notionLink : trade.notion_link,
       req.params.id,
       req.user.id
     ]);
@@ -674,6 +677,7 @@ function formatTrade(t) {
     imageUrls: imgData.imageUrls,
     shareToken: t.share_token,
     accountId: t.account_id,
+    notionLink: t.notion_link || '',
     createdAt: t.created_at,
   };
 }
