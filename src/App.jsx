@@ -41,6 +41,7 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import './App.css';
+import useMagneticButtons from './hooks/useMagneticButtons';
 
 // Internal parser helper to turn **bold** text into HTML strong tags
 const parseBoldText = (text) => {
@@ -1404,6 +1405,9 @@ function AppContent() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Initialize global magnetic cursor hover effect using GSAP
+  useMagneticButtons();
 
   useEffect(() => {
     setMobileMenuOpen(false);
