@@ -834,11 +834,11 @@ function CustomCursor({
 
     function clickSplat(pointer) {
       const color = generateColor();
-      color.r *= 8.0;
-      color.g *= 8.0;
-      color.b *= 8.0;
-      let dx = 20 * (Math.random() - 0.5);
-      let dy = 20 * (Math.random() - 0.5);
+      color.r *= 4.0;
+      color.g *= 4.0;
+      color.b *= 4.0;
+      let dx = 8 * (Math.random() - 0.5);
+      let dy = 8 * (Math.random() - 0.5);
       splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
     }
 
