@@ -1,6 +1,9 @@
 import * as localDb from './localDb.js';
 
-const BASE = import.meta.env.VITE_API_URL || '/api';
+export const BASE = import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io') 
+    ? 'http://localhost:3001/api' 
+    : '/api');
 
 let isLocalMode = false;
 

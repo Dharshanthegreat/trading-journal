@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { notion as notionApi } from '../services/api';
+import { notion as notionApi, BASE } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FileText, Plus, Search, Trash2, Sparkles, Cpu, Send, Brain, Info,
@@ -970,9 +970,9 @@ const Notion = () => {
                         const parsed = new URL(externalUrl);
                         const parts = parsed.pathname.split('/');
                         const slug = parts[parts.length - 1] || '';
-                        return `/api/notion/proxy/${slug}?url=${encodeURIComponent(externalUrl)}`;
+                        return `${BASE}/notion/proxy/${slug}?url=${encodeURIComponent(externalUrl)}`;
                       } catch (e) {
-                        return `/api/notion/proxy?url=${encodeURIComponent(externalUrl)}`;
+                        return `${BASE}/notion/proxy?url=${encodeURIComponent(externalUrl)}`;
                       }
                     })()}
                     title={title}

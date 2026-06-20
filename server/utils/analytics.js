@@ -91,7 +91,7 @@ export function computeAnalytics(trades) {
   // Daily P&L (for calendar)
   const dailyMap = {};
   trades.forEach(t => {
-    const d = t.entry_time ? t.entry_time.split('T')[0] : null;
+    const d = t.entry_time ? new Date(t.entry_time).toLocaleDateString('sv-SE', { timeZone: 'America/New_York' }) : null;
     if (d) {
       if (!dailyMap[d]) dailyMap[d] = { pnl: 0, count: 0, wins: 0, losses: 0 };
       dailyMap[d].pnl += t.pnl;

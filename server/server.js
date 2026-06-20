@@ -78,7 +78,10 @@ app.use(cors({
       const isVercel = hostname === 'trading-journal-kappa-eight.vercel.app' ||
                        hostname.endsWith('.vercel.app');
 
-      if (isTunnel || isLocalIp || isVercel) {
+      const isGithubPages = hostname === 'dharshanthegreat.github.io' ||
+                            hostname.endsWith('.github.io');
+
+      if (isTunnel || isLocalIp || isVercel || isGithubPages) {
         return callback(null, true);
       }
     } catch (e) {
