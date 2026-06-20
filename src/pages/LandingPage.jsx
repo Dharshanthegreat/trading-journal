@@ -185,6 +185,118 @@ const FloatingStat = ({ label, value, color, delay, position }) => (
 );
 
 /* ═══════════════════════════════════════════════════════
+   TESTIMONIALS CAROUSEL DATA & COMPONENT
+   ═══════════════════════════════════════════════════════ */
+const testimonials = [
+  {
+    name: "Alex Rivera",
+    handle: "@riveratrades",
+    avatar: "AR",
+    text: "This journal completely transformed my risk management. The Psychology Audit feature helped me realize that 80% of my losses happened on Fridays when I was trying to force trades. Game changer.",
+    stats: "Win Rate: 58% → 67%"
+  },
+  {
+    name: "Sarah Chen",
+    handle: "@schen_fx",
+    avatar: "SC",
+    text: "The MT5 sync works flawlessly. Being able to see my equity curve automatically update without manual logging saves me hours every single weekend. Highly recommend to any serious operator.",
+    stats: "Profit Factor: 1.4 → 2.1"
+  },
+  {
+    name: "Marcus Vance",
+    handle: "@mv_capital",
+    avatar: "MV",
+    text: "The Stoic Mindset Coach is surprisingly good. Reframing drawdowns using historical quotes sounds gimmick-y but it actually keeps me extremely calm during tough weeks.",
+    stats: "Max Drawdown: -12% → -4%"
+  },
+  {
+    name: "Elena Rostova",
+    handle: "@rostova_trades",
+    avatar: "ER",
+    text: "Dual database control is exactly what I needed. I keep all my sensitive accounts local in the browser and use cloud mode for my public performance tracking account.",
+    stats: "Active Accounts: 3 Live"
+  },
+  {
+    name: "Tyler Jenkins",
+    handle: "@t_jenkins_options",
+    avatar: "TJ",
+    text: "Vite build is super fast, UI looks futuristic, and the analytics are extremely detailed. It's the cleanest trading tool I have ever used.",
+    stats: "Account Growth: +34% YTD"
+  },
+  {
+    name: "Sophia Martinez",
+    handle: "@sophia_quant",
+    avatar: "SM",
+    text: "I love the clean interface and the responsiveness. The dark claymorphic theme matches my desk setup perfectly. The statistics dashboard makes sharing logs with my team very easy.",
+    stats: "Expectancy: +$142/trade"
+  }
+];
+
+const TestimonialCard = ({ item }) => (
+  <div style={{
+    background: 'rgba(255, 255, 255, 0.02)',
+    border: '1px solid rgba(255, 255, 255, 0.06)',
+    borderRadius: '16px',
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    backdropFilter: 'blur(12px)',
+    boxSizing: 'border-box',
+    transition: 'all 0.3s ease',
+  }} className="testimonial-card">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{
+        width: '36px',
+        height: '36px',
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        color: '#ffffff',
+        boxShadow: '0 2px 10px rgba(129, 140, 248, 0.2)',
+      }}>
+        {item.avatar}
+      </div>
+      <div>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffffff' }}>{item.name}</div>
+        <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.4)' }}>{item.handle}</div>
+      </div>
+    </div>
+    <p style={{
+      fontSize: '0.8rem',
+      color: 'rgba(255, 255, 255, 0.6)',
+      lineHeight: 1.5,
+      margin: 0,
+      fontWeight: 300,
+    }}>
+      "{item.text}"
+    </p>
+    {item.stats && (
+      <div style={{
+        alignSelf: 'flex-start',
+        fontSize: '0.68rem',
+        fontWeight: 600,
+        color: '#10b981',
+        background: 'rgba(16, 185, 129, 0.1)',
+        padding: '4px 10px',
+        borderRadius: '20px',
+        border: '1px solid rgba(16, 185, 129, 0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+      }}>
+        <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981' }} />
+        {item.stats}
+      </div>
+    )}
+  </div>
+);
+
+/* ═══════════════════════════════════════════════════════
    MAIN LANDING PAGE
    ═══════════════════════════════════════════════════════ */
 const LandingPage = () => {
@@ -195,6 +307,9 @@ const LandingPage = () => {
   const heroRef = useRef(null);
   const [isMuted, setIsMuted] = useState(true);
   const audioRef = useRef(null);
+
+  const col1 = useMemo(() => [...testimonials.slice(0, 3), ...testimonials.slice(0, 3), ...testimonials.slice(0, 3)], []);
+  const col2 = useMemo(() => [...testimonials.slice(3, 6), ...testimonials.slice(3, 6), ...testimonials.slice(3, 6)], []);
 
   useEffect(() => {
     setLoaded(true);
@@ -445,6 +560,44 @@ const LandingPage = () => {
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.7rem;
           white-space: nowrap;
+        }
+
+        /* Testimonials Carousel styles */
+        .testimonial-track-container .testimonial-track {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .testimonial-track-container .track-up {
+          animation: scroll-up 24s linear infinite;
+        }
+        .testimonial-track-container .track-down {
+          animation: scroll-down 24s linear infinite;
+        }
+        .testimonial-track-container:hover .testimonial-track {
+          animation-play-state: paused;
+        }
+        @keyframes scroll-up {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-33.333%); }
+        }
+        @keyframes scroll-down {
+          0% { transform: translateY(-33.333%); }
+          100% { transform: translateY(0); }
+        }
+        .testimonial-card:hover {
+          transform: translateY(-2px);
+          background: rgba(255, 255, 255, 0.05) !important;
+          border-color: rgba(129, 140, 248, 0.3) !important;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        @media (max-width: 768px) {
+          .testimonial-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .testimonial-track-down-container {
+            display: none !important;
+          }
         }
       `}</style>
 
@@ -898,6 +1051,70 @@ const LandingPage = () => {
                 }}>{s.value}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS SECTION ──────────────── */}
+      <section style={{
+        padding: '100px 24px',
+        position: 'relative',
+        zIndex: 5,
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        background: 'radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 70%)',
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+            <h2 style={{
+              fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+              fontWeight: 200,
+              letterSpacing: '0.08em',
+              margin: '0 0 16px',
+              color: '#ffffff',
+            }}>
+              Trusted by Elite Operators
+            </h2>
+            <p style={{
+              fontSize: '0.95rem',
+              color: 'rgba(255,255,255,0.35)',
+              margin: 0,
+              fontWeight: 300,
+              letterSpacing: '0.05em',
+            }}>
+              Hear from systematic traders who have refined their edge using our analytics.
+            </p>
+          </div>
+
+          <div 
+            className="testimonial-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '24px',
+              height: '520px',
+              overflow: 'hidden',
+              position: 'relative',
+              maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+            }}
+          >
+            {/* Column 1 - Scrolling UP */}
+            <div className="testimonial-track-container" style={{ overflow: 'hidden', height: '100%' }}>
+              <div className="testimonial-track track-up">
+                {col1.map((item, idx) => (
+                  <TestimonialCard key={`col1-${idx}`} item={item} />
+                ))}
+              </div>
+            </div>
+
+            {/* Column 2 - Scrolling DOWN */}
+            <div className="testimonial-track-container testimonial-track-down-container" style={{ overflow: 'hidden', height: '100%' }}>
+              <div className="testimonial-track track-down">
+                {col2.map((item, idx) => (
+                  <TestimonialCard key={`col2-${idx}`} item={item} />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
