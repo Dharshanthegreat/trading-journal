@@ -833,13 +833,17 @@ function CustomCursor({
     }
 
     function clickSplat(pointer) {
-      const color = generateColor();
-      color.r *= 10.0;
-      color.g *= 10.0;
-      color.b *= 10.0;
-      let dx = 10 * (Math.random() - 0.5);
-      let dy = 30 * (Math.random() - 0.5);
-      splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
+      for (let i = 0; i < 2; i++) {
+        const color = generateColor();
+        color.r *= 15.0;
+        color.g *= 15.0;
+        color.b *= 15.0;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 50;
+        let dx = speed * Math.cos(angle);
+        let dy = speed * Math.sin(angle);
+        splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
+      }
     }
 
     function splat(x, y, dx, dy, color) {
