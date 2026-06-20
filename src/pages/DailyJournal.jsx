@@ -4,6 +4,8 @@ import { useTrades } from '../contexts/TradeContext';
 import { format, addDays, subDays } from 'date-fns';
 import { NotebookPen, ChevronLeft, ChevronRight, Save, Trash2, Sun, BookOpen, Lightbulb, AlertTriangle, Target } from 'lucide-react';
 
+import { toNewYorkDateString } from '../utils/timezone';
+
 const MOODS = [
   { emoji: '😤', label: 'Frustrated', value: 'frustrated' },
   { emoji: '😰', label: 'Anxious', value: 'anxious' },
@@ -63,7 +65,7 @@ const DailyJournal = () => {
   };
 
   // Trades for this day
-  const dayTrades = trades.filter(t => t.entryTime && t.entryTime.startsWith(dateStr));
+  const dayTrades = trades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
   const dayPnL = dayTrades.reduce((a, t) => a + (t.pnl || 0), 0);
 
   const sections = [

@@ -371,8 +371,8 @@ const Stoic = () => {
             {error && (
               <div style={{
                 padding: '10px var(--s4)',
-                background: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
+                background: 'rgba(248, 113, 113, 0.08)',
+                border: '1px solid rgba(248, 113, 113, 0.2)',
                 borderRadius: 'var(--r-md)',
                 color: 'var(--loss)',
                 fontSize: '0.72rem',
@@ -469,8 +469,8 @@ const Stoic = () => {
                             {formatMessageContent(item.in_control)}
                           </div>
                         </div>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.12)', padding: 'var(--s3)', borderRadius: 'var(--r-sm)' }}>
-                          <span style={{ fontSize: '0.55rem', color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Out of Your Control</span>
+                        <div style={{ background: 'rgba(248, 113, 113, 0.04)', border: '1px solid rgba(248, 113, 113, 0.12)', padding: 'var(--s3)', borderRadius: 'var(--r-sm)' }}>
+                          <span style={{ fontSize: '0.55rem', color: '#f87171', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Out of Your Control</span>
                           <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                             {formatMessageContent(item.out_of_control)}
                           </div>

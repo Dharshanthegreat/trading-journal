@@ -140,7 +140,24 @@ const LoginPage = () => {
               <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                 <Shield size={13} /> Browser Database Mode Active
               </div>
-              The local backend server is offline. Your trading journal records will be stored safely in your browser storage.
+              <div style={{ marginBottom: '8px' }}>
+                The local backend server is offline. Your trading journal records will be stored safely in your browser storage.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('trading_journal_local_mode', 'cloud');
+                  window.location.reload();
+                }}
+                className="btn btn-sm btn-ghost"
+                style={{
+                  width: '100%', padding: '4px 8px', fontSize: '0.68rem',
+                  color: 'var(--accent)', border: '1px solid var(--accent)', background: 'transparent',
+                  cursor: 'pointer', display: 'block', textAlign: 'center'
+                }}
+              >
+                Switch to Cloud Database Mode
+              </button>
             </div>
           )}
 

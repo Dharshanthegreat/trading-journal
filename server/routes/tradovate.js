@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { addSessionTags } from '../utils/session.js';
 
 const router = Router();
 
@@ -144,15 +145,22 @@ router.post('/sync-trades', async (req, res) => {
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
-      let inserted = 0;
       for (const t of mockTrades) {
+        let tagsList = [];
+        try {
+          tagsList = JSON.parse(t.tags || '[]');
+        } catch (e) {
+          tagsList = [];
+        }
+        tagsList = addSessionTags(tagsList, t.entry_time);
+
         await client.query(`
           INSERT INTO trades (user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit, pnl, entry_time, exit_time, setup, notes, grade, tags)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         `, [
           userId, t.symbol, t.type, t.entry_price, t.exit_price, t.lot_size,
           t.stop_loss, t.take_profit, t.pnl, t.entry_time, t.exit_time,
-          t.setup, t.notes, t.grade, t.tags
+          t.setup, t.notes, t.grade, JSON.stringify(tagsList)
         ]);
         inserted++;
       }

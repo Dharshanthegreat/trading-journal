@@ -196,6 +196,32 @@
 .calendar-trades { font-size: 0.58rem; color: var(--text-muted); line-height: 1; }
 .calendar-cell.empty { opacity: 0.25; cursor: default; background: transparent; border-color: transparent; }
 .calendar-cell.empty:hover { border-color: transparent; background: transparent; }
+.calendar-cell.week-total-cell {
+  background: var(--bg-tertiary);
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+.calendar-cell.week-total-cell.has-data {
+  border-style: solid;
+}
+.calendar-week-total-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 1px;
+  line-height: 1;
+}
+.calendar-week-total-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.22;
+  width: 100%;
+}
+
 
 /* ═══ DAILY JOURNAL ═══ */
 .journal-editor {

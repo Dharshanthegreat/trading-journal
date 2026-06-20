@@ -115,7 +115,12 @@ app.use('/api/tradingview', authenticateToken, tradingviewRoutes);
 app.use('/api/mt5', authenticateToken, mt5Routes);
 app.use('/api/backup', authenticateToken, backupRoutes);
 app.use('/api/news', authenticateToken, newsRoutes);
-app.use('/api/notion', authenticateToken, notionRoutes);
+app.use('/api/notion', (req, res, next) => {
+  if (req.path === '/proxy' || req.path.startsWith('/proxy/') || req.path.startsWith('/proxy-asset/')) {
+    return next();
+  }
+  authenticateToken(req, res, next);
+}, notionRoutes);
 app.use('/api/stoic', authenticateToken, stoicRoutes);
 app.use('/api/tradovate', authenticateToken, tradovateRoutes);
 app.use('/api/accounts', authenticateToken, accountsRoutes);
@@ -145,7 +150,13 @@ async function start() {
     // Only run normal startup if not on Vercel
     if (!process.env.VERCEL) {
       // Initialize PostgreSQL database tables
-      await db.initDB();
+      try {
+        await db.initDB();
+      } catch (dbErr) {
+        console.warn('\n  ⚠️ PostgreSQL database connection failed.');
+        console.warn('  Some backend cloud features may be offline.');
+        console.warn(`  Error details: ${dbErr.message}\n`);
+      }
 
       app.listen(PORT, () => {
         console.log(`\n  ⚡ Trading Journal API running at http://localhost:${PORT}`);

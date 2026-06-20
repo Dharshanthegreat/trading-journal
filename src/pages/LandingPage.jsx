@@ -88,7 +88,7 @@ const CandlestickCanvas = ({ style }) => {
         // Wick
         ctx.strokeStyle = c.bullish
           ? `rgba(16, 185, 129, ${alpha})`
-          : `rgba(239, 68, 68, ${alpha})`;
+          : `rgba(248, 113, 113, ${alpha})`;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(x, toY(c.high));
@@ -102,7 +102,7 @@ const CandlestickCanvas = ({ style }) => {
 
         ctx.fillStyle = c.bullish
           ? `rgba(16, 185, 129, ${alpha})`
-          : `rgba(239, 68, 68, ${alpha})`;
+          : `rgba(248, 113, 113, ${alpha})`;
         ctx.fillRect(x - candleW / 2, bodyTop, candleW, bodyH);
       }
 
@@ -366,17 +366,26 @@ const LandingPage = () => {
           justifyContent: 'center',
         }}
       >
-        {/* Layer 1: Ferrari Background Image */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: 'url(/ferrari-hero.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center 40%',
-          opacity: phase >= 1 ? 0 : 0.7,
-          transition: 'opacity 2s cubic-bezier(0.4, 0, 0.2, 1)',
-          zIndex: 1,
-        }} />
+        {/* Layer 1: Cinematic Video Background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: phase >= 1 ? 0 : 0.7,
+            transition: 'opacity 2s cubic-bezier(0.4, 0, 0.2, 1)',
+            zIndex: 1,
+          }}
+        >
+          <source src="/Create_an_ultra_realistic_cine.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
 
         {/* Layer 2: Cinematic vignette */}
         <div style={{
@@ -561,7 +570,7 @@ const LandingPage = () => {
             <div key={i} className="ticker-item">
               <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>{t.s}</span>
               <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{t.p}</span>
-              <span style={{ color: t.up ? '#10b981' : '#ef4444', fontWeight: 600, fontSize: '0.62rem' }}>{t.c}</span>
+              <span style={{ color: t.up ? '#10b981' : '#f87171', fontWeight: 600, fontSize: '0.62rem' }}>{t.c}</span>
             </div>
           ))}
         </div>

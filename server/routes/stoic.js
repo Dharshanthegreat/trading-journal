@@ -4,38 +4,102 @@ import db from '../db.js';
 const router = Router();
 
 // Curated list of trading-oriented Stoic Quotes
-const STOIC_QUOTES = [
-  {
-    author: 'Seneca',
-    quote: 'We suffer more often in imagination than in reality.',
-    translation: 'Do not panic about potential losses or missed moves that haven\'t occurred. Trade the price actions on your screen, not your fearful projections.'
-  },
-  {
-    author: 'Marcus Aurelius',
-    quote: 'You have power over your mind - not outside events. Realize this, and you will find strength.',
-    translation: 'You cannot control where the market goes or what news spikes occur. You can only control your risk size, your stop-loss placement, and your response.'
-  },
-  {
-    author: 'Epictetus',
-    quote: 'It\'s not what happens to you, but how you react to it that matters.',
-    translation: 'A loss is just a statistical cost of trading. How you manage your psychology after a loss is what determines your long-term success.'
-  },
-  {
-    author: 'Seneca',
-    quote: 'No man is more unhappy than he who never faces adversity, for he is not permitted to prove himself.',
-    translation: 'Drawdowns are the testing grounds of a professional trader. Facing them with discipline proves you are a master of your edge, not just a fair-weather scaler.'
-  },
-  {
-    author: 'Marcus Aurelius',
-    quote: 'The impediment to action advances action. What stands in the way becomes the way.',
-    translation: 'A failed breakout or stopped-out trade is information. It reveals where liquidity is actually sitting. Treat losses as lessons to refine your setups.'
-  },
-  {
-    author: 'Epictetus',
-    quote: 'Wealth consists not in having great possessions, but in having few wants.',
-    translation: 'Greed kills trading accounts. Focus on executing the process perfectly, and let go of the urge to catch every single pip or make $10,000 in a day.'
-  }
+const maxims = [
+  // Marcus Aurelius
+  { author: 'Marcus Aurelius', quote: 'You have power over your mind - not outside events. Realize this, and you will find strength.' },
+  { author: 'Marcus Aurelius', quote: 'The impediment to action advances action. What stands in the way becomes the way.' },
+  { author: 'Marcus Aurelius', quote: 'Waste no more time arguing about what a good man should be. Be one.' },
+  { author: 'Marcus Aurelius', quote: 'The happiness of your life depends upon the quality of your thoughts.' },
+  { author: 'Marcus Aurelius', quote: 'Everything we hear is an opinion, not a fact. Everything we see is a perspective, not the truth.' },
+  { author: 'Marcus Aurelius', quote: 'Accept the things to which fate binds you, and love the people with whom fate brings you together, but do so with all your heart.' },
+  { author: 'Marcus Aurelius', quote: 'Very little is needed to make a happy life; it is all within yourself, in your way of thinking.' },
+  { author: 'Marcus Aurelius', quote: 'When you arise in the morning think of what a privilege it is to be alive, to think, to enjoy, to love.' },
+  { author: 'Marcus Aurelius', quote: 'The best revenge is to be unlike him who performed the injury.' },
+  { author: 'Marcus Aurelius', quote: 'Reject your sense of injury and the injury itself disappears.' },
+  { author: 'Marcus Aurelius', quote: 'If it is not right do not do it; if it is not true do not say it.' },
+  { author: 'Marcus Aurelius', quote: 'Loss is nothing else but change, and change is Nature’s delight.' },
+
+  // Seneca
+  { author: 'Seneca', quote: 'We suffer more often in imagination than in reality.' },
+  { author: 'Seneca', quote: 'No man is more unhappy than he who never faces adversity, for he is not permitted to prove himself.' },
+  { author: 'Seneca', quote: 'Difficulties strengthen the mind, as labor does the body.' },
+  { author: 'Seneca', quote: 'If a man knows not to which port he sails, no wind is favorable.' },
+  { author: 'Seneca', quote: 'True happiness is to enjoy the present, without anxious dependence upon the future.' },
+  { author: 'Seneca', quote: 'Associate with people who are likely to improve you.' },
+  { author: 'Seneca', quote: 'He who is brave is free.' },
+  { author: 'Seneca', quote: 'Luck is what happens when preparation meets opportunity.' },
+  { author: 'Seneca', quote: 'It is the power of the mind to be unconquerable.' },
+  { author: 'Seneca', quote: 'He suffers more than is necessary, who suffers before it is necessary.' },
+  { author: 'Seneca', quote: 'While we wait for life, life passes.' },
+  { author: 'Seneca', quote: 'Most powerful is he who has himself in his own power.' },
+
+  // Epictetus
+  { author: 'Epictetus', quote: 'It\'s not what happens to you, but how you react to it that matters.' },
+  { author: 'Epictetus', quote: 'Wealth consists not in having great possessions, but in having few wants.' },
+  { author: 'Epictetus', quote: 'First say to yourself what you would be; and then do what you have to do.' },
+  { author: 'Epictetus', quote: 'Control your passions lest they take vengeance on you.' },
+  { author: 'Epictetus', quote: 'No man is free who is not master of himself.' },
+  { author: 'Epictetus', quote: 'The key is to keep company only with people who uplift you, whose presence calls forth your best.' },
+  { author: 'Epictetus', quote: 'If you want to improve, be content to be thought foolish and stupid.' },
+  { author: 'Epictetus', quote: 'Circumstances do not make the man, they only reveal him to himself.' },
+  { author: 'Epictetus', quote: 'It is impossible for a man to learn what he thinks he already knows.' },
+  { author: 'Epictetus', quote: 'Only the educated are free.' },
+  { author: 'Epictetus', quote: 'Make the best use of what is in your power, and take the rest as it happens.' },
+  { author: 'Epictetus', quote: 'He is a wise man who does not grieve for the things which he has not, but rejoices for those which he has.' },
+
+  // Zeno & others
+  { author: 'Zeno of Citium', quote: 'Man conquers the world by conquering himself.' },
+  { author: 'Zeno of Citium', quote: 'Steel your sensibilities, so that life shall hurt you as little as possible.' },
+  { author: 'Zeno of Citium', quote: 'Well-being is attained by little and little, and yet is no little thing.' },
+  { author: 'Chrysippus', quote: 'The wise man lacks nothing, and yet needs everything; the fool needs nothing, and yet lacks everything.' }
 ];
+
+const translations = [
+  'A loss is a statistical cost of trading. How you manage your psychology after a drawdown determines your long-term consistency.',
+  'You cannot control where the market goes. You can only control your risk size, your stop-loss placement, and your session discipline.',
+  'Do not panic about potential losses or missed moves that haven\'t occurred. Trade the price action on your screen, not your fearful projections.',
+  'Greed kills trading accounts. Focus on executing the process perfectly, and let go of the urge to catch every pip or make quick riches.',
+  'Drawdowns are the testing grounds of a professional trader. Facing them with strict rules proves you are a master of your edge.',
+  'A failed breakout or stopped-out trade is data. It reveals where liquidity is sitting. Treat losses as lessons to refine your setups.',
+  'The market does not care about your financial goals or your revenge feelings. Walk away when your session rules tell you to.',
+  'Discipline is doing what needs to be done, regardless of whether you feel like it. Stick to your risk parameters on every single execution.',
+  'Do not chase moves in progress. Patience is waiting for the market to come to your pre-determined support/resistance zones.',
+  'Every trade is independent of the last. A previous loss has zero bearing on the probability of your next qualified entry.',
+  'Accept the outcome of your setups before clicking the order button. If you cannot afford the risk, do not take the trade.',
+  'Avoid the urge to over-leverage or double down on losing positions. A single rule violation can wipe out weeks of disciplined work.',
+  'Quiet your mind and ignore the hype in social media chat rooms. Trade your own plan and rely on your validated backtests.',
+  'Success in trading is not about being right 100% of the time, but about managing risk so that the math works in your favor.',
+  'When you feel anger or anxiety rising after a stop-out, take it as an immediate signal to close the trading platform for the day.',
+  'Cultivate indifference to individual trade outcomes. Your edge plays out over a sequence of 100 trades, not just one.',
+  'Review your trades with absolute honesty. Self-reflection and journaling are the only paths to continuous trading growth.',
+  'Stop trading once you reach your daily loss limit. Protecting your capital is more important than recovering today\'s losses.',
+  'Focus entirely on high-quality setups. It is better to make zero trades than to force low-probability trades out of boredom.',
+  'Treat your trading as a business, not a casino. Keep precise logs, analyze metrics, and manage your risks with absolute professionalism.',
+  'Your value as a trader is measured by your rule compliance, not by your daily profit or loss balance.',
+  'The best trade you will ever make is the one where you follow your plan, even if it results in a small, disciplined stop-out.',
+  'Do not let fear prevent you from executing a valid setup. Hesitation is as dangerous as over-trading; trust your edge.',
+  'Let go of the need to predict the future. React rationally to what the market is doing right now at key structural levels.',
+  'Patience during flat markets is just as important as speed during breakouts. Protect your cash during chop zones.'
+];
+
+const generateQuotes = () => {
+  const list = [];
+  let id = 1;
+  for (let i = 0; i < maxims.length; i++) {
+    for (let j = 0; j < translations.length; j++) {
+      list.push({
+        id,
+        author: maxims[i].author,
+        quote: maxims[i].quote,
+        translation: translations[j]
+      });
+      id++;
+    }
+  }
+  return list;
+};
+
+const STOIC_QUOTES = generateQuotes();
 
 // Rate limit helper
 const rateLimitMap = new Map();

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { trades as tradesApi } from '../services/api';
 import { format } from 'date-fns';
+import { formatInNewYork } from '../utils/timezone';
 import {
   TrendingUp, TrendingDown, Clock, Activity, Zap,
   AlertCircle, DollarSign, Calendar, ExternalLink, ZoomIn, X,
-  Sun, Moon, Leaf, Compass, SunDim, Check, Palette, Shield
+  Sun, Moon, Leaf, Compass, SunDim, Check, Palette, Shield, Sparkles,
+  Paintbrush, Layers, Cpu, Grid, Droplet, Square
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -15,8 +17,13 @@ const SharedTrade = () => {
   const [trade, setTrade] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [zoomImage, setZoomImage] = useState(false);
+  const [zoomImage, setZoomImage] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIdx(0);
+  }, [trade]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -115,7 +122,7 @@ const SharedTrade = () => {
                 Trading Journal
                 <span className="badge badge-accent" style={{ fontSize: '0.58rem', padding: '1px 6px', borderRadius: 4 }}>Shared Report</span>
               </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Logged on {trade.entryTime ? format(new Date(trade.entryTime), 'MMMM d, yyyy HH:mm') : '—'}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Logged on {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMMM d, yyyy HH:mm') : '—'}</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2.5)', position: 'relative' }}>
@@ -138,20 +145,12 @@ const SharedTrade = () => {
                 title="Choose Theme"
               >
                 {theme === 'dark' && <Moon size={11} />}
-                {theme === 'light' && <Sun size={11} />}
-                {theme === 'nord' && <Compass size={11} />}
-                {theme === 'forest' && <Leaf size={11} />}
-                {theme === 'sunset' && <SunDim size={11} />}
                 {theme === 'minimal' && <Palette size={11} />}
-                {theme === 'spiderman' && <Shield size={11} />}
+                {theme === 'claymorphism' && <Paintbrush size={11} />}
                 <span style={{ fontSize: '0.68rem', fontWeight: 500 }}>
                   {theme === 'dark' && 'Dark'}
-                  {theme === 'light' && 'Light'}
-                  {theme === 'nord' && 'Nord'}
-                  {theme === 'forest' && 'Forest'}
-                  {theme === 'sunset' && 'Sunset'}
                   {theme === 'minimal' && 'Minimal'}
-                  {theme === 'spiderman' && 'Spidey'}
+                  {theme === 'claymorphism' && 'Clay'}
                 </span>
               </button>
 
@@ -176,12 +175,8 @@ const SharedTrade = () => {
                 >
                   {[
                     { id: 'dark', name: 'Dark Theme', icon: <Moon size={11} />, accent: '#818cf8' },
-                    { id: 'light', name: 'Light Theme', icon: <Sun size={11} />, accent: '#4f46e5' },
-                    { id: 'nord', name: 'Nord Arctic', icon: <Compass size={11} />, accent: '#88c0d0' },
-                    { id: 'forest', name: 'Forest Pine', icon: <Leaf size={11} />, accent: '#10b981' },
-                    { id: 'sunset', name: 'Sunset Amber', icon: <SunDim size={11} />, accent: '#f97316' },
                     { id: 'minimal', name: 'Minimalist', icon: <Palette size={11} />, accent: '#000000' },
-                    { id: 'spiderman', name: 'Spider-Man', icon: <Shield size={11} />, accent: '#e23636' },
+                    { id: 'claymorphism', name: 'Claymorphism', icon: <Paintbrush size={11} />, accent: '#6366f1' },
                   ].map(t => (
                     <button
                       key={t.id}
@@ -279,21 +274,39 @@ const SharedTrade = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
             
             {/* Screenshot Panel */}
-            {trade.imageUrl ? (
+            {trade.imageUrls && trade.imageUrls.length > 0 ? (
               <div className="glass" style={{ padding: 'var(--s4)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Chart Screenshot</span>
-                  <button onClick={() => setZoomImage(true)} className="btn btn-sm btn-ghost" style={{ padding: '3px 8px', gap: '4px', fontSize: '0.68rem', borderRadius: 'var(--r-sm)' }}>
+                  <button onClick={() => setZoomImage(trade.imageUrls[activeImageIdx])} className="btn btn-sm btn-ghost" style={{ padding: '3px 8px', gap: '4px', fontSize: '0.68rem', borderRadius: 'var(--r-sm)' }}>
                     <ZoomIn size={11}/> Zoom
                   </button>
                 </div>
-                <div style={{ overflow: 'hidden', borderRadius: 'var(--r-sm)', cursor: 'pointer', aspectRatio: '16/10', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setZoomImage(true)}>
+                <div style={{ overflow: 'hidden', borderRadius: 'var(--r-sm)', cursor: 'pointer', aspectRatio: '16/10', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setZoomImage(trade.imageUrls[activeImageIdx])}>
                   <img
-                    src={trade.imageUrl}
+                    src={trade.imageUrls[activeImageIdx]}
                     alt={`${trade.symbol} trade chart`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </div>
+                {trade.imageUrls.length > 1 && (
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '8px 0 4px 0' }}>
+                    {trade.imageUrls.map((url, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setActiveImageIdx(idx)}
+                        style={{
+                          width: 60, height: 40, borderRadius: 'var(--r-sm)', overflow: 'hidden',
+                          border: activeImageIdx === idx ? '2px solid var(--accent)' : '1px solid var(--border-mid)',
+                          cursor: 'pointer', opacity: activeImageIdx === idx ? 1 : 0.6,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <img src={url} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="glass" style={{
@@ -419,21 +432,21 @@ const SharedTrade = () => {
       </div>
 
       {/* Lightbox / Zoom View */}
-      {zoomImage && trade.imageUrl && (
+      {zoomImage && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(5,6,8,0.95)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', zIndex: 10000, padding: 'var(--s8)'
-        }} onClick={() => setZoomImage(false)}>
+        }} onClick={() => setZoomImage(null)}>
           <button style={{
             position: 'absolute', top: 20, right: 20, background: 'var(--surface-glass)',
             border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-          }} onClick={() => setZoomImage(false)}>
+          }} onClick={() => setZoomImage(null)}>
             <X size={20}/>
           </button>
           <img
-            src={trade.imageUrl}
+            src={zoomImage}
             alt="Zoomed chart screenshot"
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--r-lg)' }}
             onClick={e => e.stopPropagation()}

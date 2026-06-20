@@ -3,6 +3,8 @@ import { useTrades } from '../contexts/TradeContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target } from 'lucide-react';
 
+import { toNewYorkDateString } from '../utils/timezone';
+
 const CalendarPage = () => {
   const { analytics, fetchAnalytics, trades, fetchTrades, loading } = useTrades();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -13,14 +15,28 @@ const CalendarPage = () => {
     fetchTrades({ limit: 500 });
   }, [fetchAnalytics, fetchTrades]);
 
-  const dailyData = analytics?.daily || {};
+  const dailyData = useMemo(() => {
+    const daily = {};
+    trades.forEach(t => {
+      if (!t.entryTime) return;
+      const dateStr = toNewYorkDateString(t.entryTime);
+      if (!daily[dateStr]) {
+        daily[dateStr] = { pnl: 0, count: 0, wins: 0, losses: 0 };
+      }
+      daily[dateStr].pnl += t.pnl || 0;
+      daily[dateStr].count += 1;
+      if (t.pnl > 0) daily[dateStr].wins += 1;
+      else if (t.pnl < 0) daily[dateStr].losses += 1;
+    });
+    return daily;
+  }, [trades]);
 
-  // Generate calendar grid
+  // Generate calendar grid (starting on Sunday)
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const start = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const end = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const start = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const end = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
     const days = [];
     let day = start;
@@ -31,11 +47,27 @@ const CalendarPage = () => {
     return days;
   }, [currentMonth]);
 
+  // Calculate weekly total for a Saturday (Sunday to Saturday)
+  const getWeekTotal = (saturdayDate) => {
+    let totalPnL = 0;
+    let totalCount = 0;
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(saturdayDate, -6 + i);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const dayData = dailyData[dateStr];
+      if (dayData) {
+        totalPnL += dayData.pnl;
+        totalCount += dayData.count;
+      }
+    }
+    return { pnl: totalPnL, count: totalCount };
+  };
+
   // Get trades for selected date
   const selectedDateTrades = useMemo(() => {
     if (!selectedDate) return [];
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return trades.filter(t => t.entryTime && t.entryTime.startsWith(dateStr));
+    return trades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
   }, [selectedDate, trades]);
 
   // Monthly summary
@@ -53,7 +85,7 @@ const CalendarPage = () => {
     return { pnl, tradeCount, winDays, lossDays };
   }, [dailyData, currentMonth]);
 
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const getPnLColor = (pnl) => {
     if (pnl > 0) {
@@ -134,26 +166,50 @@ const CalendarPage = () => {
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const today = isToday(day);
 
+              const isSaturday = day.getDay() === 6;
+              const weekTotal = isSaturday ? getWeekTotal(day) : null;
+              
+              const hasData = isSaturday 
+                ? (weekTotal && weekTotal.count > 0)
+                : (dayData && dayData.count > 0);
+
+              const pnlValue = isSaturday ? weekTotal.pnl : (dayData ? dayData.pnl : 0);
+              const countValue = isSaturday ? weekTotal.count : (dayData ? dayData.count : 0);
+
               return (
                 <div
                   key={i}
-                  className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${dayData ? 'has-data' : ''}`}
+                  className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''}`}
                   style={{
-                    background: dayData ? getPnLColor(dayData.pnl) : undefined,
+                    background: hasData ? getPnLColor(pnlValue) : undefined,
                     borderColor: isSelected ? 'var(--accent)' : undefined,
                     boxShadow: isSelected ? '0 0 8px var(--accent-glow)' : undefined,
                   }}
                   onClick={() => inMonth && setSelectedDate(isSelected ? null : day)}
                 >
                   <div className="calendar-day" style={{ color: !inMonth ? 'var(--text-muted)' : today ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: today ? 700 : 500 }}>
-                    {format(day, 'd')}
+                    {format(day, 'dd')}
                   </div>
-                  {dayData && inMonth && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                      <div className="calendar-pnl" style={{ color: dayData.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                        {dayData.pnl >= 0 ? '+' : ''}{dayData.pnl.toFixed(0)}
+                  
+                  {isSaturday && (
+                    <div className="calendar-week-total-label">
+                      Week Total
+                    </div>
+                  )}
+
+                  {hasData && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '100%' }}>
+                      <div className="calendar-pnl" style={{ color: pnlValue >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                        {pnlValue >= 0 ? '+' : ''}${pnlValue.toFixed(2)}
                       </div>
-                      <div className="calendar-trades">{dayData.count} trade{dayData.count !== 1 ? 's' : ''}</div>
+                      <div className="calendar-trades">{countValue} trade{countValue !== 1 ? 's' : ''}</div>
+                    </div>
+                  )}
+                  
+                  {isSaturday && !hasData && (
+                    <div className="calendar-week-total-empty">
+                      <div className="calendar-pnl">$0.00</div>
+                      <div className="calendar-trades">0 trades</div>
                     </div>
                   )}
                 </div>

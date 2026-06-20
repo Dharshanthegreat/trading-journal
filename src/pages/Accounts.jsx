@@ -332,8 +332,8 @@ const Accounts = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="glass-deep modal-panel" style={{ width: 380, padding: 'var(--s8)' }}>
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeleteConfirm(null)}>
+          <div className="glass-deep modal-panel" style={{ width: 380, padding: 'var(--s8)' }} onClick={e => e.stopPropagation()}>
             <div className="modal-title" style={{ marginBottom: 'var(--s4)' }}>Delete Account?</div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 'var(--s6)', lineHeight: 1.7 }}>
               This will permanently remove this account profile from your dashboard. Associated trades will be untagged but not deleted.

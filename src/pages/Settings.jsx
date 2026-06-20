@@ -10,7 +10,8 @@ import {
   Settings as SettingsIcon, User, Database,
   DollarSign, Shield, Download, Palette, Moon, Sun,
   Compass, Leaf, SunDim, Clock, RefreshCw, Trash2,
-  History, AlertCircle, FileJson, Check, Share2, Eye, EyeOff
+  History, AlertCircle, FileJson, Check, Share2, Eye, EyeOff,
+  Zap, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square
 } from 'lucide-react';
 
 const Settings = () => {
@@ -625,12 +626,8 @@ const Settings = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 'var(--s3)' }}>
           {[
             { id: 'dark', name: 'Dark Slate', desc: 'Obsidian & Indigo', icon: <Moon size={14} />, bg: '#0a0b0f', accent: '#818cf8' },
-            { id: 'light', name: 'Light White', desc: 'Clean & Bright', icon: <Sun size={14} />, bg: '#f6f8fa', accent: '#4f46e5' },
-            { id: 'nord', name: 'Nord Arctic', desc: 'Cool Slate Blue', icon: <Compass size={14} />, bg: '#1a1e2a', accent: '#88c0d0' },
-            { id: 'forest', name: 'Forest Pine', desc: 'Deep Emerald', icon: <Leaf size={14} />, bg: '#0b0f0d', accent: '#10b981' },
-            { id: 'sunset', name: 'Sunset Amber', desc: 'Warm Charcoal', icon: <SunDim size={14} />, bg: '#120f0e', accent: '#f97316' },
             { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
-            { id: 'spiderman', name: 'Spider-Man', desc: 'Hero Red & Navy', icon: <Shield size={14} />, bg: '#0b0c14', accent: '#e23636' },
+            { id: 'claymorphism', name: 'Claymorphism', desc: 'Soft Clay UI', icon: <Paintbrush size={14} />, bg: '#edf2f7', accent: '#6366f1' },
           ].map(t => (
             <div
               key={t.id}

@@ -933,40 +933,48 @@ const Notion = () => {
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'space-between', 
-                  padding: '8px var(--s5)', 
+                  padding: '10px var(--s5)', 
                   background: 'var(--bg-tertiary)', 
                   borderBottom: '1px solid var(--border)' 
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1 }}>
-                    <span style={{ fontSize: '0.62rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, whiteSpace: 'nowrap' }}>Embed:</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>{externalUrl}</span>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, whiteSpace: 'nowrap' }}>Notion Link:</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '320px' }}>{externalUrl}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
                     <button
                       type="button"
                       onClick={() => handleCopyLink(externalUrl)}
                       className="btn btn-secondary btn-sm"
-                      style={{ height: '24px', padding: '0 8px', fontSize: '0.65rem', gap: '4px' }}
+                      style={{ height: '26px', padding: '0 8px', fontSize: '0.68rem', gap: '4px' }}
                     >
-                      {copied ? <Check size={10} style={{ color: 'var(--profit)' }} /> : <Copy size={10} />}
-                      {copied ? 'Copied' : 'Copy'}
+                      {copied ? <Check size={11} style={{ color: 'var(--profit)' }} /> : <Copy size={11} />}
+                      {copied ? 'Copied' : 'Copy Link'}
                     </button>
                     <a
                       href={externalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn btn-primary btn-sm"
-                      style={{ height: '24px', padding: '0 8px', fontSize: '0.65rem', gap: '4px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                      style={{ height: '26px', padding: '0 8px', fontSize: '0.68rem', gap: '4px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                     >
-                      <ExternalLink size={10} /> External Tab
+                      <ExternalLink size={11} /> Open Notion
                     </a>
                   </div>
                 </div>
-
                 {/* LIVE EMBED IFRAME */}
                 <div style={{ flex: 1.6, position: 'relative', background: '#191919', borderBottom: '1px solid var(--border)' }}>
                   <iframe
-                    src={`/api/notion/proxy?url=${encodeURIComponent(externalUrl)}`}
+                    src={(() => {
+                      try {
+                        const parsed = new URL(externalUrl);
+                        const parts = parsed.pathname.split('/');
+                        const slug = parts[parts.length - 1] || '';
+                        return `/api/notion/proxy/${slug}?url=${encodeURIComponent(externalUrl)}`;
+                      } catch (e) {
+                        return `/api/notion/proxy?url=${encodeURIComponent(externalUrl)}`;
+                      }
+                    })()}
                     title={title}
                     style={{
                       width: '100%',
@@ -979,10 +987,10 @@ const Notion = () => {
                 </div>
 
                 {/* PERSONAL WORKSPACE NOTES */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'var(--s4) var(--s5) var(--s5) var(--s5)', background: 'var(--bg-primary)' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'var(--s5)', background: 'var(--bg-primary)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Review Notes & Reflection</span>
-                    <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>Auto-saves locally</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Review Notes & Reflection</span>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Auto-saves locally</span>
                   </div>
                   <textarea
                     value={content}
@@ -995,12 +1003,12 @@ const Notion = () => {
                       borderRadius: 'var(--r-md)',
                       resize: 'none',
                       outline: 'none',
-                      fontSize: '0.78rem',
+                      fontSize: '0.8rem',
                       lineHeight: '1.6',
                       color: 'var(--text-secondary)',
                       fontFamily: 'inherit',
                       width: '100%',
-                      padding: '8px 10px'
+                      padding: '10px 12px'
                     }}
                   />
                 </div>

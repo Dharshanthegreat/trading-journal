@@ -52,7 +52,7 @@ export const TradeProvider = ({ children }) => {
     }
   }, [user]);
 
-  const addTrade = async (tradeData, file) => {
+  const addTrade = async (tradeData, files) => {
     if (user?.isGuest) {
       alert("This is a read-only showcase dashboard. You cannot add trades.");
       return null;
@@ -67,14 +67,20 @@ export const TradeProvider = ({ children }) => {
         }
       }
     });
-    if (file) formData.append('chart', file);
+    if (files) {
+      if (Array.isArray(files)) {
+        files.forEach(f => formData.append('chart', f));
+      } else {
+        formData.append('chart', files);
+      }
+    }
 
     const newTrade = await tradesApi.create(formData);
     setTrades(prev => [newTrade, ...prev]);
     return newTrade;
   };
 
-  const updateTrade = async (id, tradeData, file) => {
+  const updateTrade = async (id, tradeData, files, existingImages = null) => {
     if (user?.isGuest) {
       alert("This is a read-only showcase dashboard. You cannot modify trades.");
       return null;
@@ -89,7 +95,16 @@ export const TradeProvider = ({ children }) => {
         }
       }
     });
-    if (file) formData.append('chart', file);
+    if (existingImages) {
+      formData.append('existingImages', JSON.stringify(existingImages));
+    }
+    if (files) {
+      if (Array.isArray(files)) {
+        files.forEach(f => formData.append('chart', f));
+      } else {
+        formData.append('chart', files);
+      }
+    }
 
     const updated = await tradesApi.update(id, formData);
     setTrades(prev => prev.map(t => t.id === id ? updated : t));

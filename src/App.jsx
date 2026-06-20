@@ -7,7 +7,7 @@ import {
   Zap, CalendarDays, NotebookPen, Sun, Moon,
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
-  Trophy, Wallet, Menu, X
+  Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -1246,12 +1246,8 @@ const Header = ({ onMenuToggle }) => {
 
   const themeList = [
     { id: 'dark', name: 'Dark Theme', icon: <Moon size={13} />, bg: '#0a0b0f', accent: '#818cf8' },
-    { id: 'light', name: 'Light Theme', icon: <Sun size={13} />, bg: '#ffffff', accent: '#4f46e5' },
-    { id: 'nord', name: 'Nord Arctic', icon: <Compass size={13} />, bg: '#1a1e2a', accent: '#88c0d0' },
-    { id: 'forest', name: 'Forest Pine', icon: <Leaf size={13} />, bg: '#0b0f0d', accent: '#10b981' },
-    { id: 'sunset', name: 'Sunset Amber', icon: <SunDim size={13} />, bg: '#120f0e', accent: '#f97316' },
     { id: 'minimal', name: 'Minimalist', icon: <Palette size={13} />, bg: '#ffffff', accent: '#000000' },
-    { id: 'spiderman', name: 'Spider-Man', icon: <Shield size={13} />, bg: '#0b0c14', accent: '#e23636' },
+    { id: 'claymorphism', name: 'Claymorphism', icon: <Paintbrush size={13} />, bg: '#edf2f7', accent: '#6366f1' },
   ];
 
   const currentThemeObj = themeList.find(t => t.id === theme) || themeList[0];

@@ -12,27 +12,31 @@ import {
 const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
 const SETUPS = ['FVG', 'SMT', 'OB', 'BB', 'IRL-ERL', 'ERL-IRL'];
 
+import { toNewYorkDatetimeString, parseNewYorkDatetimeToDate, formatInNewYork } from '../utils/timezone';
+
 const defaultForm = () => ({
   symbol: '', type: 'Long', entryPrice: '', exitPrice: '', lotSize: '',
   stopLoss: '', takeProfit: '', pnl: '',
-  entryTime: new Date().toISOString().slice(0, 16), exitTime: '',
+  entryTime: toNewYorkDatetimeString(new Date()), exitTime: '',
   setup: '', notes: '', tags: '', emotionTags: [],
   fomoLevel: 5, confidenceLevel: 5, grade: 'B',
   accountId: '',
 });
 
 const Journal = () => {
-  const { trades, loading, addTrade, deleteTrade, fetchTrades, shareTrade, unshareTrade } = useTrades();
+  const { trades, loading, addTrade, updateTrade, deleteTrade, fetchTrades, shareTrade, unshareTrade } = useTrades();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(defaultForm());
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [saving, setSaving] = useState(false);
-  const [chartFile, setChartFile] = useState(null);
+  const [chartFiles, setChartFiles] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [zoomImage, setZoomImage] = useState(false);
+  const [zoomImage, setZoomImage] = useState(null);
+  const [editingTrade, setEditingTrade] = useState(null);
+  const [existingImages, setExistingImages] = useState([]);
 
   const [accounts, setAccounts] = useState([]);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -87,9 +91,9 @@ const Journal = () => {
       const hour = dateMatch[4].padStart(2, '0');
       const minute = dateMatch[5].padStart(2, '0');
       result.entryTime = `${year}-${month}-${day}T${hour}:${minute}`;
-      const entryDate = new Date(`${year}-${month}-${day}T${hour}:${minute}`);
+      const entryDate = parseNewYorkDatetimeToDate(`${year}-${month}-${day}T${hour}:${minute}`);
       const exitDate = new Date(entryDate.getTime() + 30 * 60000);
-      result.exitTime = exitDate.toISOString().slice(0, 16);
+      result.exitTime = toNewYorkDatetimeString(exitDate);
     }
 
     return result;
@@ -105,8 +109,8 @@ const Journal = () => {
     
     const mock = mockPrices[Math.floor(Math.random() * mockPrices.length)];
     const now = new Date();
-    const entryStr = new Date(now.getTime() - 45 * 60000).toISOString().slice(0, 16);
-    const exitStr = now.toISOString().slice(0, 16);
+    const entryStr = toNewYorkDatetimeString(new Date(now.getTime() - 45 * 60000));
+    const exitStr = toNewYorkDatetimeString(now);
     
     setFormData(prev => ({
       ...prev,
@@ -140,8 +144,8 @@ const Journal = () => {
         exitPrice: parsedData.exitPrice || prev.exitPrice || '18952.75',
         stopLoss: parsedData.stopLoss || prev.stopLoss || '18880.00',
         takeProfit: parsedData.takeProfit || prev.takeProfit || '18970.00',
-        entryTime: parsedData.entryTime || prev.entryTime || new Date(Date.now() - 45 * 60000).toISOString().slice(0, 16),
-        exitTime: parsedData.exitTime || prev.exitTime || new Date().toISOString().slice(0, 16),
+        entryTime: parsedData.entryTime || prev.entryTime || toNewYorkDatetimeString(new Date(Date.now() - 45 * 60000)),
+        exitTime: parsedData.exitTime || prev.exitTime || toNewYorkDatetimeString(new Date()),
         pnl: parsedData.pnl || prev.pnl || '1690.00'
       }));
       setOcrMessage('Successfully extracted trade metrics!');
@@ -155,11 +159,47 @@ const Journal = () => {
     }
   };
 
+
   const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setChartFile(file);
-    await performOcrAndPopulate(file);
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setChartFiles(prev => [...prev, ...files]);
+    await performOcrAndPopulate(files[0]);
+  };
+
+  const startEditTrade = (trade) => {
+    setExistingImages(trade.imageUrls || []);
+    setFormData({
+      symbol: trade.symbol || '',
+      type: trade.type || 'Long',
+      entryPrice: trade.entryPrice !== undefined ? String(trade.entryPrice) : '',
+      exitPrice: trade.exitPrice !== undefined ? String(trade.exitPrice) : '',
+      lotSize: trade.lotSize !== undefined ? String(trade.lotSize) : '',
+      stopLoss: trade.stopLoss !== undefined ? String(trade.stopLoss) : '',
+      takeProfit: trade.takeProfit !== undefined ? String(trade.takeProfit) : '',
+      pnl: trade.pnl !== undefined ? String(trade.pnl) : '',
+      entryTime: trade.entryTime ? toNewYorkDatetimeString(trade.entryTime) : '',
+      exitTime: trade.exitTime ? toNewYorkDatetimeString(trade.exitTime) : '',
+      setup: trade.setup || '',
+      notes: trade.notes || '',
+      tags: (trade.tags || []).join(', '),
+      emotionTags: trade.emotionTags || [],
+      fomoLevel: trade.fomoLevel || 5,
+      confidenceLevel: trade.confidenceLevel || 5,
+      grade: trade.grade || 'B',
+      accountId: trade.accountId || '',
+    });
+    setEditingTrade(trade);
+    setSelectedTrade(null);
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setFormData(defaultForm());
+    setChartFiles([]);
+    setEditingTrade(null);
+    setExistingImages([]);
   };
 
   useEffect(() => {
@@ -172,6 +212,12 @@ const Journal = () => {
     if (!selectedTrade) return null;
     return trades.find(t => t.id === selectedTrade.id) || selectedTrade;
   }, [trades, selectedTrade]);
+
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIdx(0);
+  }, [selectedTrade]);
 
   const handleShare = async () => {
     if (!currentSelectedTrade) return;
@@ -217,7 +263,7 @@ const Journal = () => {
     ev.preventDefault();
     setSaving(true);
     try {
-      await addTrade({
+      const tradeData = {
         symbol: formData.symbol,
         type: formData.type,
         entryPrice: parseFloat(formData.entryPrice) || 0,
@@ -226,8 +272,8 @@ const Journal = () => {
         stopLoss: parseFloat(formData.stopLoss) || 0,
         takeProfit: parseFloat(formData.takeProfit) || 0,
         pnl: parseFloat(formData.pnl) || 0,
-        entryTime: formData.entryTime ? new Date(formData.entryTime).toISOString() : new Date().toISOString(),
-        exitTime: formData.exitTime ? new Date(formData.exitTime).toISOString() : '',
+        entryTime: formData.entryTime ? parseNewYorkDatetimeToDate(formData.entryTime).toISOString() : new Date().toISOString(),
+        exitTime: formData.exitTime ? parseNewYorkDatetimeToDate(formData.exitTime).toISOString() : '',
         setup: formData.setup,
         grade: formData.grade,
         notes: formData.notes,
@@ -236,10 +282,18 @@ const Journal = () => {
         fomoLevel: formData.fomoLevel,
         confidenceLevel: formData.confidenceLevel,
         accountId: formData.accountId || null,
-      }, chartFile);
+      };
+
+      if (editingTrade) {
+        await updateTrade(editingTrade.id, tradeData, chartFiles, existingImages);
+      } else {
+        await addTrade(tradeData, chartFiles);
+      }
       setShowForm(false);
       setFormData(defaultForm());
-      setChartFile(null);
+      setChartFiles([]);
+      setEditingTrade(null);
+      setExistingImages([]);
     } finally {
       setSaving(false);
     }
@@ -308,7 +362,7 @@ const Journal = () => {
                 filtered.map(t => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedTrade(t)}>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                      {t.entryTime ? format(new Date(t.entryTime), 'MMM d, yy HH:mm') : '—'}
+                      {t.entryTime ? formatInNewYork(t.entryTime, 'MMM d, yy HH:mm') : '—'}
                     </td>
                     <td style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--accent)' }}>{t.symbol}</td>
                     <td>
@@ -348,11 +402,11 @@ const Journal = () => {
 
       {/* Add Trade Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelForm()}>
           <div className="glass-deep modal-panel">
             <div className="modal-header">
-              <div className="modal-title">Log New Trade</div>
-              <button className="modal-close" onClick={() => setShowForm(false)}><X size={18}/></button>
+              <div className="modal-title">{editingTrade ? 'Edit Trade' : 'Log New Trade'}</div>
+              <button className="modal-close" onClick={handleCancelForm}><X size={18}/></button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-grid">
@@ -369,19 +423,19 @@ const Journal = () => {
                 </div>
                 <div className="form-field">
                   <label className="form-label">Entry Price (Auto-OCR)</label>
-                  <input readOnly className="input" placeholder="Upload screenshot..." value={formData.entryPrice} style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', opacity: 0.8 }}/>
+                  <input className="input" placeholder="0.00" value={formData.entryPrice} onChange={e => setFormData({ ...formData, entryPrice: e.target.value })}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Exit Price (Auto-OCR)</label>
-                  <input readOnly className="input" placeholder="Upload screenshot..." value={formData.exitPrice} style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', opacity: 0.8 }}/>
+                  <input className="input" placeholder="0.00" value={formData.exitPrice} onChange={e => setFormData({ ...formData, exitPrice: e.target.value })}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Stop Loss (Auto-OCR)</label>
-                  <input readOnly className="input" placeholder="Upload screenshot..." value={formData.stopLoss} style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', opacity: 0.8 }}/>
+                  <input className="input" placeholder="0.00" value={formData.stopLoss} onChange={e => setFormData({ ...formData, stopLoss: e.target.value })}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Take Profit (Auto-OCR)</label>
-                  <input readOnly className="input" placeholder="Upload screenshot..." value={formData.takeProfit} style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', opacity: 0.8 }}/>
+                  <input className="input" placeholder="0.00" value={formData.takeProfit} onChange={e => setFormData({ ...formData, takeProfit: e.target.value })}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Lot Size</label>
@@ -393,11 +447,11 @@ const Journal = () => {
                 </div>
                 <div className="form-field">
                   <label className="form-label">Entry Time (Auto-OCR)</label>
-                  <input readOnly className="input" type="datetime-local" value={formData.entryTime} style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', opacity: 0.8 }}/>
+                  <input className="input" type="datetime-local" value={formData.entryTime} onChange={e => setFormData({ ...formData, entryTime: e.target.value })}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Exit Time (Auto-OCR)</label>
-                  <input readOnly className="input" type="datetime-local" value={formData.exitTime} style={{ background: 'var(--bg-secondary)', cursor: 'not-allowed', opacity: 0.8 }}/>
+                  <input className="input" type="datetime-local" value={formData.exitTime} onChange={e => setFormData({ ...formData, exitTime: e.target.value })}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Setup</label>
@@ -449,12 +503,82 @@ const Journal = () => {
                 </div>
 
                 <div className="form-field">
-                  <label className="form-label">Tags (comma separated)</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ margin: 0 }}>Tags (comma separated)</label>
+                    <select
+                      style={{
+                        background: 'var(--bg-primary)',
+                        border: '1px solid var(--border-mid)',
+                        borderRadius: 'var(--r-sm)',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.62rem',
+                        padding: '2px 6px',
+                        outline: 'none',
+                        cursor: 'pointer',
+                      }}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        let currentTags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
+                        if (!currentTags.some(t => t.toLowerCase() === val.toLowerCase())) {
+                          currentTags.push(val);
+                          setFormData({ ...formData, tags: currentTags.join(', ') });
+                        }
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="">+ Add Session</option>
+                      <option value="Asian Session">Asian Session</option>
+                      <option value="London Session">London Session</option>
+                      <option value="New York Session">New York Session</option>
+                    </select>
+                  </div>
                   <input className="input" placeholder="london session, breakout" value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })}/>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                    {['Asian Session', 'London Session', 'New York Session'].map(s => {
+                      const tagsArray = formData.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+                      const isSelected = tagsArray.includes(s.toLowerCase());
+                      
+                      const handleToggle = () => {
+                        let currentTags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
+                        const sLower = s.toLowerCase();
+                        if (isSelected) {
+                          currentTags = currentTags.filter(t => t.toLowerCase() !== sLower && t.toLowerCase() !== 'londan session');
+                        } else {
+                          if (!currentTags.some(t => t.toLowerCase() === sLower)) {
+                            currentTags.push(s);
+                          }
+                        }
+                        setFormData({ ...formData, tags: currentTags.join(', ') });
+                      };
+
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={handleToggle}
+                          style={{
+                            fontSize: '0.62rem',
+                            padding: '3px 8px',
+                            borderRadius: 'var(--r-sm)',
+                            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
+                            background: isSelected ? 'var(--accent-soft)' : 'transparent',
+                            color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            transition: 'all var(--t-fast)',
+                          }}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="form-field">
-                  <label className="form-label">Chart Screenshot</label>
+                <div className="form-field full">
+                  <label className="form-label">Chart Screenshots</label>
                   <label style={{
                     display: 'flex', alignItems: 'center', gap: 'var(--s2)',
                     padding: '8px 12px', border: '1px dashed var(--border-mid)',
@@ -463,9 +587,59 @@ const Journal = () => {
                     transition: 'border-color var(--t-fast)', background: 'var(--surface-glass)',
                   }}>
                     <Upload size={13}/>
-                    {chartFile ? chartFile.name : 'Attach PNG / JPG'}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange}/>
+                    Attach PNG / JPG (Select multiple)
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageChange}/>
                   </label>
+                  
+                  {/* Current screenshots to retain (only shown when editing) */}
+                  {editingTrade && existingImages.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Screenshots:</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s2)' }}>
+                        {existingImages.map((url, idx) => (
+                          <div key={idx} style={{
+                            position: 'relative', display: 'inline-flex', alignItems: 'center',
+                            gap: '6px', padding: '4px 8px', background: 'rgba(167, 139, 250, 0.08)',
+                            borderRadius: 'var(--r-md)', border: '1px solid rgba(167, 139, 250, 0.2)',
+                            fontSize: '0.7rem'
+                          }}>
+                            <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--accent)' }}>
+                              Screenshot {idx + 1}
+                            </span>
+                            <button type="button" onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== idx))} style={{
+                              background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                              padding: 2, display: 'flex', alignItems: 'center'
+                            }}>
+                              <X size={12} style={{ color: 'var(--loss)' }}/>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {chartFiles.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s2)', marginTop: '8px' }}>
+                      {chartFiles.map((file, idx) => (
+                        <div key={idx} style={{
+                          position: 'relative', display: 'inline-flex', alignItems: 'center',
+                          gap: '6px', padding: '4px 8px', background: 'var(--bg-secondary)',
+                          borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)',
+                          fontSize: '0.7rem'
+                        }}>
+                          <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </span>
+                          <button type="button" onClick={() => setChartFiles(prev => prev.filter((_, i) => i !== idx))} style={{
+                            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                            padding: 2, display: 'flex', alignItems: 'center'
+                          }}>
+                            <X size={12} style={{ color: 'var(--loss)' }}/>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {ocrMessage && (
@@ -491,9 +665,9 @@ const Journal = () => {
               </div>
 
               <div className="form-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" className="btn btn-ghost" onClick={handleCancelForm}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : '+ Log Trade'}
+                  {saving ? 'Saving...' : editingTrade ? 'Save Changes' : '+ Log Trade'}
                 </button>
               </div>
             </form>
@@ -512,10 +686,20 @@ const Journal = () => {
                 </span>
                 <span className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>{currentSelectedTrade.symbol}</span>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  {currentSelectedTrade.entryTime ? format(new Date(currentSelectedTrade.entryTime), 'MMM d, yyyy HH:mm') : '—'}
+                  {currentSelectedTrade.entryTime ? formatInNewYork(currentSelectedTrade.entryTime, 'MMM d, yyyy HH:mm') : '—'}
                 </span>
               </div>
-              <button className="modal-close" onClick={() => setSelectedTrade(null)}><X size={18}/></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => startEditTrade(currentSelectedTrade)}
+                  style={{ gap: '4px', padding: '4px 8px', fontSize: '0.72rem', height: 28 }}
+                >
+                  Edit Trade
+                </button>
+                <button className="modal-close" onClick={() => setSelectedTrade(null)} style={{ margin: 0 }}><X size={18}/></button>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--s6)', overflowY: 'auto', maxHeight: '70vh', paddingRight: 'var(--s2)' }}>
@@ -562,12 +746,32 @@ const Journal = () => {
                 </div>
 
                 {/* Screenshot Chart */}
-                {currentSelectedTrade.imageUrl ? (
-                  <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: '#0e1017', border: '1px solid var(--border)', aspectRatio: '16/10' }}>
-                    <img src={currentSelectedTrade.imageUrl} alt="Trade Chart" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <button onClick={() => setZoomImage(true)} className="btn btn-sm btn-ghost" style={{ position: 'absolute', right: 8, bottom: 8, background: 'var(--surface-glass)', padding: '4px 8px', fontSize: '0.68rem', gap: '4px' }}>
-                      <ZoomIn size={12}/> View Chart
-                    </button>
+                {currentSelectedTrade.imageUrls && currentSelectedTrade.imageUrls.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: '#0e1017', border: '1px solid var(--border)', aspectRatio: '16/10' }}>
+                      <img src={currentSelectedTrade.imageUrls[activeImageIdx]} alt="Trade Chart" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button onClick={() => setZoomImage(currentSelectedTrade.imageUrls[activeImageIdx])} className="btn btn-sm btn-ghost" style={{ position: 'absolute', right: 8, bottom: 8, background: 'var(--surface-glass)', padding: '4px 8px', fontSize: '0.68rem', gap: '4px', color: 'navy' }}>
+                        <ZoomIn size={12}/> View Chart
+                      </button>
+                    </div>
+                    {currentSelectedTrade.imageUrls.length > 1 && (
+                      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: 4 }}>
+                        {currentSelectedTrade.imageUrls.map((url, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setActiveImageIdx(idx)}
+                            style={{
+                              width: 60, height: 40, borderRadius: 'var(--r-sm)', overflow: 'hidden',
+                              border: activeImageIdx === idx ? '2px solid var(--accent)' : '1px solid var(--border-mid)',
+                              cursor: 'pointer', opacity: activeImageIdx === idx ? 1 : 0.6,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <img src={url} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 160, borderRadius: 'var(--r-lg)', border: '1px dashed var(--border)', color: 'var(--text-tertiary)', gap: 'var(--s2)' }}>
@@ -594,7 +798,7 @@ const Journal = () => {
                     {[
                       { label: 'Setup / Strategy', value: currentSelectedTrade.setup || '—' },
                       { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
-                      { label: 'Exit Time', value: currentSelectedTrade.exitTime ? format(new Date(currentSelectedTrade.exitTime), 'MMM d, HH:mm') : '—' },
+                      { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
                       { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' },
                     ].map(item => (
                       <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingBottom: 'var(--s1.5)', borderBottom: '1px solid var(--border)' }}>
@@ -711,21 +915,21 @@ const Journal = () => {
       )}
 
       {/* Lightbox / Zoom View */}
-      {zoomImage && currentSelectedTrade && currentSelectedTrade.imageUrl && (
+      {zoomImage && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(5,6,8,0.95)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', zIndex: 10000, padding: 'var(--s8)'
-        }} onClick={() => setZoomImage(false)}>
+        }} onClick={() => setZoomImage(null)}>
           <button style={{
             position: 'absolute', top: 20, right: 20, background: 'var(--surface-glass)',
             border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-          }} onClick={() => setZoomImage(false)}>
+          }} onClick={() => setZoomImage(null)}>
             <X size={20}/>
           </button>
           <img
-            src={currentSelectedTrade.imageUrl}
+            src={zoomImage}
             alt="Zoomed chart screenshot"
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--r-lg)' }}
             onClick={e => e.stopPropagation()}

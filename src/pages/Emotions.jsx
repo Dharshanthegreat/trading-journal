@@ -8,8 +8,8 @@ import { Brain, Zap, Activity } from 'lucide-react';
 
 const EMOTION_COLORS = {
   Calm: '#818cf8', Confident: '#34d399', Anxious: '#fbbf24',
-  Fearful: '#f87171', Greedy: '#f97316', FOMO: '#ef4444',
-  Disciplined: '#60a5fa', Revenge: '#dc2626',
+  Fearful: '#fca5a5', Greedy: '#f97316', FOMO: '#f87171',
+  Disciplined: '#60a5fa', Revenge: '#ef4444',
 };
 
 const Emotions = () => {
@@ -140,7 +140,7 @@ const Emotions = () => {
                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3"/>
                 <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.1)' }}/>
                 <Scatter data={analytics.scatterData}>
-                  {analytics.scatterData.map((e, i) => (<Cell key={i} fill={e.pnl >= 0 ? 'rgba(52,211,153,0.7)' : 'rgba(248,113,113,0.7)'} r={6}/>))}
+                  {analytics.scatterData.map((e, i) => (<Cell key={i} fill={e.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.7} r={6}/>))}
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
@@ -156,7 +156,7 @@ const Emotions = () => {
                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3"/>
                 <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.1)' }}/>
                 <Scatter data={analytics.scatterData}>
-                  {analytics.scatterData.map((e, i) => (<Cell key={i} fill={e.pnl >= 0 ? 'rgba(129,140,248,0.7)' : 'rgba(248,113,113,0.7)'} r={6}/>))}
+                  {analytics.scatterData.map((e, i) => (<Cell key={i} fill={e.pnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.7} r={6}/>))}
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
@@ -171,7 +171,7 @@ const Emotions = () => {
                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)"/>
                 <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }}/>
                 <Bar dataKey="avgPnl" radius={[4, 4, 0, 0]}>
-                  {analytics.fomoBar.map((e, i) => (<Cell key={i} fill={e.avgPnl >= 0 ? 'rgba(52,211,153,0.6)' : 'rgba(248,113,113,0.6)'}/>))}
+                  {analytics.fomoBar.map((e, i) => (<Cell key={i} fill={e.avgPnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.6}/>))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -186,7 +186,7 @@ const Emotions = () => {
                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)"/>
                 <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }}/>
                 <Bar dataKey="avgPnl" radius={[4, 4, 0, 0]}>
-                  {analytics.confBar.map((e, i) => (<Cell key={i} fill={e.avgPnl >= 0 ? 'rgba(129,140,248,0.6)' : 'rgba(248,113,113,0.6)'}/>))}
+                  {analytics.confBar.map((e, i) => (<Cell key={i} fill={e.avgPnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.6}/>))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

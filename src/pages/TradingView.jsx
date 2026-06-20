@@ -13,8 +13,8 @@ const signalColor = (signal) => {
     case 'Strong Buy': return '#22c55e';
     case 'Buy': return '#4ade80';
     case 'Neutral': return '#f59e0b';
-    case 'Sell': return '#f87171';
-    case 'Strong Sell': return '#ef4444';
+    case 'Sell': return '#fca5a5';
+    case 'Strong Sell': return '#f87171';
     default: return 'var(--text-muted)';
   }
 };
@@ -70,12 +70,12 @@ const SignalBar = ({ buy, sell, neutral, total }) => {
       }}>
         <div style={{ width: `${bp}%`, background: 'linear-gradient(90deg, #22c55e, #4ade80)', borderRadius: '3px 0 0 3px', transition: 'width 0.6s ease' }} />
         <div style={{ flexGrow: 1, background: 'var(--border)' }} />
-        <div style={{ width: `${sp}%`, background: 'linear-gradient(90deg, #f87171, #ef4444)', borderRadius: '0 3px 3px 0', transition: 'width 0.6s ease' }} />
+        <div style={{ width: `${sp}%`, background: 'linear-gradient(90deg, #fca5a5, #f87171)', borderRadius: '0 3px 3px 0', transition: 'width 0.6s ease' }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
         <span style={{ color: '#4ade80' }}>{buy} Buy</span>
         <span>{neutral} Neutral</span>
-        <span style={{ color: '#f87171' }}>{sell} Sell</span>
+        <span style={{ color: '#fca5a5' }}>{sell} Sell</span>
       </div>
     </div>
   );
@@ -87,7 +87,7 @@ const SRLevel = ({ level, label, strength, type, price, minPrice, maxPrice }) =>
   const position = ((level - minPrice) / range) * 100;
   const pricePos = ((price - minPrice) / range) * 100;
   const isSupport = type === 'support';
-  const color = isSupport ? '#22c55e' : '#ef4444';
+  const color = isSupport ? '#22c55e' : '#f87171';
   const opacityMap = { Strong: 1, Medium: 0.7, Weak: 0.4 };
 
   return (
@@ -308,10 +308,10 @@ const TradingView = () => {
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             padding: '4px 10px', borderRadius: 'var(--r-full)',
-            background: mcpStatus.status === 'connected' ? '#22c55e15' : mcpStatus.status === 'mock' ? '#f59e0b15' : '#ef444415',
-            border: `1px solid ${mcpStatus.status === 'connected' ? '#22c55e30' : mcpStatus.status === 'mock' ? '#f59e0b30' : '#ef444430'}`,
+            background: mcpStatus.status === 'connected' ? '#22c55e15' : mcpStatus.status === 'mock' ? '#f59e0b15' : '#f8717115',
+            border: `1px solid ${mcpStatus.status === 'connected' ? '#22c55e30' : mcpStatus.status === 'mock' ? '#f59e0b30' : '#f8717130'}`,
             fontSize: '0.6rem', fontWeight: 500,
-            color: mcpStatus.status === 'connected' ? '#22c55e' : mcpStatus.status === 'mock' ? '#f59e0b' : '#ef4444',
+            color: mcpStatus.status === 'connected' ? '#22c55e' : mcpStatus.status === 'mock' ? '#f59e0b' : '#f87171',
           }}>
             {mcpStatus.status === 'connected' ? <Wifi size={11} /> : mcpStatus.status === 'mock' ? <Zap size={11} /> : <WifiOff size={11} />}
             {mcpStatus.status === 'connected' ? 'MCP Live' : mcpStatus.status === 'mock' ? 'Demo Mode' : 'Offline'}
@@ -433,8 +433,8 @@ const TradingView = () => {
       {error && (
         <div className="anim-fade-in" style={{
           padding: '12px 16px', borderRadius: 'var(--r-md)',
-          background: '#ef444415', border: '1px solid #ef444430',
-          color: '#f87171', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px',
+          background: '#f8717115', border: '1px solid #f8717130',
+          color: '#fca5a5', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px',
         }}>
           <AlertTriangle size={14} /> {error}
         </div>
@@ -534,7 +534,7 @@ const TradingView = () => {
               {/* RSI */}
               <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px' }}>
                 <RadialGauge value={analysis.indicators.rsi.value} max={100} label="RSI"
-                  color={analysis.indicators.rsi.value < 30 ? '#22c55e' : analysis.indicators.rsi.value > 70 ? '#ef4444' : '#f59e0b'}
+                  color={analysis.indicators.rsi.value < 30 ? '#22c55e' : analysis.indicators.rsi.value > 70 ? '#f87171' : '#f59e0b'}
                   size={72} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px' }}>RSI (14)</div>
@@ -574,7 +574,7 @@ const TradingView = () => {
                     <div style={{ color: 'var(--text-muted)' }}>Hist</div>
                     <div style={{
                       fontWeight: 600, fontFamily: 'JetBrains Mono',
-                      color: analysis.indicators.macd.histogram > 0 ? '#22c55e' : '#ef4444',
+                      color: analysis.indicators.macd.histogram > 0 ? '#22c55e' : '#f87171',
                     }}>{analysis.indicators.macd.histogram > 0 ? '+' : ''}{analysis.indicators.macd.histogram}</div>
                   </div>
                 </div>
@@ -602,10 +602,10 @@ const TradingView = () => {
                 </div>
                 <div style={{
                   marginTop: '6px', padding: '4px 8px', borderRadius: 'var(--r-sm)',
-                  background: analysis.price > analysis.indicators.ema50.value ? '#22c55e10' : '#ef444410',
-                  border: `1px solid ${analysis.price > analysis.indicators.ema50.value ? '#22c55e20' : '#ef444420'}`,
+                  background: analysis.price > analysis.indicators.ema50.value ? '#22c55e10' : '#f8717110',
+                  border: `1px solid ${analysis.price > analysis.indicators.ema50.value ? '#22c55e20' : '#f8717120'}`,
                   fontSize: '0.55rem',
-                  color: analysis.price > analysis.indicators.ema50.value ? '#22c55e' : '#ef4444',
+                  color: analysis.price > analysis.indicators.ema50.value ? '#22c55e' : '#f87171',
                   textAlign: 'center',
                 }}>
                   Price ${analysis.price} is {analysis.price > analysis.indicators.ema50.value ? 'above' : 'below'} EMA 50
@@ -619,7 +619,7 @@ const TradingView = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.6rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#ef4444' }}>Upper</span>
+                    <span style={{ color: '#f87171' }}>Upper</span>
                     <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: 'var(--text-primary)' }}>${analysis.indicators.bollingerBands.upper}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -659,13 +659,13 @@ const TradingView = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>
                   <div style={{
                     textAlign: 'center', padding: '10px', borderRadius: 'var(--r-md)',
-                    background: symbolTrades.netPnl >= 0 ? '#22c55e10' : '#ef444410',
-                    border: `1px solid ${symbolTrades.netPnl >= 0 ? '#22c55e20' : '#ef444420'}`,
+                    background: symbolTrades.netPnl >= 0 ? 'var(--profit-soft)' : 'var(--loss-soft)',
+                    border: `1px solid ${symbolTrades.netPnl >= 0 ? 'var(--profit-border)' : 'var(--loss-border)'}`,
                   }}>
                     <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Net P&L</div>
                     <div style={{
                       fontSize: '1.1rem', fontWeight: 800,
-                      fontFamily: 'JetBrains Mono', color: symbolTrades.netPnl >= 0 ? '#22c55e' : '#ef4444',
+                      fontFamily: 'JetBrains Mono', color: symbolTrades.netPnl >= 0 ? 'var(--profit)' : 'var(--loss)',
                     }}>
                       {symbolTrades.netPnl >= 0 ? '+' : ''}${symbolTrades.netPnl.toFixed(2)}
                     </div>
@@ -678,14 +678,14 @@ const TradingView = () => {
                     </div>
                     <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.52rem' }}>Win Rate</div>
-                      <div style={{ fontWeight: 700, color: parseFloat(symbolTrades.winRate) >= 50 ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono' }}>{symbolTrades.winRate}%</div>
+                      <div style={{ fontWeight: 700, color: parseFloat(symbolTrades.winRate) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>{symbolTrades.winRate}%</div>
                     </div>
                     <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.52rem' }}>W / L</div>
                       <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-                        <span style={{ color: '#22c55e' }}>{symbolTrades.wins}</span>
+                        <span style={{ color: 'var(--profit)' }}>{symbolTrades.wins}</span>
                         <span style={{ color: 'var(--text-muted)' }}> / </span>
-                        <span style={{ color: '#ef4444' }}>{symbolTrades.losses}</span>
+                        <span style={{ color: 'var(--loss)' }}>{symbolTrades.losses}</span>
                       </div>
                     </div>
                     <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
@@ -747,7 +747,7 @@ const TradingView = () => {
                   <span style={{ color: 'var(--text-muted)' }}>Ratio: </span>
                   <span style={{
                     fontWeight: 700, fontFamily: 'JetBrains Mono',
-                    color: analysis.indicators.volume.ratio > 1.2 ? '#22c55e' : analysis.indicators.volume.ratio < 0.8 ? '#ef4444' : 'var(--text-primary)',
+                    color: analysis.indicators.volume.ratio > 1.2 ? '#22c55e' : analysis.indicators.volume.ratio < 0.8 ? '#f87171' : 'var(--text-primary)',
                   }}>
                     {analysis.indicators.volume.ratio}x
                   </span>
@@ -762,7 +762,7 @@ const TradingView = () => {
                 background: analysis.indicators.volume.ratio > 1.2
                   ? 'linear-gradient(90deg, #22c55e, #4ade80)'
                   : analysis.indicators.volume.ratio < 0.8
-                    ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                    ? 'linear-gradient(90deg, #f87171, #fca5a5)'
                     : 'linear-gradient(90deg, var(--accent), #a78bfa)',
                 transition: 'width 0.8s ease',
               }} />
@@ -820,11 +820,11 @@ const TradingView = () => {
                             position: 'absolute', left: `${pos}%`, bottom: '-22px',
                             transform: 'translateX(-50%)', textAlign: 'center',
                           }}>
-                            <div style={{ width: '1px', height: '10px', background: '#ef444450', margin: '0 auto' }} />
+                            <div style={{ width: '1px', height: '10px', background: '#f8717150', margin: '0 auto' }} />
                             <div style={{
-                              fontSize: '0.52rem', fontWeight: 600, color: '#ef4444',
-                              background: '#ef444412', padding: '2px 6px', borderRadius: '3px',
-                              border: '1px solid #ef444425', fontFamily: 'JetBrains Mono',
+                              fontSize: '0.52rem', fontWeight: 600, color: '#f87171',
+                              background: '#f8717112', padding: '2px 6px', borderRadius: '3px',
+                              border: '1px solid #f8717125', fontFamily: 'JetBrains Mono',
                               whiteSpace: 'nowrap',
                               opacity: r.strength === 'Strong' ? 1 : r.strength === 'Medium' ? 0.75 : 0.5,
                             }}>

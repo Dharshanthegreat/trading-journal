@@ -94,6 +94,10 @@ const setStorageItem = (key, val) => {
   }
 };
 
+const addLocalSessionTags = (tagsArr, entryTimeStr) => {
+  return tagsArr || [];
+};
+
 // ─── Local Handler Functions ─────────────────────────
 
 // 1. Auth Handlers
@@ -256,10 +260,20 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     // Inject image urls from IndexedDB
     const tradesWithImages = await Promise.all(paginated.map(async t => {
+      if (t.imageKeys && t.imageKeys.length > 0) {
+        const urls = await Promise.all(t.imageKeys.map(key => getLocalImage(key)));
+        const validUrls = urls.filter(Boolean);
+        return {
+          ...t,
+          imageUrl: validUrls[0] || null,
+          imageUrls: validUrls
+        };
+      }
       const imageBase64 = await getLocalImage(t.id);
       return {
         ...t,
-        imageUrl: imageBase64 || null
+        imageUrl: imageBase64 || null,
+        imageUrls: imageBase64 ? [imageBase64] : []
       };
     }));
     
@@ -269,12 +283,13 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
   if (url === '' && method === 'POST') {
     // Create trade
     let data = {};
-    let chartFile = null;
+    let chartFiles = [];
     
     if (body instanceof FormData) {
       for (const [k, v] of body.entries()) {
-        if (k === 'chart') chartFile = v;
-        else if (k === 'tags' || k === 'emotionTags') {
+        if (k === 'chart') {
+          chartFiles.push(v);
+        } else if (k === 'tags' || k === 'emotionTags') {
           try { data[k] = JSON.parse(v); } catch { data[k] = []; }
         } else {
           data[k] = v;
@@ -286,11 +301,29 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     const newId = Date.now();
     let imageUrl = null;
+    let imageUrls = [];
+    let imageKeys = [];
     
-    if (chartFile && chartFile instanceof File) {
-      imageUrl = await saveLocalImage(newId, chartFile);
+    if (chartFiles.length > 0) {
+      imageUrls = await Promise.all(chartFiles.map(async (file, idx) => {
+        if (file && file instanceof File) {
+          const key = `${newId}_${idx}`;
+          const base64 = await saveLocalImage(key, file);
+          if (base64) {
+            imageKeys.push(key);
+            return base64;
+          }
+        }
+        return '';
+      }));
+      imageUrls = imageUrls.filter(Boolean);
+      imageUrl = imageUrls[0] || null;
     }
     
+    const actualEntryTime = data.entryTime || new Date().toISOString();
+    let tagsList = Array.isArray(data.tags) ? data.tags : [];
+    tagsList = addLocalSessionTags(tagsList, actualEntryTime);
+
     const newTrade = {
       id: newId,
       accountId: data.accountId ? parseInt(data.accountId) : 1,
@@ -302,17 +335,19 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       stopLoss: parseFloat(data.stopLoss) || 0,
       takeProfit: parseFloat(data.takeProfit) || 0,
       pnl: parseFloat(data.pnl) || 0,
-      entryTime: data.entryTime || new Date().toISOString(),
+      entryTime: actualEntryTime,
       exitTime: data.exitTime || null,
       setup: data.setup || '',
       grade: data.grade || 'B',
       notes: data.notes || '',
-      tags: Array.isArray(data.tags) ? data.tags : [],
+      tags: tagsList,
       emotionTags: Array.isArray(data.emotionTags) ? data.emotionTags : [],
       fomoLevel: parseInt(data.fomoLevel) || 5,
       confidenceLevel: parseInt(data.confidenceLevel) || 5,
       createdAt: new Date().toISOString(),
-      imageUrl
+      imageKeys,
+      imageUrl,
+      imageUrls
     };
     
     setStorageItem(`trades_${activeUser.id}`, [newTrade, ...trades]);
@@ -325,12 +360,16 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     if (tradeIndex === -1) throw { status: 404, message: 'Trade not found' };
     
     let data = {};
-    let chartFile = null;
+    let chartFiles = [];
+    let existingImages = null;
     
     if (body instanceof FormData) {
       for (const [k, v] of body.entries()) {
-        if (k === 'chart') chartFile = v;
-        else if (k === 'tags' || k === 'emotionTags') {
+        if (k === 'chart') {
+          chartFiles.push(v);
+        } else if (k === 'existingImages') {
+          try { existingImages = JSON.parse(v); } catch { existingImages = null; }
+        } else if (k === 'tags' || k === 'emotionTags') {
           try { data[k] = JSON.parse(v); } catch { data[k] = []; }
         } else {
           data[k] = v;
@@ -338,34 +377,88 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       }
     } else {
       data = body;
+      existingImages = body.existingImages;
     }
     
-    let imageUrl = trades[tradeIndex].imageUrl || null;
-    if (chartFile && chartFile instanceof File) {
-      imageUrl = await saveLocalImage(id, chartFile);
+    const oldTrade = trades[tradeIndex];
+    let imageKeys = [];
+    let imageUrls = [];
+    let imageUrl = null;
+    
+    if (existingImages) {
+      if (oldTrade.imageKeys && oldTrade.imageUrls) {
+        existingImages.forEach(urlStr => {
+          const idx = oldTrade.imageUrls.indexOf(urlStr);
+          if (idx >= 0 && oldTrade.imageKeys[idx]) {
+            imageKeys.push(oldTrade.imageKeys[idx]);
+            imageUrls.push(urlStr);
+          } else {
+            imageUrls.push(urlStr);
+          }
+        });
+      } else {
+        if (oldTrade.imageUrl && existingImages.includes(oldTrade.imageUrl)) {
+          imageUrls.push(oldTrade.imageUrl);
+        }
+      }
+    } else if (chartFiles.length === 0) {
+      imageKeys = oldTrade.imageKeys || [];
+      imageUrl = oldTrade.imageUrl || null;
+      imageUrls = oldTrade.imageUrls || (oldTrade.imageUrl ? [oldTrade.imageUrl] : []);
+    }
+    
+    if (chartFiles.length > 0) {
+      const startIndex = imageKeys.length;
+      const newUrls = await Promise.all(chartFiles.map(async (file, idx) => {
+        if (file && file instanceof File) {
+          const key = `${id}_${startIndex + idx}_${Date.now()}`;
+          const base64 = await saveLocalImage(key, file);
+          if (base64) {
+            imageKeys.push(key);
+            return base64;
+          }
+        }
+        return '';
+      }));
+      imageUrls = [...imageUrls, ...newUrls.filter(Boolean)];
+      imageUrl = imageUrls[0] || null;
+    } else {
+      imageUrl = imageUrls[0] || null;
+    }
+    
+    const oldEntryTime = oldTrade.entryTime;
+    const newEntryTime = data.entryTime !== undefined ? data.entryTime : oldEntryTime;
+    let tagsList = data.tags !== undefined ? data.tags : oldTrade.tags;
+    
+    if (data.tags !== undefined) {
+      tagsList = addLocalSessionTags(tagsList, newEntryTime);
+    } else if (newEntryTime !== oldEntryTime) {
+      tagsList = addLocalSessionTags(tagsList || [], newEntryTime);
     }
     
     const updated = {
-      ...trades[tradeIndex],
-      accountId: data.accountId !== undefined ? (data.accountId ? parseInt(data.accountId) : null) : trades[tradeIndex].accountId,
-      symbol: data.symbol !== undefined ? data.symbol.toUpperCase() : trades[tradeIndex].symbol,
-      type: data.type !== undefined ? data.type : trades[tradeIndex].type,
-      entryPrice: data.entryPrice !== undefined ? parseFloat(data.entryPrice) : trades[tradeIndex].entryPrice,
-      exitPrice: data.exitPrice !== undefined ? parseFloat(data.exitPrice) : trades[tradeIndex].exitPrice,
-      lotSize: data.lotSize !== undefined ? parseFloat(data.lotSize) : trades[tradeIndex].lotSize,
-      stopLoss: data.stopLoss !== undefined ? parseFloat(data.stopLoss) : trades[tradeIndex].stopLoss,
-      takeProfit: data.takeProfit !== undefined ? parseFloat(data.takeProfit) : trades[tradeIndex].takeProfit,
-      pnl: data.pnl !== undefined ? parseFloat(data.pnl) : trades[tradeIndex].pnl,
-      entryTime: data.entryTime !== undefined ? data.entryTime : trades[tradeIndex].entryTime,
-      exitTime: data.exitTime !== undefined ? data.exitTime : trades[tradeIndex].exitTime,
-      setup: data.setup !== undefined ? data.setup : trades[tradeIndex].setup,
-      grade: data.grade !== undefined ? data.grade : trades[tradeIndex].grade,
-      notes: data.notes !== undefined ? data.notes : trades[tradeIndex].notes,
-      tags: data.tags !== undefined ? data.tags : trades[tradeIndex].tags,
-      emotionTags: data.emotionTags !== undefined ? data.emotionTags : trades[tradeIndex].emotionTags,
-      fomoLevel: data.fomoLevel !== undefined ? parseInt(data.fomoLevel) : trades[tradeIndex].fomoLevel,
-      confidenceLevel: data.confidenceLevel !== undefined ? parseInt(data.confidenceLevel) : trades[tradeIndex].confidenceLevel,
-      imageUrl
+      ...oldTrade,
+      accountId: data.accountId !== undefined ? (data.accountId ? parseInt(data.accountId) : null) : oldTrade.accountId,
+      symbol: data.symbol !== undefined ? data.symbol.toUpperCase() : oldTrade.symbol,
+      type: data.type !== undefined ? data.type : oldTrade.type,
+      entryPrice: data.entryPrice !== undefined ? parseFloat(data.entryPrice) : oldTrade.entryPrice,
+      exitPrice: data.exitPrice !== undefined ? parseFloat(data.exitPrice) : oldTrade.exitPrice,
+      lotSize: data.lotSize !== undefined ? parseFloat(data.lotSize) : oldTrade.lotSize,
+      stopLoss: data.stopLoss !== undefined ? parseFloat(data.stopLoss) : oldTrade.stopLoss,
+      takeProfit: data.takeProfit !== undefined ? parseFloat(data.takeProfit) : oldTrade.takeProfit,
+      pnl: data.pnl !== undefined ? parseFloat(data.pnl) : oldTrade.pnl,
+      entryTime: newEntryTime,
+      exitTime: data.exitTime !== undefined ? data.exitTime : oldTrade.exitTime,
+      setup: data.setup !== undefined ? data.setup : oldTrade.setup,
+      grade: data.grade !== undefined ? data.grade : oldTrade.grade,
+      notes: data.notes !== undefined ? data.notes : oldTrade.notes,
+      tags: tagsList,
+      emotionTags: data.emotionTags !== undefined ? data.emotionTags : oldTrade.emotionTags,
+      fomoLevel: data.fomoLevel !== undefined ? parseInt(data.fomoLevel) : oldTrade.fomoLevel,
+      confidenceLevel: data.confidenceLevel !== undefined ? parseInt(data.confidenceLevel) : oldTrade.confidenceLevel,
+      imageKeys,
+      imageUrl,
+      imageUrls
     };
     
     trades[tradeIndex] = updated;
@@ -375,11 +468,17 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
   
   if (url.startsWith('/') && method === 'DELETE') {
     const id = parseInt(url.slice(1));
-    const beforeLength = trades.length;
-    trades = trades.filter(t => t.id !== id);
-    if (trades.length === beforeLength) throw { status: 404, message: 'Trade not found' };
+    const targetTrade = trades.find(t => t.id === id);
+    if (!targetTrade) throw { status: 404, message: 'Trade not found' };
     
-    await deleteLocalImage(id);
+    trades = trades.filter(t => t.id !== id);
+    
+    if (targetTrade.imageKeys && targetTrade.imageKeys.length > 0) {
+      await Promise.all(targetTrade.imageKeys.map(key => deleteLocalImage(key)));
+    } else {
+      await deleteLocalImage(id);
+    }
+    
     setStorageItem(`trades_${activeUser.id}`, trades);
     return { message: 'Trade deleted' };
   }
@@ -948,6 +1047,24 @@ const handleNotion = async (url, method, body) => {
   const activeUser = getActiveUser();
   let docs = getStorageItem(`notion_${activeUser.id}`, []);
 
+  const targetUrl = 'https://mysterious-spandex-41e.notion.site/For-Traders-6K-Funded-Account-362f3f11ad2080e4bf90f578aac0867d?source=copy_link';
+  const hasTarget = docs.some(d => d.external_url === targetUrl);
+  if (!hasTarget) {
+    const seedDoc = {
+      id: 1718712345678,
+      user_id: activeUser.id,
+      title: 'For Traders 6K Funded Account',
+      content: '# For Traders 6K Funded Account\n\nThis is a sandbox workspace page loaded via our Notion proxy server.',
+      icon: '📈',
+      tags: ['Playbook', 'Funded'],
+      external_url: targetUrl,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    docs = [seedDoc, ...docs];
+    setStorageItem(`notion_${activeUser.id}`, docs);
+  }
+
   if (url === '' && method === 'GET') {
     return docs;
   }
@@ -1043,11 +1160,102 @@ const handleStoic = async (url, method, body) => {
   const activeUser = getActiveUser();
   let reframes = getStorageItem(`stoic_reframes_${activeUser.id}`, []);
 
-  const STOIC_QUOTES = [
-    { author: 'Seneca', quote: 'We suffer more often in imagination than in reality.', translation: 'Do not panic about potential losses or missed moves that haven\'t occurred. Trade the price actions on your screen, not your fearful projections.' },
-    { author: 'Marcus Aurelius', quote: 'You have power over your mind - not outside events. Realize this, and you will find strength.', translation: 'You cannot control where the market goes. You can only control your risk size, your stop-loss, and your response.' },
-    { author: 'Epictetus', quote: 'It\'s not what happens to you, but how you react to it that matters.', translation: 'A loss is just a statistical cost of trading. How you manage your psychology after a loss is what determines your success.' }
+  const maxims = [
+    // Marcus Aurelius
+    { author: 'Marcus Aurelius', quote: 'You have power over your mind - not outside events. Realize this, and you will find strength.' },
+    { author: 'Marcus Aurelius', quote: 'The impediment to action advances action. What stands in the way becomes the way.' },
+    { author: 'Marcus Aurelius', quote: 'Waste no more time arguing about what a good man should be. Be one.' },
+    { author: 'Marcus Aurelius', quote: 'The happiness of your life depends upon the quality of your thoughts.' },
+    { author: 'Marcus Aurelius', quote: 'Everything we hear is an opinion, not a fact. Everything we see is a perspective, not the truth.' },
+    { author: 'Marcus Aurelius', quote: 'Accept the things to which fate binds you, and love the people with whom fate brings you together, but do so with all your heart.' },
+    { author: 'Marcus Aurelius', quote: 'Very little is needed to make a happy life; it is all within yourself, in your way of thinking.' },
+    { author: 'Marcus Aurelius', quote: 'When you arise in the morning think of what a privilege it is to be alive, to think, to enjoy, to love.' },
+    { author: 'Marcus Aurelius', quote: 'The best revenge is to be unlike him who performed the injury.' },
+    { author: 'Marcus Aurelius', quote: 'Reject your sense of injury and the injury itself disappears.' },
+    { author: 'Marcus Aurelius', quote: 'If it is not right do not do it; if it is not true do not say it.' },
+    { author: 'Marcus Aurelius', quote: 'Loss is nothing else but change, and change is Nature’s delight.' },
+
+    // Seneca
+    { author: 'Seneca', quote: 'We suffer more often in imagination than in reality.' },
+    { author: 'Seneca', quote: 'No man is more unhappy than he who never faces adversity, for he is not permitted to prove himself.' },
+    { author: 'Seneca', quote: 'Difficulties strengthen the mind, as labor does the body.' },
+    { author: 'Seneca', quote: 'If a man knows not to which port he sails, no wind is favorable.' },
+    { author: 'Seneca', quote: 'True happiness is to enjoy the present, without anxious dependence upon the future.' },
+    { author: 'Seneca', quote: 'Associate with people who are likely to improve you.' },
+    { author: 'Seneca', quote: 'He who is brave is free.' },
+    { author: 'Seneca', quote: 'Luck is what happens when preparation meets opportunity.' },
+    { author: 'Seneca', quote: 'It is the power of the mind to be unconquerable.' },
+    { author: 'Seneca', quote: 'He suffers more than is necessary, who suffers before it is necessary.' },
+    { author: 'Seneca', quote: 'While we wait for life, life passes.' },
+    { author: 'Seneca', quote: 'Most powerful is he who has himself in his own power.' },
+
+    // Epictetus
+    { author: 'Epictetus', quote: 'It\'s not what happens to you, but how you react to it that matters.' },
+    { author: 'Epictetus', quote: 'Wealth consists not in having great possessions, but in having few wants.' },
+    { author: 'Epictetus', quote: 'First say to yourself what you would be; and then do what you have to do.' },
+    { author: 'Epictetus', quote: 'Control your passions lest they take vengeance on you.' },
+    { author: 'Epictetus', quote: 'No man is free who is not master of himself.' },
+    { author: 'Epictetus', quote: 'The key is to keep company only with people who uplift you, whose presence calls forth your best.' },
+    { author: 'Epictetus', quote: 'If you want to improve, be content to be thought foolish and stupid.' },
+    { author: 'Epictetus', quote: 'Circumstances do not make the man, they only reveal him to himself.' },
+    { author: 'Epictetus', quote: 'It is impossible for a man to learn what he thinks he already knows.' },
+    { author: 'Epictetus', quote: 'Only the educated are free.' },
+    { author: 'Epictetus', quote: 'Make the best use of what is in your power, and take the rest as it happens.' },
+    { author: 'Epictetus', quote: 'He is a wise man who does not grieve for the things which he has not, but rejoices for those which he has.' },
+
+    // Zeno & others
+    { author: 'Zeno of Citium', quote: 'Man conquers the world by conquering himself.' },
+    { author: 'Zeno of Citium', quote: 'Steel your sensibilities, so that life shall hurt you as little as possible.' },
+    { author: 'Zeno of Citium', quote: 'Well-being is attained by little and little, and yet is no little thing.' },
+    { author: 'Chrysippus', quote: 'The wise man lacks nothing, and yet needs everything; the fool needs nothing, and yet lacks everything.' }
   ];
+
+  const translations = [
+    'A loss is a statistical cost of trading. How you manage your psychology after a drawdown determines your long-term consistency.',
+    'You cannot control where the market goes. You can only control your risk size, your stop-loss placement, and your session discipline.',
+    'Do not panic about potential losses or missed moves that haven\'t occurred. Trade the price action on your screen, not your fearful projections.',
+    'Greed kills trading accounts. Focus on executing the process perfectly, and let go of the urge to catch every pip or make quick riches.',
+    'Drawdowns are the testing grounds of a professional trader. Facing them with strict rules proves you are a master of your edge.',
+    'A failed breakout or stopped-out trade is data. It reveals where liquidity is sitting. Treat losses as lessons to refine your setups.',
+    'The market does not care about your financial goals or your revenge feelings. Walk away when your session rules tell you to.',
+    'Discipline is doing what needs to be done, regardless of whether you feel like it. Stick to your risk parameters on every single execution.',
+    'Do not chase moves in progress. Patience is waiting for the market to come to your pre-determined support/resistance zones.',
+    'Every trade is independent of the last. A previous loss has zero bearing on the probability of your next qualified entry.',
+    'Accept the outcome of your setups before clicking the order button. If you cannot afford the risk, do not take the trade.',
+    'Avoid the urge to over-leverage or double down on losing positions. A single rule violation can wipe out weeks of disciplined work.',
+    'Quiet your mind and ignore the hype in social media chat rooms. Trade your own plan and rely on your validated backtests.',
+    'Success in trading is not about being right 100% of the time, but about managing risk so that the math works in your favor.',
+    'When you feel anger or anxiety rising after a stop-out, take it as an immediate signal to close the trading platform for the day.',
+    'Cultivate indifference to individual trade outcomes. Your edge plays out over a sequence of 100 trades, not just one.',
+    'Review your trades with absolute honesty. Self-reflection and journaling are the only paths to continuous trading growth.',
+    'Stop trading once you reach your daily loss limit. Protecting your capital is more important than recovering today\'s losses.',
+    'Focus entirely on high-quality setups. It is better to make zero trades than to force low-probability trades out of boredom.',
+    'Treat your trading as a business, not a casino. Keep precise logs, analyze metrics, and manage your risks with absolute professionalism.',
+    'Your value as a trader is measured by your rule compliance, not by your daily profit or loss balance.',
+    'The best trade you will ever make is the one where you follow your plan, even if it results in a small, disciplined stop-out.',
+    'Do not let fear prevent you from executing a valid setup. Hesitation is as dangerous as over-trading; trust your edge.',
+    'Let go of the need to predict the future. React rationally to what the market is doing right now at key structural levels.',
+    'Patience during flat markets is just as important as speed during breakouts. Protect your cash during chop zones.'
+  ];
+
+  const generateQuotes = () => {
+    const list = [];
+    let id = 1;
+    for (let i = 0; i < maxims.length; i++) {
+      for (let j = 0; j < translations.length; j++) {
+        list.push({
+          id,
+          author: maxims[i].author,
+          quote: maxims[i].quote,
+          translation: translations[j]
+        });
+        id++;
+      }
+    }
+    return list;
+  };
+
+  const STOIC_QUOTES = generateQuotes();
 
   if (url === '/quotes' && method === 'GET') {
     return STOIC_QUOTES;

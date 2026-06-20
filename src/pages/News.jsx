@@ -385,9 +385,9 @@ const News = () => {
     switch ((impact || '').toLowerCase()) {
       case 'high':
         return {
-          main: '#ef4444', // Red
-          soft: 'rgba(239, 68, 68, 0.1)',
-          border: 'rgba(239, 68, 68, 0.25)',
+          main: '#f87171', // Red
+          soft: 'rgba(248, 113, 113, 0.1)',
+          border: 'rgba(248, 113, 113, 0.25)',
         };
       case 'medium':
         return {
@@ -622,7 +622,7 @@ const News = () => {
 
                       {/* Event Impact Indicators Grid (low/medium/high/holiday dots at the bottom) */}
                       <div style={{ display: 'flex', gap: '2px', height: '4px', marginTop: '2px', alignItems: 'center' }}>
-                        {hasHigh && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#ef4444' }} />}
+                        {hasHigh && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#f87171' }} />}
                         {hasMed && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#f97316' }} />}
                         {hasLow && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981' }} />}
                         {hasHoliday && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#8a8a8a' }} />}

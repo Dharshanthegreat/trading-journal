@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { Image as ImageIcon, X, ZoomIn, Calendar, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatInNewYork } from '../utils/timezone';
 
 const Charts = () => {
   const { trades, fetchTrades } = useTrades();
@@ -35,7 +36,7 @@ const Charts = () => {
                     <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#fff', marginBottom: 2 }}>{trade.symbol}</div>
                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.65)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Calendar size={10}/>
-                      {trade.entryTime ? format(new Date(trade.entryTime), 'MMM d, yyyy') : '—'}
+                      {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMM d, yyyy') : '—'}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
@@ -65,7 +66,7 @@ const Charts = () => {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)', marginBottom: 4 }}>{lightbox.symbol}</div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {lightbox.entryTime ? format(new Date(lightbox.entryTime), 'MMMM d, yyyy HH:mm') : ''}
+                    {lightbox.entryTime ? formatInNewYork(lightbox.entryTime, 'MMMM d, yyyy HH:mm') : ''}
                     {lightbox.setup && ` · ${lightbox.setup}`}
                   </div>
                 </div>

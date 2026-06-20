@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import db from '../db.js';
+import { addSessionTags } from '../utils/session.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,25 +88,29 @@ router.get('/', async (req, res) => {
     const trades = result.rows;
 
     // Parse JSON fields
-    const parsed = trades.map(t => ({
-      ...t,
-      tags: safeParseJSON(t.tags, []),
-      emotion_tags: safeParseJSON(t.emotion_tags, []),
-      // Map to camelCase for frontend
-      entryPrice: t.entry_price,
-      exitPrice: t.exit_price,
-      lotSize: t.lot_size,
-      stopLoss: t.stop_loss,
-      takeProfit: t.take_profit,
-      entryTime: t.entry_time,
-      exitTime: t.exit_time,
-      fomoLevel: t.fomo_level,
-      confidenceLevel: t.confidence_level,
-      imagePath: t.image_path,
-      accountId: t.account_id,
-      emotionTags: safeParseJSON(t.emotion_tags, []),
-      imageUrl: t.image_path ? `/api/uploads/${path.basename(t.image_path)}` : null,
-    }));
+    const parsed = trades.map(t => {
+      const imgData = formatTradeImages(t.image_path);
+      return {
+        ...t,
+        tags: safeParseJSON(t.tags, []),
+        emotion_tags: safeParseJSON(t.emotion_tags, []),
+        // Map to camelCase for frontend
+        entryPrice: t.entry_price,
+        exitPrice: t.exit_price,
+        lotSize: t.lot_size,
+        stopLoss: t.stop_loss,
+        takeProfit: t.take_profit,
+        entryTime: t.entry_time,
+        exitTime: t.exit_time,
+        fomoLevel: t.fomo_level,
+        confidenceLevel: t.confidence_level,
+        imagePath: t.image_path,
+        accountId: t.account_id,
+        emotionTags: safeParseJSON(t.emotion_tags, []),
+        imageUrl: imgData.imageUrl,
+        imageUrls: imgData.imageUrls,
+      };
+    });
 
     // Get total count for pagination
     const countResult = await db.query('SELECT COUNT(*) as total FROM trades WHERE user_id = $1', [req.user.id]);
@@ -119,7 +124,7 @@ router.get('/', async (req, res) => {
 });
 
 // ─── Create Trade ────────────────────────────────────
-router.post('/', upload.single('chart'), async (req, res) => {
+router.post('/', upload.array('chart', 10), async (req, res) => {
   try {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
@@ -131,8 +136,24 @@ router.post('/', upload.single('chart'), async (req, res) => {
       return res.status(400).json({ error: 'Symbol is required' });
     }
 
-    const imagePath = req.file ? req.file.path : '';
+    const imagePaths = req.files ? req.files.map(f => f.path) : [];
+    const imagePathValue = JSON.stringify(imagePaths);
     const dbAccountId = accountId ? parseInt(accountId) : null;
+
+    let finalTags = [];
+    if (typeof tags === 'string') {
+      try {
+        finalTags = JSON.parse(tags);
+      } catch (e) {
+        finalTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    } else {
+      finalTags = tags || [];
+    }
+    
+    // Auto-add session tags based on entryTime
+    const actualEntryTime = entryTime || new Date().toISOString();
+    finalTags = addSessionTags(finalTags, actualEntryTime);
 
     const result = await db.query(`
       INSERT INTO trades (
@@ -151,16 +172,16 @@ router.post('/', upload.single('chart'), async (req, res) => {
       parseFloat(stopLoss) || 0,
       parseFloat(takeProfit) || 0,
       parseFloat(pnl) || 0,
-      entryTime || new Date().toISOString(),
+      actualEntryTime,
       exitTime || null,
       setup || '',
       grade || 'B',
       notes || '',
-      typeof tags === 'string' ? tags : JSON.stringify(tags || []),
+      JSON.stringify(finalTags),
       typeof emotionTags === 'string' ? emotionTags : JSON.stringify(emotionTags || []),
       parseInt(fomoLevel) || 5,
       parseInt(confidenceLevel) || 5,
-      imagePath,
+      imagePathValue,
       dbAccountId
     ]);
 
@@ -173,7 +194,7 @@ router.post('/', upload.single('chart'), async (req, res) => {
 });
 
 // ─── Update Trade ────────────────────────────────────
-router.put('/:id', upload.single('chart'), async (req, res) => {
+router.put('/:id', upload.array('chart', 10), async (req, res) => {
   try {
     const tradeResult = await db.query(
       'SELECT * FROM trades WHERE id = $1 AND user_id = $2',
@@ -188,11 +209,56 @@ router.put('/:id', upload.single('chart'), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId
+      fomoLevel, confidenceLevel, accountId, existingImages
     } = req.body;
 
-    const imagePath = req.file ? req.file.path : trade.image_path;
+    let imagePaths = [];
+    if (existingImages) {
+      const existing = typeof existingImages === 'string'
+        ? JSON.parse(existingImages)
+        : existingImages;
+      imagePaths = existing.map(url => {
+        const filename = path.basename(url);
+        return path.join(uploadsDir, filename);
+      });
+    } else if (!req.files || req.files.length === 0) {
+      try {
+        imagePaths = trade.image_path ? (trade.image_path.startsWith('[') ? JSON.parse(trade.image_path) : [trade.image_path]) : [];
+      } catch (e) {
+        imagePaths = [trade.image_path];
+      }
+    }
+
+    if (req.files && req.files.length > 0) {
+      const newPaths = req.files.map(f => f.path);
+      imagePaths = [...imagePaths, ...newPaths];
+    }
+
+    const imagePathValue = JSON.stringify(imagePaths);
     const dbAccountId = accountId !== undefined ? (accountId ? parseInt(accountId) : null) : trade.account_id;
+
+    let finalTags = trade.tags;
+    if (tags !== undefined) {
+      let parsedTags = [];
+      if (typeof tags === 'string') {
+        try {
+          parsedTags = JSON.parse(tags);
+        } catch (e) {
+          parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+        }
+      } else {
+        parsedTags = tags || [];
+      }
+      finalTags = JSON.stringify(addSessionTags(parsedTags, entryTime || trade.entry_time));
+    } else if (entryTime !== undefined && entryTime !== trade.entry_time) {
+      let currentTags = [];
+      try {
+        currentTags = JSON.parse(trade.tags);
+      } catch (e) {
+        currentTags = (trade.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+      }
+      finalTags = JSON.stringify(addSessionTags(currentTags, entryTime));
+    }
 
     await db.query(`
       UPDATE trades SET
@@ -215,11 +281,11 @@ router.put('/:id', upload.single('chart'), async (req, res) => {
       setup !== undefined ? setup : trade.setup,
       grade || trade.grade,
       notes !== undefined ? notes : trade.notes,
-      tags !== undefined ? (typeof tags === 'string' ? tags : JSON.stringify(tags)) : trade.tags,
+      finalTags,
       emotionTags !== undefined ? (typeof emotionTags === 'string' ? emotionTags : JSON.stringify(emotionTags)) : trade.emotion_tags,
       fomoLevel !== undefined ? parseInt(fomoLevel) : trade.fomo_level,
       confidenceLevel !== undefined ? parseInt(confidenceLevel) : trade.confidence_level,
-      imagePath,
+      imagePathValue,
       dbAccountId,
       req.params.id,
       req.user.id
@@ -246,9 +312,20 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Trade not found' });
     }
 
-    // Delete associated image file
-    if (trade.image_path && fs.existsSync(trade.image_path)) {
-      fs.unlinkSync(trade.image_path);
+    // Delete associated image file(s)
+    if (trade.image_path) {
+      try {
+        if (trade.image_path.startsWith('[')) {
+          const paths = JSON.parse(trade.image_path);
+          paths.forEach(p => {
+            if (p && fs.existsSync(p)) fs.unlinkSync(p);
+          });
+        } else if (fs.existsSync(trade.image_path)) {
+          fs.unlinkSync(trade.image_path);
+        }
+      } catch (e) {
+        console.error('Failed to delete image file(s):', e);
+      }
     }
 
     await db.query('DELETE FROM trades WHERE id = $1', [req.params.id]);
@@ -272,8 +349,18 @@ router.post('/import', async (req, res) => {
     try {
       await client.query('BEGIN');
 
-      let count = 0;
       for (const t of trades) {
+        const entryTimeVal = t.entryTime || new Date().toISOString();
+        let tagsList = [];
+        try {
+          tagsList = typeof t.tags === 'string' ? JSON.parse(t.tags) : (t.tags || []);
+        } catch (e) {
+          if (typeof t.tags === 'string') {
+            tagsList = t.tags.split(',').map(x => x.trim()).filter(Boolean);
+          }
+        }
+        tagsList = addSessionTags(tagsList, entryTimeVal);
+
         await client.query(`
           INSERT INTO trades (
             user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
@@ -290,12 +377,12 @@ router.post('/import', async (req, res) => {
           parseFloat(t.stopLoss) || 0,
           parseFloat(t.takeProfit) || 0,
           parseFloat(t.pnl) || 0,
-          t.entryTime || new Date().toISOString(),
+          entryTimeVal,
           t.exitTime || null,
           t.setup || '',
           t.grade || 'B',
           t.notes || '',
-          JSON.stringify(t.tags || []),
+          JSON.stringify(tagsList),
           JSON.stringify(t.emotionTags || []),
           parseInt(t.fomoLevel) || 5,
           parseInt(t.confidenceLevel) || 5
@@ -536,8 +623,34 @@ function safeParseJSON(str, fallback) {
   }
 }
 
+function formatTradeImages(imagePath) {
+  if (!imagePath) return { imageUrl: null, imageUrls: [] };
+  
+  if (imagePath.startsWith('[')) {
+    try {
+      const paths = JSON.parse(imagePath);
+      if (Array.isArray(paths)) {
+        const urls = paths.map(p => `/api/uploads/${path.basename(p)}`);
+        return {
+          imageUrl: urls[0] || null,
+          imageUrls: urls
+        };
+      }
+    } catch (e) {
+      // Ignore and fallback
+    }
+  }
+  
+  const url = `/api/uploads/${path.basename(imagePath)}`;
+  return {
+    imageUrl: url,
+    imageUrls: [url]
+  };
+}
+
 function formatTrade(t) {
   if (!t) return null;
+  const imgData = formatTradeImages(t.image_path);
   return {
     id: t.id,
     symbol: t.symbol,
@@ -557,7 +670,8 @@ function formatTrade(t) {
     emotionTags: safeParseJSON(t.emotion_tags, []),
     fomoLevel: t.fomo_level,
     confidenceLevel: t.confidence_level,
-    imageUrl: t.image_path ? `/api/uploads/${path.basename(t.image_path)}` : null,
+    imageUrl: imgData.imageUrl,
+    imageUrls: imgData.imageUrls,
     shareToken: t.share_token,
     accountId: t.account_id,
     createdAt: t.created_at,
