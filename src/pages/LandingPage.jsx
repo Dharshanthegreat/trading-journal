@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, ArrowRight, ArrowUpRight, BarChart2, Brain, Database, Sparkles, ShieldAlert, TrendingUp } from 'lucide-react';
+import { Activity, ArrowRight, ArrowUpRight, BarChart2, Brain, Database, Sparkles, ShieldAlert, TrendingUp, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 /* ═══════════════════════════════════════════════════════
@@ -193,6 +193,8 @@ const LandingPage = () => {
   const [phase, setPhase] = useState(0);    // 0=ferrari, 1=transition, 2=dashboard
   const [loaded, setLoaded] = useState(false);
   const heroRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     setLoaded(true);
@@ -201,6 +203,49 @@ const LandingPage = () => {
     const t2 = setTimeout(() => setPhase(2), 5000);   // dashboard bg
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
+  // Listen for the first user interaction to attempt unmuting and playing the engine sound
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (audioRef.current && phase === 0) {
+        audioRef.current.play()
+          .then(() => {
+            setIsMuted(false);
+          })
+          .catch(err => {
+            console.log("Autoplay blocked, waiting for manual unmute:", err);
+          });
+      }
+      cleanup();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+
+    return cleanup;
+  }, [phase]);
+
+  const toggleMute = (e) => {
+    e.stopPropagation();
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+
+    if (audioRef.current) {
+      if (!newMuted) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(err => console.log("Audio play failed:", err));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  };
 
   const handleCtaClick = () => {
     navigate(user ? '/dashboard' : '/settings');
@@ -217,6 +262,48 @@ const LandingPage = () => {
       position: 'relative',
       overflowX: 'hidden',
     }}>
+
+      {/* Floating Sound Toggle */}
+      {phase < 2 && (
+        <button
+          onClick={toggleMute}
+          className={isMuted ? "sound-btn-pulse" : ""}
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 100,
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255, 255, 255, 0.75)',
+            cursor: 'pointer',
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.2)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          title={isMuted ? "Unmute Engine Sound" : "Mute Engine Sound"}
+        >
+          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
+      )}
 
       {/* ── Stylesheet ─────────────────────────── */}
       <style>{`
@@ -268,6 +355,15 @@ const LandingPage = () => {
         @keyframes pulse-dot {
           0%, 100% { r: 3; opacity: 0.6; }
           50% { r: 5; opacity: 1; }
+        }
+        @keyframes soundPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+          50% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+        }
+        .sound-btn-pulse {
+          animation: soundPulse 2s infinite;
+          border-color: rgba(255, 255, 255, 0.3) !important;
+          color: #ffffff !important;
         }
 
         .hero-title {
@@ -386,6 +482,14 @@ const LandingPage = () => {
           <source src="/trading-journal/Create_an_ultra_realistic_cine.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
+
+        {/* Layer 1.5: Synced Sports Car Acceleration Audio */}
+        <audio
+          ref={audioRef}
+          src={`${import.meta.env.BASE_URL}car-acceleration.ogg`}
+          loop={false}
+          muted={isMuted}
+        />
 
         {/* Layer 2: Cinematic vignette */}
         <div style={{
