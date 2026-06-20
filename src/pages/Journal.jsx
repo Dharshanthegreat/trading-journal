@@ -503,78 +503,8 @@ const Journal = () => {
                 </div>
 
                 <div className="form-field">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label className="form-label" style={{ margin: 0 }}>Tags (comma separated)</label>
-                    <select
-                      style={{
-                        background: 'var(--bg-primary)',
-                        border: '1px solid var(--border-mid)',
-                        borderRadius: 'var(--r-sm)',
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.62rem',
-                        padding: '2px 6px',
-                        outline: 'none',
-                        cursor: 'pointer',
-                      }}
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (!val) return;
-                        let currentTags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
-                        if (!currentTags.some(t => t.toLowerCase() === val.toLowerCase())) {
-                          currentTags.push(val);
-                          setFormData({ ...formData, tags: currentTags.join(', ') });
-                        }
-                        e.target.value = "";
-                      }}
-                    >
-                      <option value="">+ Add Session</option>
-                      <option value="Asian Session">Asian Session</option>
-                      <option value="London Session">London Session</option>
-                      <option value="New York Session">New York Session</option>
-                    </select>
-                  </div>
+                  <label className="form-label">Tags (comma separated)</label>
                   <input className="input" placeholder="london session, breakout" value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })}/>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                    {['Asian Session', 'London Session', 'New York Session'].map(s => {
-                      const tagsArray = formData.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-                      const isSelected = tagsArray.includes(s.toLowerCase());
-                      
-                      const handleToggle = () => {
-                        let currentTags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
-                        const sLower = s.toLowerCase();
-                        if (isSelected) {
-                          currentTags = currentTags.filter(t => t.toLowerCase() !== sLower && t.toLowerCase() !== 'londan session');
-                        } else {
-                          if (!currentTags.some(t => t.toLowerCase() === sLower)) {
-                            currentTags.push(s);
-                          }
-                        }
-                        setFormData({ ...formData, tags: currentTags.join(', ') });
-                      };
-
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={handleToggle}
-                          style={{
-                            fontSize: '0.62rem',
-                            padding: '3px 8px',
-                            borderRadius: 'var(--r-sm)',
-                            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
-                            background: isSelected ? 'var(--accent-soft)' : 'transparent',
-                            color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            transition: 'all var(--t-fast)',
-                          }}
-                        >
-                          {s}
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
 
                 <div className="form-field full">
