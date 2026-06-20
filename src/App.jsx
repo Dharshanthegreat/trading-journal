@@ -40,6 +40,7 @@ import {
   LineChart, Line
 } from 'recharts';
 import { format } from 'date-fns';
+import { motion } from 'framer-motion';
 import './App.css';
 import useMagneticButtons from './hooks/useMagneticButtons';
 
@@ -1117,6 +1118,32 @@ const Dashboard = () => {
 };
 
 /* ─── Sidebar ─────────────────────────────────── */
+const MotionLink = motion.create(Link);
+
+const sidebarNavVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.03,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const sidebarItemVariants = {
+  hidden: { opacity: 0, x: -16 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 120,
+      damping: 14
+    }
+  }
+};
+
 const Sidebar = ({ mobileMenuOpen, onClose }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
@@ -1158,45 +1185,57 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
           </button>
         </div>
 
-      <div className="nav-section-label">Navigation</div>
-      <nav className="nav-links">
-        {nav.map(item => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </Link>
-        ))}
-      </nav>
+        <motion.div
+          variants={sidebarNavVariants}
+          initial="hidden"
+          animate="visible"
+          style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
+        >
+          <div className="nav-section-label">Navigation</div>
+          <nav className="nav-links">
+            {nav.map(item => (
+              <MotionLink
+                key={item.path}
+                to={item.path}
+                className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+                variants={sidebarItemVariants}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </MotionLink>
+            ))}
+          </nav>
 
-      <div style={{ marginTop: 'var(--s4)' }}>
-        <div className="nav-section-label">System</div>
-        <Link to="/settings" className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}>
-          <SettingsIcon size={16}/>
-          <span>Settings</span>
-        </Link>
-      </div>
+          <div style={{ marginTop: 'var(--s4)' }}>
+            <div className="nav-section-label">System</div>
+            <MotionLink
+              to="/settings"
+              className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
+              variants={sidebarItemVariants}
+            >
+              <SettingsIcon size={16}/>
+              <span>Settings</span>
+            </MotionLink>
+          </div>
+        </motion.div>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-user-info">
-          <div className="sidebar-avatar">{initials}</div>
-          <div>
-            <div className="sidebar-user-name">{user?.displayName || 'Trader'}</div>
-            <div className="sidebar-user-role">
-              <span className="status-dot live"/>
-              online
+        <div className="sidebar-footer">
+          <div className="sidebar-user-info">
+            <div className="sidebar-avatar">{initials}</div>
+            <div>
+              <div className="sidebar-user-name">{user?.displayName || 'Trader'}</div>
+              <div className="sidebar-user-role">
+                <span className="status-dot live"/>
+                online
+              </div>
             </div>
           </div>
+          <button className="logout-btn" onClick={logout}>
+            <LogOut size={14}/>
+            <span>Sign out</span>
+          </button>
         </div>
-        <button className="logout-btn" onClick={logout}>
-          <LogOut size={14}/>
-          <span>Sign out</span>
-        </button>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 };
