@@ -267,12 +267,12 @@ const Accounts = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <span style={{ color: 'var(--text-tertiary)', fontSize: '0.6rem' }}>Trades Synced</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{acc.tradesCount} trades</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{acc.tradesCount || 0} trades</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end' }}>
                     <span style={{ color: 'var(--text-tertiary)', fontSize: '0.6rem' }}>Total Return</span>
                     <span style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)' }}>
-                      {isProfit ? '+' : ''}${acc.totalPnL.toFixed(2)}
+                      {isProfit ? '+' : ''}${(acc.totalPnL || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
