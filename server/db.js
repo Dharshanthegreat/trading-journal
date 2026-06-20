@@ -55,8 +55,8 @@ async function initDB() {
         stop_loss DOUBLE PRECISION DEFAULT 0,
         take_profit DOUBLE PRECISION DEFAULT 0,
         pnl DOUBLE PRECISION DEFAULT 0,
-        entry_time TEXT,
-        exit_time TEXT,
+        entry_time TIMESTAMPTZ,
+        exit_time TIMESTAMPTZ,
         setup TEXT DEFAULT '',
         grade TEXT DEFAULT 'B',
         notes TEXT DEFAULT '',
@@ -147,8 +147,7 @@ async function initDB() {
 
     // Create indexes
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_trades_user ON trades(user_id);
-      CREATE INDEX IF NOT EXISTS idx_trades_entry_time ON trades(entry_time);
+      CREATE INDEX IF NOT EXISTS idx_trades_user_entry_time ON trades(user_id, entry_time DESC);
       CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol);
       CREATE INDEX IF NOT EXISTS idx_trades_share_token ON trades(share_token);
       CREATE INDEX IF NOT EXISTS idx_journal_user_date ON journal_entries(user_id, date);
