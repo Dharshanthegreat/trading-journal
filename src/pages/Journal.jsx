@@ -12,7 +12,7 @@ import {
 const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
 const SETUPS = ['FVG', 'SMT', 'OB', 'BB', 'IRL-ERL', 'ERL-IRL'];
 
-import { toNewYorkDatetimeString, parseNewYorkDatetimeToDate, formatInNewYork } from '../utils/timezone';
+import { toNewYorkDatetimeString, parseNewYorkDatetimeToDate, formatInNewYork, toNewYorkDateString } from '../utils/timezone';
 
 const defaultForm = () => ({
   symbol: '', type: 'Long', entryPrice: '', exitPrice: '', lotSize: '',
@@ -47,6 +47,20 @@ const Journal = () => {
   const [activePlaybook, setActivePlaybook] = useState(null);
   const [loadingPlaybook, setLoadingPlaybook] = useState(false);
   const [playbookError, setPlaybookError] = useState('');
+
+  const setNYMarketOpenTime = (field) => {
+    const currentVal = formData[field];
+    let datePart = '';
+    if (currentVal && currentVal.includes('T')) {
+      datePart = currentVal.split('T')[0];
+    } else {
+      datePart = toNewYorkDateString(new Date());
+    }
+    setFormData(prev => ({
+      ...prev,
+      [field]: `${datePart}T09:30`
+    }));
+  };
 
   const parseOcrText = (text) => {
     const result = {
@@ -497,11 +511,59 @@ const Journal = () => {
                   <input required className="input" type="number" step="any" placeholder="250.00" value={formData.pnl} onChange={e => setFormData({ ...formData, pnl: e.target.value })}/>
                 </div>
                 <div className="form-field">
-                  <label className="form-label">Entry Time (Auto-OCR)</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label">Entry Time (Auto-OCR)</label>
+                    <button
+                      type="button"
+                      onClick={() => setNYMarketOpenTime('entryTime')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--accent)',
+                        cursor: 'pointer',
+                        fontSize: '0.65rem',
+                        fontFamily: 'Inter, sans-serif',
+                        padding: 0,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        transition: 'color var(--t-fast)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-hover, #a78bfa)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--accent)'}
+                    >
+                      🇺🇸 Set 9:30 AM NY
+                    </button>
+                  </div>
                   <input className="input" type="datetime-local" value={formData.entryTime} onChange={e => setFormData({ ...formData, entryTime: e.target.value })}/>
                 </div>
                 <div className="form-field">
-                  <label className="form-label">Exit Time (Auto-OCR)</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label">Exit Time (Auto-OCR)</label>
+                    <button
+                      type="button"
+                      onClick={() => setNYMarketOpenTime('exitTime')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--accent)',
+                        cursor: 'pointer',
+                        fontSize: '0.65rem',
+                        fontFamily: 'Inter, sans-serif',
+                        padding: 0,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        transition: 'color var(--t-fast)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-hover, #a78bfa)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--accent)'}
+                    >
+                      🇺🇸 Set 9:30 AM NY
+                    </button>
+                  </div>
                   <input className="input" type="datetime-local" value={formData.exitTime} onChange={e => setFormData({ ...formData, exitTime: e.target.value })}/>
                 </div>
                 <div className="form-field">

@@ -44,6 +44,7 @@ import { motion } from 'framer-motion';
 import './App.css';
 import useMagneticButtons from './hooks/useMagneticButtons';
 import CustomCursor from './components/ui/CustomCursor';
+import { formatInNewYork } from './utils/timezone';
 
 // Internal parser helper to turn **bold** text into HTML strong tags
 const parseBoldText = (text) => {
@@ -1174,13 +1175,18 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     <>
       <div className={`sidebar-overlay ${mobileMenuOpen ? 'active' : ''}`} onClick={onClose} />
       <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div className="logo">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', minWidth: 0, flex: 1 }}>
-            <div className="logo-icon">
-              <Activity size={16}/>
-            </div>
-            <span>Trading Journal</span>
-          </div>
+        <div className="logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--s1) var(--s2) var(--s4)' }}>
+          <img 
+            src={`${import.meta.env.BASE_URL}logo.png`} 
+            alt="Trading Journal Logo" 
+            style={{ 
+              height: '38px', 
+              width: 'auto', 
+              borderRadius: 'var(--r-sm)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }} 
+          />
           <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
             <X size={16} />
           </button>
@@ -1342,7 +1348,7 @@ const Header = ({ onMenuToggle }) => {
           }} />
           {isLocal ? 'Browser DB' : 'Cloud DB'}
         </div>
-        <span className="header-time">{format(time, 'HH:mm:ss')}</span>
+        <span className="header-time" title="New York Time (EST/EDT)">{formatInNewYork(time, 'HH:mm:ss')} NY</span>
         
         {/* Custom Premium Theme Selector */}
         <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
@@ -1462,9 +1468,20 @@ function AppContent() {
         color: 'var(--text-muted)', fontSize: '0.8rem',
         background: 'var(--bg-primary)',
       }}>
-        <div className="logo-icon anim-fade-in" style={{ width: 40, height: 40, borderRadius: 'var(--r-lg)', background: 'linear-gradient(135deg, var(--accent), #a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Activity size={20} color="#fff"/>
-        </div>
+        <img 
+          src={`${import.meta.env.BASE_URL}logo.png`} 
+          alt="Trading Journal Logo" 
+          className="anim-fade-in"
+          style={{ 
+            width: '100%', 
+            maxWidth: '220px', 
+            height: 'auto', 
+            borderRadius: 'var(--r-lg)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            marginBottom: 'var(--s2)'
+          }} 
+        />
         Loading Trading Journal...
       </div>
     );

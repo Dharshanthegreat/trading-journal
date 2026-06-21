@@ -97,15 +97,25 @@ const LoginPage = () => {
         {/* Card */}
         <div className="glass-deep login-card anim-fade-up">
           <div className="login-logo">
-            <div className="login-logo-mark">
-              <Activity size={24} color="#fff"/>
-            </div>
-            <div>
-              <div className="login-title">Trading Journal</div>
-              <div className="login-sub" style={{ marginTop: 6 }}>
-                {authMode === 'forgot' || authMode === 'reset' ? 'Password Recovery' : 'Professional Trading Journal'}
+            <img 
+              src={`${import.meta.env.BASE_URL}logo.png`} 
+              alt="Trading Journal Logo" 
+              className="anim-fade-in"
+              style={{ 
+                width: '100%', 
+                maxWidth: '340px', 
+                height: 'auto', 
+                borderRadius: 'var(--r-lg)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                marginBottom: 'var(--s1)'
+              }} 
+            />
+            {authMode === 'forgot' || authMode === 'reset' ? (
+              <div className="login-sub" style={{ marginTop: 6, fontWeight: 600, color: 'var(--accent)' }}>
+                Password Recovery Mode
               </div>
-            </div>
+            ) : null}
           </div>
 
           {/* Features - Hide during password reset to keep focus */}

@@ -58,13 +58,20 @@ const SharedTrade = () => {
         color: 'var(--text-muted)', background: 'var(--bg-primary)',
         fontFamily: 'Inter, sans-serif'
       }}>
-        <div className="logo-icon anim-rotate" style={{
-          width: 40, height: 40, borderRadius: 'var(--r-lg)',
-          background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <Activity size={20} color="#fff"/>
-        </div>
+        <img 
+          src={`${import.meta.env.BASE_URL}logo.png`} 
+          alt="Trading Journal Logo" 
+          className="anim-fade-in"
+          style={{ 
+            width: '100%', 
+            maxWidth: '180px', 
+            height: 'auto', 
+            borderRadius: 'var(--r-md)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            marginBottom: 'var(--s2)' 
+          }} 
+        />
         <span>Retrieving shared trade report...</span>
       </div>
     );
@@ -113,13 +120,20 @@ const SharedTrade = () => {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: 'var(--s3) var(--s5)', border: '1px solid var(--border)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-            <div className="logo-icon" style={{ width: 28, height: 28, borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent)', boxShadow: 'none' }}>
-              <Activity size={13} color="#fff"/>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)' }}>
+            <img 
+              src={`${import.meta.env.BASE_URL}logo.png`} 
+              alt="Trading Journal Logo" 
+              style={{ 
+                height: '32px', 
+                width: 'auto', 
+                borderRadius: 'var(--r-sm)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                border: '1px solid rgba(255,255,255,0.05)'
+              }} 
+            />
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.9rem', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                Trading Journal
                 <span className="badge badge-accent" style={{ fontSize: '0.58rem', padding: '1px 6px', borderRadius: 4 }}>Shared Report</span>
               </div>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Logged on {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMMM d, yyyy HH:mm') : '—'}</div>
