@@ -131,12 +131,14 @@ const TradingViewWidget = ({ symbol }) => {
             formattedSymbol = `FX:${symbol}`;
           } else if (['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'DOGEUSD'].includes(symbol)) {
             formattedSymbol = `COINBASE:${symbol}`;
-          } else if (['ES', 'NQ', 'MES', 'MNQ'].includes(symbol)) {
-            formattedSymbol = `CME:${symbol}1!`;
+          } else if (symbol === 'ES' || symbol === 'MES') {
+            formattedSymbol = 'CAPITALCOM:US500';
+          } else if (symbol === 'NQ' || symbol === 'MNQ') {
+            formattedSymbol = 'CAPITALCOM:NAS100';
           } else if (symbol === 'CL') {
-            formattedSymbol = `NYMEX:CL1!`;
+            formattedSymbol = 'CAPITALCOM:USOIL';
           } else if (symbol === 'GC') {
-            formattedSymbol = `COMEX:GC1!`;
+            formattedSymbol = 'CAPITALCOM:GOLD';
           } else {
             formattedSymbol = `NASDAQ:${symbol}`;
           }
