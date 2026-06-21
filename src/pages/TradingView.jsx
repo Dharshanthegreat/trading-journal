@@ -416,10 +416,10 @@ const TradingView = () => {
       {analysis && (
         <div className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
 
-          {/* Main Layout: Chart on Left, Trades on Right */}
-          <div style={{ display: 'flex', gap: 'var(--s4)', flexWrap: 'wrap' }}>
+          {/* Main Layout: Chart on Top, Trades on Bottom */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             {/* Live Interactive Chart Card */}
-            <div style={{ ...cardStyle, flex: '3 1 600px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
+            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
               <div style={cardHeaderStyle}>
                 <TrendingUp size={13} style={{ color: 'var(--accent)' }} /> Live Interactive Technical Chart
               </div>
@@ -427,67 +427,67 @@ const TradingView = () => {
             </div>
 
             {/* Trade Cross-Reference Card */}
-            <div style={{ ...cardStyle, flex: '1 1 250px', minWidth: '200px', display: 'flex', flexDirection: 'column' }}>
-              <div style={cardHeaderStyle}>
+            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ ...cardHeaderStyle, marginBottom: 0 }}>
                 <ChevronRight size={13} /> Your Trades · {analysis.symbol}
               </div>
 
               {symbolTrades ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', width: '100%' }}>
+                  
+                  {/* Net P&L Summary */}
                   <div style={{
-                    textAlign: 'center', padding: '10px', borderRadius: 'var(--r-md)',
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 20px', borderRadius: 'var(--r-md)',
                     background: symbolTrades.netPnl >= 0 ? 'var(--profit-soft)' : 'var(--loss-soft)',
                     border: `1px solid ${symbolTrades.netPnl >= 0 ? 'var(--profit-border)' : 'var(--loss-border)'}`,
+                    flex: '1 1 auto', minWidth: '150px', justifyContent: 'center'
                   }}>
-                    <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Net P&L</div>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net P&L</div>
                     <div style={{
-                      fontSize: '1.1rem', fontWeight: 800,
+                      fontSize: '1.25rem', fontWeight: 800,
                       fontFamily: 'JetBrains Mono', color: symbolTrades.netPnl >= 0 ? 'var(--profit)' : 'var(--loss)',
                     }}>
                       {symbolTrades.netPnl >= 0 ? '+' : ''}${symbolTrades.netPnl.toFixed(2)}
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.6rem' }}>
-                    <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.52rem' }}>Trades</div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>{symbolTrades.total}</div>
+                  {/* Horizontal Metrics Rows */}
+                  <div style={{ display: 'flex', gap: '10px', flex: '3 1 auto', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>Trades</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>{symbolTrades.total}</div>
                     </div>
-                    <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.52rem' }}>Win Rate</div>
-                      <div style={{ fontWeight: 700, color: parseFloat(symbolTrades.winRate) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>{symbolTrades.winRate}%</div>
+                    <div style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>Win Rate</div>
+                      <div style={{ fontWeight: 700, color: parseFloat(symbolTrades.winRate) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>{symbolTrades.winRate}%</div>
                     </div>
-                    <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.52rem' }}>W / L</div>
-                      <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                    <div style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>W / L</div>
+                      <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>
                         <span style={{ color: 'var(--profit)' }}>{symbolTrades.wins}</span>
                         <span style={{ color: 'var(--text-muted)' }}> / </span>
                         <span style={{ color: 'var(--loss)' }}>{symbolTrades.losses}</span>
                       </div>
                     </div>
-                    <div style={{ padding: '8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.52rem' }}>Avg Entry</div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>${symbolTrades.avgEntry}</div>
+                    <div style={{ flex: '1 1 100px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>Avg Entry</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>${symbolTrades.avgEntry}</div>
                     </div>
                   </div>
 
                   {symbolTrades.lastTradeDate && (
-                    <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                      <Clock size={10} /> Last: {symbolTrades.lastTradeDate}
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '120px', justifyContent: 'center' }}>
+                      <Clock size={12} /> Last: {symbolTrades.lastTradeDate}
                     </div>
                   )}
                 </div>
               ) : (
                 <div style={{
-                  flex: 1, display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  color: 'var(--text-muted)', fontSize: '0.7rem', textAlign: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                  color: 'var(--text-muted)', fontSize: '0.72rem', padding: '16px 0', width: '100%',
                 }}>
-                  <Activity size={24} style={{ opacity: 0.3 }} />
-                  <span>No trades logged for {analysis.symbol}</span>
-                  <span style={{ fontSize: '0.58rem' }}>
-                    Log trades in the Journal to see cross-reference data here.
-                  </span>
+                  <Activity size={18} style={{ opacity: 0.4 }} />
+                  <span>No trades logged for {analysis.symbol}. Log trades in the Journal to see cross-reference data.</span>
                 </div>
               )}
             </div>
