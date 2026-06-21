@@ -150,13 +150,28 @@ const TradingViewWidget = ({ symbol }) => {
           symbol: formattedSymbol,
           interval: 'D',
           timezone: 'Etc/UTC',
-          theme: 'dark',
+          theme: 'light',
           style: '1',
           locale: 'en',
           enable_publishing: false,
           hide_side_toolbar: false,
           allow_symbol_change: true,
           container_id: containerId,
+          toolbar_bg: '#C3BCB1',
+          overrides: {
+            "paneProperties.backgroundType": "solid",
+            "paneProperties.background": "#C3BCB1",
+            "paneProperties.vertGridProperties.color": "rgba(0, 0, 0, 0.03)",
+            "paneProperties.horzGridProperties.color": "rgba(0, 0, 0, 0.03)",
+            "scalesProperties.textColor": "#333333",
+            "scalesProperties.lineColor": "#A49E93",
+            "mainSeriesProperties.candleStyle.upColor": "#ffffff",
+            "mainSeriesProperties.candleStyle.downColor": "#333333",
+            "mainSeriesProperties.candleStyle.borderUpColor": "#333333",
+            "mainSeriesProperties.candleStyle.borderDownColor": "#333333",
+            "mainSeriesProperties.candleStyle.wickUpColor": "#333333",
+            "mainSeriesProperties.candleStyle.wickDownColor": "#333333",
+          }
         });
       }
     };

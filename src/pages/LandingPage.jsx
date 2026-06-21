@@ -353,7 +353,7 @@ const LandingPage = () => {
     };
   }, []);
 
-  // 2. VECTOR PARTICLES BACKGROUND SIMULATION
+  // 2. VECTOR PARTICLES BACKGROUND SIMULATION (Sci-Fi Warp Speed Edition)
   useEffect(() => {
     const pCanvas = particlesCanvasRef.current;
     if (!pCanvas) return;
@@ -361,6 +361,52 @@ const LandingPage = () => {
     let particles = [];
     let isMounted = true;
     let animId;
+
+    const maxDepth = 1000;
+    const colors = [
+      { r: 0, g: 255, b: 102 },   // Neon Green
+      { r: 0, g: 240, b: 255 },   // Neon Cyan
+      { r: 0, g: 162, b: 255 },   // Cyan Blue
+      { r: 16, g: 185, b: 129 }   // Emerald Green
+    ];
+
+    function createParticle(resetZ = false) {
+      const angle = Math.random() * Math.PI * 2;
+      // Distribute particles in a circular space outwards
+      const radius = Math.random() * Math.max(pCanvas.width, pCanvas.height) * 0.5 + 10;
+      
+      const colorObj = colors[Math.floor(Math.random() * colors.length)];
+      
+      // Categorize particles into streaks, dust, and standard warp particles
+      const typeRand = Math.random();
+      let type = 'particle';
+      let speed = Math.random() * 8 + 6;
+      let size = Math.random() * 1.2 + 0.6;
+      let trailLength = Math.random() * 4 + 3; // multiplier of speed for tail length
+
+      if (typeRand > 0.85) {
+        type = 'streak';
+        speed = Math.random() * 14 + 12;
+        size = Math.random() * 1.5 + 1.0;
+        trailLength = Math.random() * 6 + 6;
+      } else if (typeRand < 0.2) {
+        type = 'dust';
+        speed = Math.random() * 3 + 2;
+        size = Math.random() * 0.6 + 0.3;
+        trailLength = 1.5;
+      }
+
+      return {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+        z: resetZ ? maxDepth : Math.random() * maxDepth,
+        speed: speed,
+        size: size,
+        color: colorObj,
+        trailLength: trailLength,
+        type: type
+      };
+    }
 
     function resizeParticles() {
       if (!pCanvas) return;
@@ -371,33 +417,70 @@ const LandingPage = () => {
 
     function createParticles() {
       particles = [];
-      const count = Math.floor((pCanvas.width * pCanvas.height) / 12000);
+      const count = Math.min(800, Math.floor((pCanvas.width * pCanvas.height) / 1800));
       for (let i = 0; i < count; i++) {
-        particles.push({
-          x: Math.random() * pCanvas.width,
-          y: Math.random() * pCanvas.height,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          size: Math.random() * 1.5 + 0.5,
-          opacity: Math.random() * 0.6 + 0.2
-        });
+        particles.push(createParticle(false));
       }
     }
 
     function animateParticles() {
       if (!isMounted || !pCanvas) return;
+
       pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-      for (const p of particles) {
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0) p.x = pCanvas.width;
-        if (p.x > pCanvas.width) p.x = 0;
-        if (p.y < 0) p.y = pCanvas.height;
-        if (p.y > pCanvas.height) p.y = 0;
+
+      const cx = pCanvas.width / 2;
+      const cy = pCanvas.height / 2;
+      const scale = (pCanvas.width + pCanvas.height) / 2;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        // Move particle closer on Z axis
+        p.z -= p.speed;
+
+        // Reset if it gets past the viewer
+        if (p.z <= 0) {
+          particles[i] = createParticle(true);
+          continue;
+        }
+
+        // Project to 2D
+        const px = (p.x / p.z) * scale + cx;
+        const py = (p.y / p.z) * scale + cy;
+
+        // Reset if it goes out of canvas bounds
+        if (px < -100 || px > pCanvas.width + 100 || py < -100 || py > pCanvas.height + 100) {
+          particles[i] = createParticle(true);
+          continue;
+        }
+
+        // Calculate trailing point
+        const tailZ = p.z + p.speed * p.trailLength;
+        const tx = (p.x / tailZ) * scale + cx;
+        const ty = (p.y / tailZ) * scale + cy;
+
+        // Draw trail segment
         pCtx.beginPath();
-        pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        pCtx.fillStyle = `rgba(255,255,255,${p.opacity})`;
-        pCtx.fill();
+        pCtx.moveTo(tx, ty);
+        pCtx.lineTo(px, py);
+        
+        const proximity = (1 - p.z / maxDepth);
+        const alpha = Math.min(0.85, proximity * 0.75 + 0.1);
+        
+        pCtx.strokeStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${alpha})`;
+        pCtx.lineWidth = p.size * (proximity * 1.5 + 0.5);
+        pCtx.lineCap = 'round';
+        pCtx.stroke();
+
+        // Draw a glowing, bright core at the front tip
+        if (p.type === 'streak' || p.type === 'particle') {
+          pCtx.beginPath();
+          pCtx.arc(px, py, p.size * 0.75, 0, Math.PI * 2);
+          pCtx.fillStyle = `rgba(255, 255, 255, ${alpha + 0.15})`;
+          pCtx.fill();
+        }
       }
+
       animId = requestAnimationFrame(animateParticles);
     }
 
@@ -528,8 +611,13 @@ const LandingPage = () => {
         #scroll-video-container canvas,
         #scroll-video-container video {
           position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+          filter: brightness(1.4) contrast(1.1) saturate(1.05);
         }
-        #scroll-video-container .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.35); }
+        #scroll-video-container .overlay {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at center, rgba(6, 12, 38, 0.0) 0%, rgba(1, 4, 16, 0.4) 100%);
+        }
 
         /* Particles */
         #particles-canvas {
