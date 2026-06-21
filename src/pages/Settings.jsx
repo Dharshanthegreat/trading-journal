@@ -17,7 +17,7 @@ import {
 const Settings = () => {
   const { importTrades, exportTrades, loading, fetchTrades, fetchAnalytics } = useTrades();
   const { user, updateProfile, refreshUser } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, cursorEffect, setCursorEffect } = useTheme();
   const { fetchEntries } = useJournal();
   
   const [importStatus, setImportStatus] = useState(null);
@@ -623,7 +623,7 @@ const Settings = () => {
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)' }}>
           Customize your trading workspace with one of our premium, high-contrast flat themes.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 'var(--s3)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s5)' }}>
           {[
             { id: 'dark', name: 'Dark Slate', desc: 'Obsidian & Indigo', icon: <Moon size={14} />, bg: '#0a0b0f', accent: '#818cf8' },
             { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
@@ -666,6 +666,32 @@ const Settings = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Cursor Settings */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Cursor Splash Effect</h4>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Enable the interactive WebGL fluid cursor trail and click burst animation.</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button 
+                type="button" 
+                className={`btn btn-sm ${cursorEffect ? 'btn-primary' : 'btn-ghost'}`} 
+                onClick={() => setCursorEffect(true)}
+              >
+                On
+              </button>
+              <button 
+                type="button" 
+                className={`btn btn-sm ${!cursorEffect ? 'btn-danger' : 'btn-ghost'}`} 
+                onClick={() => setCursorEffect(false)}
+              >
+                Off
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

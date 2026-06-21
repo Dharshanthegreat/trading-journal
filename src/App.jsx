@@ -1443,6 +1443,7 @@ const Header = ({ onMenuToggle }) => {
 /* ─── App Shell ─────────────────────────────────── */
 function AppContent() {
   const { user, loading, logout } = useAuth();
+  const { cursorEffect } = useTheme();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -1473,7 +1474,7 @@ function AppContent() {
   if (isPublicRoute) {
     return (
       <div style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
-        <CustomCursor />
+        {cursorEffect && <CustomCursor />}
         <Routes>
           <Route path="/shared/trade/:token" element={<SharedTrade />} />
         </Routes>
@@ -1484,7 +1485,7 @@ function AppContent() {
   if (!user) {
     return (
       <>
-        <CustomCursor />
+        {cursorEffect && <CustomCursor />}
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
@@ -1498,7 +1499,7 @@ function AppContent() {
   if (isLanding) {
     return (
       <>
-        <CustomCursor />
+        {cursorEffect && <CustomCursor />}
         <LandingPage />
       </>
     );
@@ -1506,7 +1507,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <CustomCursor />
+      {cursorEffect && <CustomCursor />}
       <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <main className="main-content">
         {user?.isGuest && (

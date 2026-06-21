@@ -1,23 +1,46 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target, Wallet } from 'lucide-react';
 
 import { toNewYorkDateString } from '../utils/timezone';
+import { accounts as accountsApi } from '../services/api';
 
 const CalendarPage = () => {
   const { analytics, fetchAnalytics, trades, fetchTrades, loading } = useTrades();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccountId, setSelectedAccountId] = useState('All');
 
   useEffect(() => {
     fetchAnalytics();
-    fetchTrades({ limit: 500 });
+    fetchTrades({ limit: 1000 });
+    const loadAccounts = async () => {
+      try {
+        const data = await accountsApi.list();
+        setAccounts(data || []);
+      } catch (err) {
+        console.error('Failed to load accounts:', err);
+      }
+    };
+    loadAccounts();
   }, [fetchAnalytics, fetchTrades]);
+
+  const filteredTrades = useMemo(() => {
+    if (selectedAccountId === 'All') return trades;
+    const targetId = parseInt(selectedAccountId);
+    return trades.filter(t => {
+      if (targetId === 1) {
+        return t.accountId === 1 || !t.accountId;
+      }
+      return t.accountId === targetId;
+    });
+  }, [trades, selectedAccountId]);
 
   const dailyData = useMemo(() => {
     const daily = {};
-    trades.forEach(t => {
+    filteredTrades.forEach(t => {
       if (!t.entryTime) return;
       const dateStr = toNewYorkDateString(t.entryTime);
       if (!daily[dateStr]) {
@@ -29,7 +52,7 @@ const CalendarPage = () => {
       else if (t.pnl < 0) daily[dateStr].losses += 1;
     });
     return daily;
-  }, [trades]);
+  }, [filteredTrades]);
 
   // Generate calendar grid (starting on Sunday)
   const calendarDays = useMemo(() => {
@@ -67,8 +90,8 @@ const CalendarPage = () => {
   const selectedDateTrades = useMemo(() => {
     if (!selectedDate) return [];
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return trades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
-  }, [selectedDate, trades]);
+    return filteredTrades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
+  }, [selectedDate, filteredTrades]);
 
   // Monthly summary
   const monthlySummary = useMemo(() => {
@@ -106,17 +129,46 @@ const CalendarPage = () => {
           <div className="page-subtitle">Monthly P&L overview</div>
         </div>
 
-        {/* Compact Month Navigation in Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', background: 'var(--surface-glass)', padding: '4px 8px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-          <button className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-            <ChevronLeft size={14}/>
-          </button>
-          <span style={{ fontWeight: 700, fontSize: '0.82rem', minWidth: 90, textAlign: 'center', color: 'var(--text-primary)' }}>
-            {format(currentMonth, 'MMM yyyy')}
-          </span>
-          <button className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-            <ChevronRight size={14}/>
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+          {/* Account Selector Dropdown */}
+          <div className="tz-filter-btn" style={{ height: '34px', padding: '0 12px', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)' }}>
+            <Wallet size={13} style={{ color: 'var(--accent)' }} />
+            <select 
+              value={selectedAccountId} 
+              onChange={e => setSelectedAccountId(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                paddingRight: '4px',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <option value="All" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>All Accounts</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>{acc.accountName}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Compact Month Navigation in Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', background: 'var(--surface-glass)', padding: '4px 8px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', height: '34px' }}>
+            <button className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+              <ChevronLeft size={14}/>
+            </button>
+            <span style={{ fontWeight: 700, fontSize: '0.82rem', minWidth: 90, textAlign: 'center', color: 'var(--text-primary)' }}>
+              {format(currentMonth, 'MMM yyyy')}
+            </span>
+            <button className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+              <ChevronRight size={14}/>
+            </button>
+          </div>
         </div>
       </div>
 

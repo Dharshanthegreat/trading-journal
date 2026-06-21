@@ -11,6 +11,11 @@ export const ThemeProvider = ({ children }) => {
     return validThemes.includes(saved) ? saved : 'dark';
   });
 
+  const [cursorEffect, setCursorEffectState] = useState(() => {
+    const saved = localStorage.getItem('cursor_effect');
+    return saved !== 'false'; // defaults to true
+  });
+
   useEffect(() => {
     // List of all theme classes to clean up
     const themeClasses = [
@@ -40,8 +45,13 @@ export const ThemeProvider = ({ children }) => {
     setThemeState(nextTheme);
   };
 
+  const changeCursorEffect = (val) => {
+    setCursorEffectState(val);
+    localStorage.setItem('cursor_effect', val ? 'true' : 'false');
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: changeTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme: changeTheme, toggleTheme, cursorEffect, setCursorEffect: changeCursorEffect }}>
       {children}
     </ThemeContext.Provider>
   );
