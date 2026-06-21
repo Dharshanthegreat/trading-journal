@@ -81,21 +81,38 @@ const LoginPage = () => {
   ];
 
   return (
-    <div className="login-bg">
-      {/* Subtle grid */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none',
-        backgroundImage: `
-          linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)
-        `,
-        backgroundSize: '60px 60px',
-      }}/>
+    <div className="login-bg" style={{
+      position: 'relative',
+      width: '100vw',
+      minHeight: '100vh',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#000000',
+    }}>
+      {/* Full-screen background video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
+        }}
+      >
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260403_050628_c4e32401-fab4-4a27-b7a8-6e9291cd5959.mp4" type="video/mp4" />
+      </video>
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s6)', width: '100%', padding: 'var(--s8)' }}>
 
         {/* Card */}
-        <div className="glass-deep login-card anim-fade-up">
+        <div className="liquid-glass login-card anim-fade-up">
           <div className="login-logo">
             <img 
               src={`${import.meta.env.BASE_URL}logo.png`} 
