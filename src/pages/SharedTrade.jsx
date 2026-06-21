@@ -192,6 +192,9 @@ const SharedTrade = () => {
                     { id: 'minimal', name: 'Minimalist', icon: <Palette size={11} />, accent: '#000000' },
                     { id: 'claymorphism', name: 'Claymorphism', icon: <Paintbrush size={11} />, accent: '#6366f1' },
                     { id: 'refero', name: 'Refero (Linear)', icon: <Zap size={11} />, accent: '#e4f222' },
+                    { id: 'slash', name: 'Slash (Gold)', icon: <Sparkles size={11} />, accent: '#f59e0b' },
+                    { id: 'steep', name: 'Steep (Blue)', icon: <Compass size={11} />, accent: '#2563eb' },
+                    { id: 'ventriloc', name: 'Ventriloc (Zinc)', icon: <Layers size={11} />, accent: '#3f3f46' },
                   ].map(t => (
                     <button
                       key={t.id}

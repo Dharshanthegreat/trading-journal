@@ -17,7 +17,7 @@ import {
 const Settings = () => {
   const { importTrades, exportTrades, loading, fetchTrades, fetchAnalytics } = useTrades();
   const { user, updateProfile, refreshUser } = useAuth();
-  const { theme, setTheme, cursorEffect, setCursorEffect } = useTheme();
+  const { theme, setTheme, cursorEffect, setCursorEffect, bgEffect, setBgEffect } = useTheme();
   const { fetchEntries } = useJournal();
   
   const [importStatus, setImportStatus] = useState(null);
@@ -629,6 +629,9 @@ const Settings = () => {
             { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
             { id: 'claymorphism', name: 'Claymorphism', desc: 'Soft Clay UI', icon: <Paintbrush size={14} />, bg: '#edf2f7', accent: '#6366f1' },
             { id: 'refero', name: 'Refero (Linear)', desc: 'Midnight & Lime', icon: <Zap size={14} />, bg: '#08090a', accent: '#e4f222' },
+            { id: 'slash', name: 'Slash (Gold)', desc: 'Obsidian & Gold', icon: <Sparkles size={14} />, bg: '#09090b', accent: '#f59e0b' },
+            { id: 'steep', name: 'Steep (Blue)', desc: 'Ice Blue & Royal', icon: <Compass size={14} />, bg: '#f4f6f9', accent: '#2563eb' },
+            { id: 'ventriloc', name: 'Ventriloc (Zinc)', desc: 'Warm Parchment', icon: <Layers size={14} />, bg: '#f7f4eb', accent: '#3f3f46' },
           ].map(t => (
             <div
               key={t.id}
@@ -691,6 +694,32 @@ const Settings = () => {
               >
                 Off
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Aceternity UI Background Effect Settings */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Aceternity Background Layout</h4>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Apply premium radial-faded grid or dot patterns behind the workspace.</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {[
+                { id: 'none', label: 'None' },
+                { id: 'grid', label: 'Grid Lines' },
+                { id: 'dots', label: 'Dot Pattern' },
+              ].map(opt => (
+                <button 
+                  key={opt.id}
+                  type="button" 
+                  className={`btn btn-sm ${bgEffect === opt.id ? 'btn-primary' : 'btn-ghost'}`} 
+                  onClick={() => setBgEffect(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
