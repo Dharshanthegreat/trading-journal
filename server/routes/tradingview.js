@@ -14,7 +14,17 @@ function generateMockAnalysis(symbol, timeframe) {
     return min + Math.abs(x) * (max - min);
   };
 
-  const price = +(rand(20, 500)).toFixed(2);
+  let priceMin = 20, priceMax = 500, decimals = 2;
+  if (s.includes('BTCUSD') || s === 'BTC') { priceMin = 58000; priceMax = 72000; }
+  else if (s.includes('ETHUSD') || s === 'ETH') { priceMin = 3100; priceMax = 4200; }
+  else if (s === 'ES' || s === 'MES') { priceMin = 5100; priceMax = 5600; }
+  else if (s === 'NQ' || s === 'MNQ') { priceMin = 18200; priceMax = 20500; }
+  else if (s === 'GC') { priceMin = 2200; priceMax = 2500; }
+  else if (s === 'CL') { priceMin = 70; priceMax = 90; }
+  else if (s === 'EURUSD') { priceMin = 1.05; priceMax = 1.12; decimals = 4; }
+  else if (s === 'GBPUSD') { priceMin = 1.22; priceMax = 1.31; decimals = 4; }
+
+  const price = +(rand(priceMin, priceMax)).toFixed(decimals);
   const rsi = +(rand(25, 78)).toFixed(1);
   const macdLine = +(rand(-3, 4)).toFixed(3);
   const macdSignal = +(macdLine - rand(-1, 1)).toFixed(3);
