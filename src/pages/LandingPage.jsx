@@ -145,6 +145,9 @@ const CandlestickCanvas = ({ style }) => {
 
 
 
+
+
+
 /* ═══════════════════════════════════════════════════════
    MAIN REDESIGNED LANDING PAGE
    ═══════════════════════════════════════════════════════ */
@@ -162,7 +165,55 @@ const LandingPage = () => {
 
   const [framesReady, setFramesReady] = useState(false);
 
+  // Refs for video section mouse scrub logic
+  const mainframeVideoRef = useRef(null);
+  const targetTimeRef = useRef(0);
+  const prevXRef = useRef(0);
+  const isSeekingRef = useRef(false);
 
+  // Mainframe video mouse scrub logic
+  useEffect(() => {
+    const video = mainframeVideoRef.current;
+    if (!video) return;
+
+    const handleMouseMove = (e) => {
+      const currentX = e.clientX;
+      const prevX = prevXRef.current;
+      prevXRef.current = currentX;
+
+      if (!video.duration || isNaN(video.duration)) return;
+
+      const delta = currentX - prevX;
+      const timeOffset = (delta / window.innerWidth) * 0.8 * video.duration;
+      let newTarget = targetTimeRef.current + timeOffset;
+
+      newTarget = Math.max(0, Math.min(video.duration, newTarget));
+      targetTimeRef.current = newTarget;
+
+      seekVideo();
+    };
+
+    const seekVideo = () => {
+      if (isSeekingRef.current) return;
+      if (Math.abs(video.currentTime - targetTimeRef.current) < 0.01) return;
+
+      isSeekingRef.current = true;
+      video.currentTime = targetTimeRef.current;
+    };
+
+    const handleSeeked = () => {
+      isSeekingRef.current = false;
+      seekVideo();
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    video.addEventListener('seeked', handleSeeked);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      video.removeEventListener('seeked', handleSeeked);
+    };
+  }, []);
 
   const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260616_212935_bbf608da-62d1-4f25-9be4-c346e4d09cc8.mp4';
 
@@ -648,6 +699,30 @@ const LandingPage = () => {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
+
+        /* MAINFRAME PILL STYLING */
+        .mainframe-pill-white {
+          display: inline-flex; align-items: center; justify-content: center;
+          background: #ffffff; color: #000000; border: 1px solid rgba(0,0,0,0.1);
+          border-radius: 9999px; font-size: clamp(13px, 2vw, 15px);
+          padding: 0.3em 1.2em; margin: 0.2em;
+          white-space: nowrap; transition: background 0.2s, color 0.2s;
+          cursor: pointer; font-family: var(--font-body);
+        }
+        .mainframe-pill-white:hover {
+          background: #000000; color: #ffffff;
+        }
+        .mainframe-pill-outline {
+          display: inline-flex; align-items: center; justify-content: center;
+          background: transparent; color: #ffffff; border: 1px solid #ffffff;
+          border-radius: 9999px; font-size: clamp(13px, 2vw, 15px);
+          padding: 0.3em 1.2em; margin: 0.2em;
+          white-space: nowrap; transition: background 0.2s, color 0.2s;
+          cursor: pointer; gap: 8px; font-family: var(--font-body);
+        }
+        .mainframe-pill-outline:hover {
+          background: #ffffff; color: #000000;
+        }
       `}</style>
 
       {/* Scroll Video Background */}
@@ -754,8 +829,56 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Spacer before Section 3 */}
+        {/* Spacer before Mainframe section */}
         <div style={{ height: '100vh' }}></div>
+
+        {/* Section: Background Video Section (Scrub Interaction) */}
+        <section id="mainframe-section" style={{
+          position: 'relative',
+          height: '100vh',
+          width: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 6,
+          background: '#010101',
+          color: '#ffffff',
+        }}>
+          {/* Background Video Wrapper (Clipped & Masked) */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 0,
+            background: '#010101',
+            maskImage: 'radial-gradient(circle at 70% 50%, black 10%, transparent 60%)',
+            WebkitMaskImage: 'radial-gradient(circle at 70% 50%, black 10%, transparent 60%)',
+          }}>
+            <video
+              ref={mainframeVideoRef}
+              muted
+              playsInline
+              preload="auto"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: '70% center',
+                filter: 'brightness(0.3) contrast(1.25) saturate(0.85)',
+              }}
+            >
+              <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260530_042513_df96a13b-6155-4f6e-8b93-c9dee66fba08.mp4" type="video/mp4" />
+            </video>
+          </div>
+
+          {/* Smooth overlay to blend the light-background video with the dark landing page theme */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom, #010101 0%, rgba(1, 1, 1, 0.1) 25%, rgba(1, 1, 1, 0.1) 75%, #010101 100%)',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }} />
+        </section>
 
         {/* Section 3: Product Presenting Banner */}
         <section id="section-three">

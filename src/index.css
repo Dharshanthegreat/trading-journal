@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
+  --font-heading: 'HelveticaNowDisplay-Medium', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'HelveticaNowDisplayW01-Rg', 'Helvetica Neue', Arial, sans-serif;
+
   /* ═══ CORE PALETTE ═══ */
   --bg-primary:      #0a0b0f;
   --bg-secondary:    #0f1117;
@@ -492,7 +495,7 @@ body.ui-dots-bg .page-container > * {
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   text-rendering: optimizeLegibility;
   background: var(--bg-primary);
@@ -720,5 +723,21 @@ textarea.input { resize: vertical; line-height: 1.7; font-family: 'Inter', sans-
   mask-composite: exclude;
   pointer-events: none;
 }
+
+
+/* ═══ MAINFRAME HEADING LOGO FONT ═══ */
+.logo {
+  font-family: var(--font-heading) !important;
+}
+
+/* Typewriter blinking cursor keys */
+@keyframes blink {
+  from, to { opacity: 1; }
+  50% { opacity: 0; }
+}
+.typewriter-cursor {
+  animation: blink 1s step-end infinite;
+}
+
 
 
