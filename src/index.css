@@ -164,6 +164,17 @@ body.theme-minimal {
   --border-accent:   rgba(0, 0, 0, 0.28);
 }
 
+/* Override purple gradient to solid black in Minimalist theme */
+body.theme-minimal .logo-icon,
+body.theme-minimal .sidebar-avatar,
+body.theme-minimal .header-avatar,
+body.theme-minimal .progress-fill,
+body.theme-minimal div[style*="linear-gradient(135deg, var(--accent), #a78bfa)"],
+body.theme-minimal div[style*="linear-gradient(90deg, var(--accent), #a78bfa)"] {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
 
 /* ═══ REFERO (LINEAR MIDNIGHT & LIME) THEME OVERRIDES ═══ */
 body.theme-refero {
