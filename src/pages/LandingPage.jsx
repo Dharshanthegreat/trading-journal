@@ -872,6 +872,9 @@ const LandingPage = () => {
               <span className="underlined"><span className="line"></span><span>&ensp;your edge&ensp;</span></span>
               on the web.
             </h1>
+            <p style={{ marginTop: '1.25rem', color: 'rgba(255, 255, 255, 0.65)', fontSize: '0.95rem', fontStyle: 'italic', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+              "Focus on the process, not on the result"
+            </p>
             <div className="ctas">
               <div className="code-box">
                 <span className="prompt">&gt;</span>

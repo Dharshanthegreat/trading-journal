@@ -511,7 +511,12 @@ const Dashboard = () => {
     <div className="tz-dashboard-container">
       {/* Header Row */}
       <div className="tz-header">
-        <h1 className="tz-title">Dashboard</h1>
+        <div>
+          <h1 className="tz-title">Dashboard</h1>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '4px' }}>
+            "Focus on the process, not on the result"
+          </p>
+        </div>
         
         {/* Filters */}
         <div className="tz-filters">
