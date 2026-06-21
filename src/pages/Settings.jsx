@@ -628,6 +628,7 @@ const Settings = () => {
             { id: 'dark', name: 'Dark Slate', desc: 'Obsidian & Indigo', icon: <Moon size={14} />, bg: '#0a0b0f', accent: '#818cf8' },
             { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
             { id: 'claymorphism', name: 'Claymorphism', desc: 'Soft Clay UI', icon: <Paintbrush size={14} />, bg: '#edf2f7', accent: '#6366f1' },
+            { id: 'refero', name: 'Refero (Linear)', desc: 'Midnight & Lime', icon: <Zap size={14} />, bg: '#08090a', accent: '#e4f222' },
           ].map(t => (
             <div
               key={t.id}
