@@ -2,114 +2,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useTrades } from '../contexts/TradeContext';
 import { tradingview } from '../services/api';
 import {
-  TrendingUp, TrendingDown, Search, Wifi, WifiOff, Zap,
-  Activity, BarChart2, Target, ArrowUpCircle, ArrowDownCircle,
-  MinusCircle, RefreshCw, Clock, Layers, ChevronRight, AlertTriangle
+  TrendingUp, Search, Wifi, WifiOff, Zap,
+  Activity, BarChart2, RefreshCw, Clock, ChevronRight, AlertTriangle
 } from 'lucide-react';
 
-/* ─── Signal color helpers ──────────────────────────── */
-const signalColor = (signal) => {
-  switch (signal) {
-    case 'Strong Buy': return '#22c55e';
-    case 'Buy': return '#4ade80';
-    case 'Neutral': return '#f59e0b';
-    case 'Sell': return '#fca5a5';
-    case 'Strong Sell': return '#f87171';
-    default: return 'var(--text-muted)';
-  }
-};
-
-const signalIcon = (signal, size = 14) => {
-  switch (signal) {
-    case 'Buy': case 'Strong Buy':
-      return <ArrowUpCircle size={size} style={{ color: signalColor(signal) }} />;
-    case 'Sell': case 'Strong Sell':
-      return <ArrowDownCircle size={size} style={{ color: signalColor(signal) }} />;
-    default:
-      return <MinusCircle size={size} style={{ color: signalColor('Neutral') }} />;
-  }
-};
-
-/* ─── Gauge Component ─────────────────────────────── */
-const RadialGauge = ({ value, max = 100, label, color, size = 90 }) => {
-  const radius = (size - 12) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (value / max) * circumference;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size/2} cy={size/2} r={radius}
-          fill="none" stroke="var(--border)" strokeWidth="5" opacity="0.3" />
-        <circle cx={size/2} cy={size/2} r={radius}
-          fill="none" stroke={color} strokeWidth="5"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size/2} ${size/2})`}
-          style={{ transition: 'stroke-dashoffset 1s ease' }} />
-        <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
-          style={{ fill: color, fontSize: size * 0.22, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
-          {typeof value === 'number' ? value.toFixed(1) : value}
-        </text>
-      </svg>
-      {label && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>}
-    </div>
-  );
-};
-
-/* ─── Signal Strength Bar ─────────────────────────── */
-const SignalBar = ({ buy, sell, neutral, total }) => {
-  const bp = total ? (buy / total * 100) : 0;
-  const sp = total ? (sell / total * 100) : 0;
-  return (
-    <div style={{ width: '100%' }}>
-      <div style={{
-        display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden',
-        background: 'var(--bg-primary)', gap: '1px',
-      }}>
-        <div style={{ width: `${bp}%`, background: 'linear-gradient(90deg, #22c55e, #4ade80)', borderRadius: '3px 0 0 3px', transition: 'width 0.6s ease' }} />
-        <div style={{ flexGrow: 1, background: 'var(--border)' }} />
-        <div style={{ width: `${sp}%`, background: 'linear-gradient(90deg, #fca5a5, #f87171)', borderRadius: '0 3px 3px 0', transition: 'width 0.6s ease' }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-        <span style={{ color: '#4ade80' }}>{buy} Buy</span>
-        <span>{neutral} Neutral</span>
-        <span style={{ color: '#fca5a5' }}>{sell} Sell</span>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Support/Resistance Level ────────────────────── */
-const SRLevel = ({ level, label, strength, type, price, minPrice, maxPrice }) => {
-  const range = maxPrice - minPrice || 1;
-  const position = ((level - minPrice) / range) * 100;
-  const pricePos = ((price - minPrice) / range) * 100;
-  const isSupport = type === 'support';
-  const color = isSupport ? '#22c55e' : '#f87171';
-  const opacityMap = { Strong: 1, Medium: 0.7, Weak: 0.4 };
-
-  return (
-    <div style={{ position: 'relative', height: '28px', display: 'flex', alignItems: 'center' }}>
-      <div style={{
-        position: 'absolute', left: `${position}%`, transform: 'translateX(-50%)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-        opacity: opacityMap[strength] || 0.6,
-      }}>
-        <span style={{
-          fontSize: '0.55rem', fontWeight: 600, color,
-          background: `${color}15`, padding: '1px 5px', borderRadius: '3px',
-          border: `1px solid ${color}30`, fontFamily: 'JetBrains Mono, monospace',
-          whiteSpace: 'nowrap',
-        }}>
-          {label} ${level}
-        </span>
-        <div style={{ width: '1px', height: '8px', background: color }} />
-      </div>
-    </div>
-  );
-};
 
 /* ─── TradingView Widget ───────────────────────────── */
 const TradingViewWidget = ({ symbol }) => {
@@ -158,6 +54,7 @@ const TradingViewWidget = ({ symbol }) => {
           allow_symbol_change: true,
           container_id: containerId,
           toolbar_bg: '#C3BCB1',
+          hide_volume: true,
           overrides: {
             "paneProperties.backgroundType": "solid",
             "paneProperties.background": "#C3BCB1",
@@ -519,159 +416,18 @@ const TradingView = () => {
       {analysis && (
         <div className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
 
-          {/* Top Row: Signal + Price */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) minmax(200px, 2fr) minmax(200px, 1fr)', gap: 'var(--s4)' }}>
-
-            {/* Overall Signal Card */}
-            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          {/* Main Layout: Chart on Left, Trades on Right */}
+          <div style={{ display: 'flex', gap: 'var(--s4)', flexWrap: 'wrap' }}>
+            {/* Live Interactive Chart Card */}
+            <div style={{ ...cardStyle, flex: '3 1 600px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
               <div style={cardHeaderStyle}>
-                <Target size={13} /> Overall Signal
+                <TrendingUp size={13} style={{ color: 'var(--accent)' }} /> Live Interactive Technical Chart
               </div>
-              <div style={{
-                fontSize: '1.3rem', fontWeight: 800, color: signalColor(analysis.overallSignal),
-                textShadow: `0 0 20px ${signalColor(analysis.overallSignal)}30`,
-                animation: 'fadeIn 0.5s ease',
-              }}>
-                {analysis.overallSignal}
-              </div>
-              <SignalBar
-                buy={analysis.signalCounts.buy}
-                sell={analysis.signalCounts.sell}
-                neutral={analysis.signalCounts.neutral}
-                total={analysis.signalCounts.total}
-              />
-              <div style={{
-                fontSize: '0.58rem', color: 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: '4px',
-              }}>
-                <Clock size={10} />
-                {analysis.timeframe} · {analysis.mode === 'mock' ? 'Demo' : 'Live'}
-              </div>
-            </div>
-
-            {/* Indicators Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-
-              {/* RSI */}
-              <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px' }}>
-                <RadialGauge value={analysis.indicators.rsi.value} max={100} label="RSI"
-                  color={analysis.indicators.rsi.value < 30 ? '#22c55e' : analysis.indicators.rsi.value > 70 ? '#f87171' : '#f59e0b'}
-                  size={72} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '4px' }}>RSI (14)</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {signalIcon(analysis.indicators.rsi.signal)}
-                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: signalColor(analysis.indicators.rsi.signal) }}>
-                      {analysis.indicators.rsi.signal}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {analysis.indicators.rsi.value < 30 ? 'Oversold zone' : analysis.indicators.rsi.value > 70 ? 'Overbought zone' : 'Neutral zone'}
-                  </div>
-                </div>
-              </div>
-
-              {/* MACD */}
-              <div style={{ ...cardStyle, padding: '12px 14px' }}>
-                <div style={{ ...cardHeaderStyle, marginBottom: '8px' }}>
-                  <Layers size={12} /> MACD
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
-                  {signalIcon(analysis.indicators.macd.signal_type)}
-                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: signalColor(analysis.indicators.macd.signal_type) }}>
-                    {analysis.indicators.macd.signal_type}
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px', fontSize: '0.58rem' }}>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)' }}>Line</div>
-                    <div style={{ fontWeight: 600, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>{analysis.indicators.macd.line}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)' }}>Signal</div>
-                    <div style={{ fontWeight: 600, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>{analysis.indicators.macd.signal}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)' }}>Hist</div>
-                    <div style={{
-                      fontWeight: 600, fontFamily: 'JetBrains Mono',
-                      color: analysis.indicators.macd.histogram > 0 ? '#22c55e' : '#f87171',
-                    }}>{analysis.indicators.macd.histogram > 0 ? '+' : ''}{analysis.indicators.macd.histogram}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Moving Averages */}
-              <div style={{ ...cardStyle, padding: '12px 14px' }}>
-                <div style={{ ...cardHeaderStyle, marginBottom: '8px' }}>
-                  <TrendingUp size={12} /> Moving Averages
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.6rem' }}>
-                  {[
-                    { label: 'EMA 20', value: analysis.indicators.ema20.value, signal: analysis.indicators.ema20.signal },
-                    { label: 'EMA 50', value: analysis.indicators.ema50.value, signal: analysis.indicators.ema50.signal },
-                    { label: 'SMA 200', value: analysis.indicators.sma200.value, signal: analysis.indicators.sma200.signal },
-                  ].map(ma => (
-                    <div key={ma.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{ma.label}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: 'var(--text-primary)' }}>${ma.value}</span>
-                        {signalIcon(ma.signal, 12)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{
-                  marginTop: '6px', padding: '4px 8px', borderRadius: 'var(--r-sm)',
-                  background: analysis.price > analysis.indicators.ema50.value ? '#22c55e10' : '#f8717110',
-                  border: `1px solid ${analysis.price > analysis.indicators.ema50.value ? '#22c55e20' : '#f8717120'}`,
-                  fontSize: '0.55rem',
-                  color: analysis.price > analysis.indicators.ema50.value ? '#22c55e' : '#f87171',
-                  textAlign: 'center',
-                }}>
-                  Price ${analysis.price} is {analysis.price > analysis.indicators.ema50.value ? 'above' : 'below'} EMA 50
-                </div>
-              </div>
-
-              {/* Bollinger Bands */}
-              <div style={{ ...cardStyle, padding: '12px 14px' }}>
-                <div style={{ ...cardHeaderStyle, marginBottom: '8px' }}>
-                  <BarChart2 size={12} /> Bollinger Bands
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.6rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#f87171' }}>Upper</span>
-                    <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: 'var(--text-primary)' }}>${analysis.indicators.bollingerBands.upper}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Middle</span>
-                    <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: 'var(--text-primary)' }}>${analysis.indicators.bollingerBands.middle}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#22c55e' }}>Lower</span>
-                    <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, color: 'var(--text-primary)' }}>${analysis.indicators.bollingerBands.lower}</span>
-                  </div>
-                </div>
-                {analysis.indicators.bollingerBands.squeeze && (
-                  <div style={{
-                    marginTop: '6px', padding: '3px 8px', borderRadius: 'var(--r-sm)',
-                    background: '#f59e0b15', border: '1px solid #f59e0b25',
-                    fontSize: '0.55rem', color: '#f59e0b', textAlign: 'center',
-                    display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center',
-                  }}>
-                  <Zap size={10} /> Squeeze Detected — Breakout Imminent
-                  </div>
-                )}
-                <div style={{
-                  marginTop: '4px', fontSize: '0.55rem', color: 'var(--text-muted)', textAlign: 'center',
-                }}>
-                  Width: {analysis.indicators.bollingerBands.width}%
-                </div>
-              </div>
+              <TradingViewWidget symbol={analysis.symbol} />
             </div>
 
             {/* Trade Cross-Reference Card */}
-            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ ...cardStyle, flex: '1 1 250px', minWidth: '200px', display: 'flex', flexDirection: 'column' }}>
               <div style={cardHeaderStyle}>
                 <ChevronRight size={13} /> Your Trades · {analysis.symbol}
               </div>
@@ -737,162 +493,7 @@ const TradingView = () => {
             </div>
           </div>
 
-          {/* Live Interactive Chart Card */}
-          <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
-            <div style={cardHeaderStyle}>
-              <TrendingUp size={13} style={{ color: 'var(--accent)' }} /> Live Interactive Technical Chart
-            </div>
-            <TradingViewWidget symbol={analysis.symbol} />
-          </div>
 
-          {/* Volume Card */}
-          <div style={{ ...cardStyle, padding: '14px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={cardHeaderStyle}>
-                <BarChart2 size={13} /> Volume Analysis
-              </div>
-              <div style={{ display: 'flex', gap: '20px', fontSize: '0.68rem' }}>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Current: </span>
-                  <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
-                    {(analysis.indicators.volume.current / 1e6).toFixed(2)}M
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Average: </span>
-                  <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
-                    {(analysis.indicators.volume.average / 1e6).toFixed(2)}M
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Ratio: </span>
-                  <span style={{
-                    fontWeight: 700, fontFamily: 'JetBrains Mono',
-                    color: analysis.indicators.volume.ratio > 1.2 ? '#22c55e' : analysis.indicators.volume.ratio < 0.8 ? '#f87171' : 'var(--text-primary)',
-                  }}>
-                    {analysis.indicators.volume.ratio}x
-                  </span>
-                </div>
-              </div>
-            </div>
-            {/* Volume bar */}
-            <div style={{ marginTop: '8px', height: '6px', borderRadius: '3px', background: 'var(--bg-primary)', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', borderRadius: '3px',
-                width: `${Math.min(analysis.indicators.volume.ratio * 50, 100)}%`,
-                background: analysis.indicators.volume.ratio > 1.2
-                  ? 'linear-gradient(90deg, #22c55e, #4ade80)'
-                  : analysis.indicators.volume.ratio < 0.8
-                    ? 'linear-gradient(90deg, #f87171, #fca5a5)'
-                    : 'linear-gradient(90deg, var(--accent), #a78bfa)',
-                transition: 'width 0.8s ease',
-              }} />
-            </div>
-          </div>
-
-          {/* Support / Resistance */}
-          <div style={{ ...cardStyle }}>
-            <div style={cardHeaderStyle}>
-              <Target size={13} /> Support & Resistance Levels
-            </div>
-            <div style={{ position: 'relative', marginTop: '8px', padding: '12px 0' }}>
-              {/* Price line */}
-              <div style={{ position: 'relative', height: '2px', background: 'var(--border)', margin: '20px 0', borderRadius: '1px' }}>
-                {/* Current price marker */}
-                {(() => {
-                  const allLevels = [
-                    ...analysis.supportResistance.support.map(s => s.level),
-                    ...analysis.supportResistance.resistance.map(r => r.level),
-                    analysis.price,
-                  ];
-                  const minP = Math.min(...allLevels) * 0.99;
-                  const maxP = Math.max(...allLevels) * 1.01;
-                  const range = maxP - minP || 1;
-                  const pricePos = ((analysis.price - minP) / range) * 100;
-
-                  return (
-                    <>
-                      {/* Support levels */}
-                      {analysis.supportResistance.support.map((s, i) => {
-                        const pos = ((s.level - minP) / range) * 100;
-                        return (
-                          <div key={`s-${i}`} style={{
-                            position: 'absolute', left: `${pos}%`, top: '-20px',
-                            transform: 'translateX(-50%)', textAlign: 'center',
-                          }}>
-                            <div style={{
-                              fontSize: '0.52rem', fontWeight: 600, color: '#22c55e',
-                              background: '#22c55e12', padding: '2px 6px', borderRadius: '3px',
-                              border: '1px solid #22c55e25', fontFamily: 'JetBrains Mono',
-                              whiteSpace: 'nowrap',
-                              opacity: s.strength === 'Strong' ? 1 : s.strength === 'Medium' ? 0.75 : 0.5,
-                            }}>
-                              {s.label} ${s.level}
-                            </div>
-                            <div style={{ width: '1px', height: '10px', background: '#22c55e50', margin: '0 auto' }} />
-                          </div>
-                        );
-                      })}
-                      {/* Resistance levels */}
-                      {analysis.supportResistance.resistance.map((r, i) => {
-                        const pos = ((r.level - minP) / range) * 100;
-                        return (
-                          <div key={`r-${i}`} style={{
-                            position: 'absolute', left: `${pos}%`, bottom: '-22px',
-                            transform: 'translateX(-50%)', textAlign: 'center',
-                          }}>
-                            <div style={{ width: '1px', height: '10px', background: '#f8717150', margin: '0 auto' }} />
-                            <div style={{
-                              fontSize: '0.52rem', fontWeight: 600, color: '#f87171',
-                              background: '#f8717112', padding: '2px 6px', borderRadius: '3px',
-                              border: '1px solid #f8717125', fontFamily: 'JetBrains Mono',
-                              whiteSpace: 'nowrap',
-                              opacity: r.strength === 'Strong' ? 1 : r.strength === 'Medium' ? 0.75 : 0.5,
-                            }}>
-                              {r.label} ${r.level}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {/* Current price marker */}
-                      <div style={{
-                        position: 'absolute', left: `${pricePos}%`, top: '50%', transform: 'translate(-50%, -50%)',
-                        zIndex: 2,
-                      }}>
-                        <div style={{
-                          background: 'var(--accent)', color: '#fff', padding: '3px 8px',
-                          borderRadius: 'var(--r-sm)', fontSize: '0.6rem', fontWeight: 700,
-                          fontFamily: 'JetBrains Mono', whiteSpace: 'nowrap',
-                          boxShadow: '0 2px 8px rgba(99, 102, 241, 0.4)',
-                        }}>
-                          ${analysis.price}
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-
-          {/* AI Insight Summary */}
-          <div style={{
-            ...cardStyle,
-            background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-primary))',
-            borderLeft: '3px solid var(--accent)',
-          }}>
-            <div style={cardHeaderStyle}>
-              <Zap size={13} style={{ color: 'var(--accent)' }} /> AI Analysis Summary
-            </div>
-            <div style={{
-              fontSize: '0.72rem', lineHeight: 1.6, color: 'var(--text-secondary)',
-            }}
-              dangerouslySetInnerHTML={{
-                __html: analysis.insight
-                  .replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--text-primary)">$1</strong>')
-              }}
-            />
-          </div>
         </div>
       )}
     </div>
