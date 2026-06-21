@@ -90,6 +90,25 @@ const LoginPage = () => {
       alignItems: 'center',
       justifyContent: 'center',
       background: '#000000',
+      // Force dark mode styling variables regardless of active workspace theme
+      '--bg-primary': '#0a0b0f',
+      '--bg-secondary': '#0f1117',
+      '--bg-tertiary': '#141620',
+      '--bg-elevated': '#1a1c2b',
+      '--surface': 'rgba(10, 10, 12, 0.85)',
+      '--surface-glass': 'rgba(255, 255, 255, 0.05)',
+      '--surface-glass-h': 'rgba(255, 255, 255, 0.08)',
+      '--text-primary': '#ffffff',
+      '--text-secondary': 'rgba(255, 255, 255, 0.88)',
+      '--text-tertiary': 'rgba(255, 255, 255, 0.68)',
+      '--text-muted': 'rgba(255, 255, 255, 0.48)',
+      '--accent': '#818cf8',
+      '--accent-hover': '#6366f1',
+      '--accent-soft': 'rgba(129, 140, 248, 0.12)',
+      '--accent-glow': 'rgba(129, 140, 248, 0.3)',
+      '--border': 'rgba(255, 255, 255, 0.08)',
+      '--border-mid': 'rgba(255, 255, 255, 0.15)',
+      '--border-strong': 'rgba(255, 255, 255, 0.25)',
     }}>
       {/* Full-screen background video */}
       <video
@@ -111,8 +130,12 @@ const LoginPage = () => {
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s6)', width: '100%', padding: 'var(--s8)' }}>
 
-        {/* Card */}
-        <div className="liquid-glass login-card anim-fade-up">
+        {/* Card with higher backdrop blur and opacity for text clarity */}
+        <div className="liquid-glass login-card anim-fade-up" style={{
+          background: 'rgba(5, 5, 7, 0.78)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}>
           <div className="login-logo">
             <img 
               src={`${import.meta.env.BASE_URL}logo.png`} 
@@ -142,8 +165,8 @@ const LoginPage = () => {
                 <div key={i} className={`anim-fade-up delay-${i+1}`} style={{
                   display: 'flex', alignItems: 'center', gap: 'var(--s3)',
                   padding: '7px var(--s3)', borderRadius: 'var(--r-md)',
-                  background: 'var(--surface-glass)', border: '1px solid var(--border)',
-                  fontSize: '0.78rem', color: 'var(--text-tertiary)',
+                  background: 'rgba(0, 0, 0, 0.35)', border: '1px solid var(--border)',
+                  fontSize: '0.78rem', color: 'var(--text-secondary)',
                 }}>
                   <span style={{ color: 'var(--accent)', flexShrink: 0 }}>{f.icon}</span>
                   {f.text}
