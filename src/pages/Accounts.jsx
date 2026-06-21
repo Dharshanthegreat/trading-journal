@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink, FileText
+  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink, FileText, Edit2
 } from 'lucide-react';
 
 const Accounts = () => {
@@ -10,6 +10,7 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [formData, setFormData] = useState({
     accountName: '',
@@ -43,6 +44,33 @@ const Accounts = () => {
     fetchAccounts();
   }, []);
 
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingAccount(null);
+    setFormData({
+      accountName: '',
+      accountType: 'Simulated',
+      balance: '10000',
+      currency: 'USD',
+      status: 'Active',
+      notionLink: ''
+    });
+    setError('');
+  };
+
+  const startEditAccount = (acc) => {
+    setEditingAccount(acc);
+    setFormData({
+      accountName: acc.accountName,
+      accountType: acc.accountType,
+      balance: String(acc.startingBalance),
+      currency: acc.currency,
+      status: acc.status,
+      notionLink: acc.notionLink || ''
+    });
+    setShowForm(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.accountName.trim()) {
@@ -53,26 +81,29 @@ const Accounts = () => {
     setSubmitting(true);
     setError('');
     try {
-      await accountsApi.create({
-        accountName: formData.accountName,
-        accountType: formData.accountType,
-        balance: parseFloat(formData.balance) || 0,
-        currency: formData.currency,
-        status: formData.status,
-        notionLink: formData.notionLink
-      });
-      setShowForm(false);
-      setFormData({
-        accountName: '',
-        accountType: 'Simulated',
-        balance: '10000',
-        currency: 'USD',
-        status: 'Active',
-        notionLink: ''
-      });
+      if (editingAccount) {
+        await accountsApi.update(editingAccount.id, {
+          accountName: formData.accountName,
+          accountType: formData.accountType,
+          balance: parseFloat(formData.balance) || 0,
+          currency: formData.currency,
+          status: formData.status,
+          notionLink: formData.notionLink
+        });
+      } else {
+        await accountsApi.create({
+          accountName: formData.accountName,
+          accountType: formData.accountType,
+          balance: parseFloat(formData.balance) || 0,
+          currency: formData.currency,
+          status: formData.status,
+          notionLink: formData.notionLink
+        });
+      }
+      handleCloseForm();
       fetchAccounts();
     } catch (err) {
-      setError(err.message || 'Failed to create account');
+      setError(err.message || `Failed to ${editingAccount ? 'update' : 'create'} account`);
     } finally {
       setSubmitting(false);
     }
@@ -143,7 +174,22 @@ const Accounts = () => {
           <div className="page-title">Trading Accounts</div>
           <div className="page-subtitle">Manage and track performance across multiple challenges and brokerage accounts</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(true)} disabled={user?.isGuest}>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => {
+            setEditingAccount(null);
+            setFormData({
+              accountName: '',
+              accountType: 'Simulated',
+              balance: '10000',
+              currency: 'USD',
+              status: 'Active',
+              notionLink: ''
+            });
+            setShowForm(true);
+          }} 
+          disabled={user?.isGuest}
+        >
           <Plus size={15} /> Add Account
         </button>
       </div>
@@ -216,19 +262,34 @@ const Accounts = () => {
                   border: acc.status === 'Passed' ? '1px solid rgba(52,211,153,0.3)' : (acc.status === 'Failed' ? '1px solid rgba(248,113,113,0.3)' : '1px solid var(--border)')
                 }}
               >
-                {/* Delete button */}
-                <button
-                  onClick={() => setDeleteConfirm(acc.id)}
-                  style={{
-                    position: 'absolute', top: 12, right: 12,
-                    background: 'none', border: 'none', color: 'var(--text-muted)',
-                    cursor: 'pointer', opacity: 0.7
-                  }}
-                  title="Delete Account"
-                  disabled={user?.isGuest}
-                >
-                  <Trash2 size={13} className="trash-icon" />
-                </button>
+                {/* Action buttons (Edit & Delete) */}
+                <div style={{
+                  position: 'absolute', top: 12, right: 12,
+                  display: 'flex', gap: '8px', alignItems: 'center'
+                }}>
+                  <button
+                    onClick={() => startEditAccount(acc)}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--text-muted)',
+                      cursor: 'pointer', opacity: 0.7, padding: 2, display: 'flex', alignItems: 'center'
+                    }}
+                    title="Edit Account"
+                    disabled={user?.isGuest}
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(acc.id)}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--text-muted)',
+                      cursor: 'pointer', opacity: 0.7, padding: 2, display: 'flex', alignItems: 'center'
+                    }}
+                    title="Delete Account"
+                    disabled={user?.isGuest}
+                  >
+                    <Trash2 size={12} className="trash-icon" />
+                  </button>
+                </div>
 
                 {/* Account Details Header */}
                 <div>
@@ -333,13 +394,13 @@ const Accounts = () => {
         </div>
       )}
 
-      {/* Add Account Modal */}
+      {/* Add/Edit Account Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseForm()}>
           <div className="glass-deep modal-panel" style={{ width: 420 }}>
             <div className="modal-header">
-              <div className="modal-title">Create Account Profile</div>
-              <button className="modal-close" onClick={() => setShowForm(false)}><X size={18} /></button>
+              <div className="modal-title">{editingAccount ? 'Edit Account Profile' : 'Create Account Profile'}</div>
+              <button className="modal-close" onClick={handleCloseForm}><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
@@ -427,9 +488,9 @@ const Accounts = () => {
               )}
 
               <div className="form-actions" style={{ marginTop: 'var(--s6)' }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" className="btn btn-ghost" onClick={handleCloseForm}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Creating...' : '+ Create Account'}
+                  {submitting ? (editingAccount ? 'Saving...' : 'Creating...') : (editingAccount ? 'Save Changes' : '+ Create Account')}
                 </button>
               </div>
             </form>
