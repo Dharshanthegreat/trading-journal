@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTrades } from '../contexts/TradeContext';
+import { useNavigate } from 'react-router-dom';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, BarChart, Bar, ReferenceLine
 } from 'recharts';
-import { Brain, Zap, Activity } from 'lucide-react';
+import { Brain, Zap, Activity, ArrowRight, TrendingUp, TrendingDown, Target, Plus } from 'lucide-react';
 
 const EMOTION_COLORS = {
   Calm: '#818cf8', Confident: '#34d399', Anxious: '#fbbf24',
@@ -12,15 +13,122 @@ const EMOTION_COLORS = {
   Disciplined: '#60a5fa', Revenge: '#ef4444',
 };
 
+// Classify trade entry time into London, New York, or Asian session
+const getTradeSession = (t) => {
+  const tags = Array.isArray(t.tags) ? t.tags : [];
+  const tagsLower = tags.map(tag => tag.toLowerCase());
+  if (tagsLower.some(tag => tag.includes('london'))) return 'London';
+  if (tagsLower.some(tag => tag.includes('new york') || tag.includes('ny'))) return 'New York';
+  if (tagsLower.some(tag => tag.includes('asia') || tag.includes('tokyo'))) return 'Asia';
+
+  if (!t.entryTime) return 'Asia';
+  try {
+    const date = new Date(t.entryTime);
+    const hour = date.getHours();
+    if (hour >= 7 && hour < 13) return 'London';
+    if (hour >= 13 && hour < 21) return 'New York';
+    return 'Asia';
+  } catch (e) {
+    return 'Asia';
+  }
+};
+
 const Emotions = () => {
   const { trades, fetchTrades, loading } = useTrades();
+  const navigate = useNavigate();
 
-  useEffect(() => { fetchTrades({ limit: 500 }); }, [fetchTrades]);
+  // Filters State
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedPair, setSelectedPair] = useState('All');
+  const [selectedSession, setSelectedSession] = useState('All');
+  const [selectedSetup, setSelectedSetup] = useState('All');
+  const [selectedDirection, setSelectedDirection] = useState('All');
+  const [selectedResult, setSelectedResult] = useState('All');
+  const [selectedGrade, setSelectedGrade] = useState('All');
+
+  useEffect(() => {
+    fetchTrades({ limit: 1000 });
+  }, [fetchTrades]);
+
+  const tradesList = useMemo(() => trades || [], [trades]);
+
+  // Extract unique symbol/pair and setup list dynamically
+  const uniquePairs = useMemo(() => {
+    const pairs = tradesList.map(t => t.symbol?.toUpperCase()).filter(Boolean);
+    return [...new Set(pairs)].sort();
+  }, [tradesList]);
+
+  const uniqueSetups = useMemo(() => {
+    const setups = tradesList.map(t => t.setup).filter(Boolean);
+    return [...new Set(setups)].sort();
+  }, [tradesList]);
+
+  const handleClearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setSelectedPair('All');
+    setSelectedSession('All');
+    setSelectedSetup('All');
+    setSelectedDirection('All');
+    setSelectedResult('All');
+    setSelectedGrade('All');
+  };
+
+  // Filter trades list client-side
+  const filteredTrades = useMemo(() => {
+    return tradesList.filter(t => {
+      // 1. Date Range
+      if (startDate) {
+        const entryDateStr = t.entryTime || t.entry_time;
+        if (entryDateStr && entryDateStr.split('T')[0] < startDate) return false;
+      }
+      if (endDate) {
+        const entryDateStr = t.entryTime || t.entry_time;
+        if (entryDateStr && entryDateStr.split('T')[0] > endDate) return false;
+      }
+
+      // 2. Pair
+      if (selectedPair !== 'All') {
+        if (t.symbol?.toUpperCase() !== selectedPair.toUpperCase()) return false;
+      }
+
+      // 3. Session
+      if (selectedSession !== 'All') {
+        const session = getTradeSession(t);
+        if (session !== selectedSession) return false;
+      }
+
+      // 4. Setup
+      if (selectedSetup !== 'All') {
+        if (t.setup !== selectedSetup) return false;
+      }
+
+      // 5. Direction
+      if (selectedDirection !== 'All') {
+        if (t.type !== selectedDirection) return false;
+      }
+
+      // 6. Result
+      if (selectedResult !== 'All') {
+        if (selectedResult === 'Win' && t.pnl <= 0) return false;
+        if (selectedResult === 'Loss' && t.pnl >= 0) return false;
+        if (selectedResult === 'Breakeven' && t.pnl !== 0) return false;
+      }
+
+      // 7. Grade
+      if (selectedGrade !== 'All') {
+        if (t.grade !== selectedGrade) return false;
+      }
+
+      return true;
+    });
+  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade]);
 
   const analytics = useMemo(() => {
-    if (!trades.length) return null;
+    if (!filteredTrades.length) return null;
 
-    const scatterData = trades.map(t => ({
+    const scatterData = filteredTrades.map(t => ({
       fomo: t.fomoLevel || 5,
       confidence: t.confidenceLevel || 5,
       pnl: t.pnl || 0,
@@ -31,13 +139,14 @@ const Emotions = () => {
     const fomoGroups = { 'Low (1-3)': [], 'Med (4-7)': [], 'High (8-10)': [] };
     const confGroups = { 'Low (1-3)': [], 'Med (4-7)': [], 'High (8-10)': [] };
 
-    trades.forEach(t => {
+    filteredTrades.forEach(t => {
       const pnl = t.pnl || 0;
       const fomo = t.fomoLevel || 5;
       const conf = t.confidenceLevel || 5;
       if (fomo <= 3) fomoGroups['Low (1-3)'].push(pnl);
       else if (fomo <= 7) fomoGroups['Med (4-7)'].push(pnl);
       else fomoGroups['High (8-10)'].push(pnl);
+      
       if (conf <= 3) confGroups['Low (1-3)'].push(pnl);
       else if (conf <= 7) confGroups['Med (4-7)'].push(pnl);
       else confGroups['High (8-10)'].push(pnl);
@@ -48,29 +157,56 @@ const Emotions = () => {
     const confBar = Object.entries(confGroups).map(([k, v]) => ({ name: k, avgPnl: avg(v), count: v.length }));
 
     const tagMap = {};
-    trades.forEach(t => {
+    filteredTrades.forEach(t => {
       (t.emotionTags || []).forEach(tag => { tagMap[tag] = (tagMap[tag] || 0) + 1; });
     });
     const topTags = Object.entries(tagMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
 
-    const winConf = trades.filter(t => t.pnl > 0).map(t => t.confidenceLevel || 5);
-    const lossConf = trades.filter(t => t.pnl < 0).map(t => t.confidenceLevel || 5);
-    const avgFomo = +(trades.reduce((a, t) => a + (t.fomoLevel || 5), 0) / trades.length).toFixed(1);
-    const avgConf = +(trades.reduce((a, t) => a + (t.confidenceLevel || 5), 0) / trades.length).toFixed(1);
+    const wins = filteredTrades.filter(t => t.pnl > 0);
+    const losses = filteredTrades.filter(t => t.pnl < 0);
 
-    return { scatterData, fomoBar, confBar, topTags, avgWinConf: avg(winConf), avgLossConf: avg(lossConf), avgFomo, avgConf };
-  }, [trades]);
+    const winConf = wins.map(t => t.confidenceLevel || 5);
+    const lossConf = losses.map(t => t.confidenceLevel || 5);
+    const avgFomo = +(filteredTrades.reduce((a, t) => a + (t.fomoLevel || 5), 0) / filteredTrades.length).toFixed(1);
+    const avgConf = +(filteredTrades.reduce((a, t) => a + (t.confidenceLevel || 5), 0) / filteredTrades.length).toFixed(1);
+
+    // Compute Discipline Index Score (Discipline = Avg of (10 - fomo)/9 + (conf - 1)/9 per trade)
+    let totalScore = 0;
+    filteredTrades.forEach(t => {
+      const f = t.fomoLevel || 5;
+      const c = t.confidenceLevel || 5;
+      const fomoScore = (10 - f) / 9;
+      const confidenceScore = (c - 1) / 9;
+      totalScore += (fomoScore + confidenceScore) / 2 * 100;
+    });
+    const disciplineScore = Math.round(totalScore / filteredTrades.length);
+
+    // Revenge trades count
+    const revengeCount = filteredTrades.filter(t => (t.emotionTags || []).includes('Revenge')).length;
+
+    // FOMO losses cost (FOMO >= 7)
+    const fomoCost = parseFloat(filteredTrades.filter(t => (t.fomoLevel || 5) >= 7).reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
+
+    // Disciplined P&L impact (FOMO <= 3, Confidence >= 7)
+    const disciplinedPnL = parseFloat(filteredTrades.filter(t => (t.fomoLevel || 5) <= 3 && (t.confidenceLevel || 5) >= 7).reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
+
+    return {
+      scatterData, fomoBar, confBar, topTags,
+      avgWinConf: avg(winConf), avgLossConf: avg(lossConf),
+      avgFomo, avgConf, disciplineScore, revengeCount, fomoCost, disciplinedPnL
+    };
+  }, [filteredTrades]);
 
   const axisProps = {
     stroke: 'transparent',
-    tick: { fill: 'var(--text-muted)', fontSize: 10, fontFamily: 'Inter' },
+    tick: { fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' },
     tickLine: false, axisLine: false,
   };
 
   const BarTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div className="glass" style={{ padding: '8px 12px', fontSize: '0.72rem' }}>
+      <div className="glass" style={{ padding: '8px 12px', fontSize: '0.72rem', border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)' }}>
         <div style={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: '0.62rem' }}>{label}</div>
         <div style={{ color: payload[0].value >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
           Avg P&L: {payload[0].value >= 0 ? '+' : ''}${payload[0].value}
@@ -85,7 +221,7 @@ const Emotions = () => {
     const d = payload[0]?.payload;
     if (!d) return null;
     return (
-      <div className="glass" style={{ padding: '8px 12px', fontSize: '0.72rem' }}>
+      <div className="glass" style={{ padding: '8px 12px', fontSize: '0.72rem', border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)' }}>
         <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>{d.symbol} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{d.date}</span></div>
         <div style={{ color: 'var(--text-tertiary)' }}>FOMO: {d.fomo}/10</div>
         <div style={{ color: 'var(--text-tertiary)' }}>Confidence: {d.confidence}/10</div>
@@ -96,122 +232,354 @@ const Emotions = () => {
     );
   };
 
-  if (loading && !trades.length) return (
+  if (loading && tradesList.length === 0) return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
       {[...Array(4)].map((_, i) => (<div key={i} className="glass skeleton" style={{ height: 280, borderRadius: 'var(--r-lg)' }}/>))}
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
-      <div className="page-header">
-        <div className="page-title"><Brain size={18} style={{ opacity: 0.6 }}/> Psychology</div>
-        <div className="page-subtitle">Understand how your mindset affects performance</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Psychology</h1>
+          <p className="page-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Understand how your mindset affects performance</p>
+        </div>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => navigate('/journal')} 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            background: 'var(--accent)',
+            borderColor: 'var(--accent)',
+            fontWeight: 700,
+            borderRadius: 'var(--r-md)',
+            padding: '8px 16px',
+            fontSize: '0.78rem'
+          }}
+        >
+          <Plus size={14} /> New Trade
+        </button>
       </div>
 
-      <div className="psych-overview">
-        {[
-          { label: 'Avg FOMO', value: analytics ? `${analytics.avgFomo}/10` : '—', sub: analytics?.avgFomo <= 4 ? 'Disciplined 🧘' : analytics?.avgFomo <= 7 ? 'Moderate 😐' : 'High Risk ⚠️', col: analytics?.avgFomo <= 4 ? 'var(--profit)' : analytics?.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)', icon: <Brain size={14}/> },
-          { label: 'Avg Confidence', value: analytics ? `${analytics.avgConf}/10` : '—', sub: analytics?.avgConf >= 7 ? 'High 🎯' : analytics?.avgConf >= 4 ? 'Moderate' : 'Low', col: analytics?.avgConf >= 7 ? 'var(--profit)' : analytics?.avgConf >= 4 ? 'var(--accent)' : 'var(--loss)', icon: <Zap size={14}/> },
-          { label: 'Win Confidence', value: analytics ? `${analytics.avgWinConf}/10` : '—', sub: `vs Loss: ${analytics?.avgLossConf || '—'}/10`, col: 'var(--accent)', icon: <Activity size={14}/> },
-        ].map((card, i) => (
-          <div key={card.label} className={`glass psych-card glass-hover anim-fade-up delay-${i+1}`}>
-            <div className="stat-label"><span style={{ color: card.col }}>{card.icon}</span> {card.label}</div>
-            <div className="emotion-score" style={{ color: card.col }}>{card.value}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{card.sub}</div>
-          </div>
-        ))}
+      {/* Filters Row */}
+      <div className="glass" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+        <input 
+          type="date" 
+          className="input" 
+          style={{ width: 'auto', flex: '1 1 130px', fontSize: '0.78rem', height: '36px', minWidth: '130px' }} 
+          value={startDate} 
+          onChange={e => setStartDate(e.target.value)} 
+          placeholder="dd/mm/yyyy"
+        />
+        <input 
+          type="date" 
+          className="input" 
+          style={{ width: 'auto', flex: '1 1 130px', fontSize: '0.78rem', height: '36px', minWidth: '130px' }} 
+          value={endDate} 
+          onChange={e => setEndDate(e.target.value)} 
+          placeholder="dd/mm/yyyy"
+        />
+        
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedPair} onChange={e => setSelectedPair(e.target.value)}>
+          <option value="All">Pair: All</option>
+          {uniquePairs.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
+          <option value="All">Session: All</option>
+          <option value="London">London</option>
+          <option value="New York">New York</option>
+          <option value="Asia">Asia</option>
+        </select>
+
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedSetup} onChange={e => setSelectedSetup(e.target.value)}>
+          <option value="All">Setup: All</option>
+          {uniqueSetups.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedDirection} onChange={e => setSelectedDirection(e.target.value)}>
+          <option value="All">Direction: All</option>
+          <option value="Long">Long</option>
+          <option value="Short">Short</option>
+        </select>
+
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedResult} onChange={e => setSelectedResult(e.target.value)}>
+          <option value="All">Result: All</option>
+          <option value="Win">Win</option>
+          <option value="Loss">Loss</option>
+          <option value="Breakeven">Breakeven</option>
+        </select>
+
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
+          <option value="All">Grade: All</option>
+          {['A+', 'A', 'B', 'C', 'D', 'F'].map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
+
+        <button className="btn btn-ghost" style={{ height: '36px', padding: '0 16px', fontSize: '0.78rem' }} onClick={handleClearFilters}>
+          Clear
+        </button>
       </div>
 
       {!analytics ? (
         <div className="glass empty-state" style={{ padding: 'var(--s12)' }}>
-          <Brain size={32} style={{ opacity: 0.3 }}/><div className="empty-title">No emotion data yet</div>
-          <div className="empty-desc">Log trades with emotion ratings to see psychology patterns</div>
+          <Brain size={32} style={{ opacity: 0.3 }}/>
+          <div className="empty-title">No psychology data yet</div>
+          <div className="empty-desc">Log trades with emotion tags, FOMO, and Confidence ratings to unlock analysis.</div>
         </div>
       ) : (
-        <div className="analytics-grid">
-          <div className="glass chart-panel anim-fade-up delay-2">
-            <div className="chart-title"><span>P&L vs FOMO Level</span></div>
-            <ResponsiveContainer width="100%" height={230}>
-              <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.03)"/>
-                <XAxis type="number" dataKey="fomo" domain={[0, 10]} name="FOMO" {...axisProps}/>
-                <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps}/>
-                <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3"/>
-                <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.1)' }}/>
-                <Scatter data={analytics.scatterData}>
-                  {analytics.scatterData.map((e, i) => (<Cell key={i} fill={e.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.7} r={6}/>))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="glass chart-panel anim-fade-up delay-3">
-            <div className="chart-title"><span>P&L vs Confidence</span></div>
-            <ResponsiveContainer width="100%" height={230}>
-              <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.03)"/>
-                <XAxis type="number" dataKey="confidence" domain={[0, 10]} name="Confidence" {...axisProps}/>
-                <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps}/>
-                <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3"/>
-                <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.1)' }}/>
-                <Scatter data={analytics.scatterData}>
-                  {analytics.scatterData.map((e, i) => (<Cell key={i} fill={e.pnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.7} r={6}/>))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="glass chart-panel anim-fade-up delay-4">
-            <div className="chart-title"><span>Avg P&L by FOMO</span></div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={analytics.fomoBar} margin={{ top: 4, right: 0, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.03)" vertical={false}/>
-                <XAxis dataKey="name" {...axisProps}/><YAxis {...axisProps}/>
-                <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)"/>
-                <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }}/>
-                <Bar dataKey="avgPnl" radius={[4, 4, 0, 0]}>
-                  {analytics.fomoBar.map((e, i) => (<Cell key={i} fill={e.avgPnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.6}/>))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="glass chart-panel anim-fade-up delay-5">
-            <div className="chart-title"><span>Avg P&L by Confidence</span></div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={analytics.confBar} margin={{ top: 4, right: 0, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.03)" vertical={false}/>
-                <XAxis dataKey="name" {...axisProps}/><YAxis {...axisProps}/>
-                <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)"/>
-                <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }}/>
-                <Bar dataKey="avgPnl" radius={[4, 4, 0, 0]}>
-                  {analytics.confBar.map((e, i) => (<Cell key={i} fill={e.avgPnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.6}/>))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {analytics.topTags.length > 0 && (
-            <div className="glass chart-panel analytics-wide anim-fade-up delay-5">
-              <div className="chart-title"><span>Emotion Frequency</span></div>
-              <div style={{ display: 'flex', gap: 'var(--s3)', flexWrap: 'wrap' }}>
-                {analytics.topTags.map(([tag, count]) => (
-                  <div key={tag} style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--s2)',
-                    padding: '6px 14px', background: `${EMOTION_COLORS[tag] || '#818cf8'}12`,
-                    border: `1px solid ${EMOTION_COLORS[tag] || '#818cf8'}30`,
-                    borderRadius: 'var(--r-full)', fontSize: '0.72rem',
-                    color: EMOTION_COLORS[tag] || '#818cf8', fontWeight: 600,
-                  }}>
-                    {tag}
-                    <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-full)', padding: '1px 6px', fontSize: '0.6rem' }}>{count}</span>
+        <>
+          {/* Circular Discipline Gauge Card */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--s4)' }}>
+            <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+              <div>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Discipline Index</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>A 0-100 gauge reflecting emotional management based on FOMO & confidence</p>
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--s5)', flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '120px', position: 'relative', margin: '0 auto' }}>
+                  <svg width="110" height="110" viewBox="0 0 110 110">
+                    <defs>
+                      <linearGradient id="purpleMindsetGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#a78bfa" />
+                        <stop offset="100%" stopColor="#818cf8" />
+                      </linearGradient>
+                      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
+                    </defs>
+                    <circle cx="55" cy="55" r="42" fill="none" stroke="var(--border-strong)" strokeWidth="8" />
+                    <circle
+                      cx="55"
+                      cy="55"
+                      r="42"
+                      fill="none"
+                      stroke="url(#purpleMindsetGrad)"
+                      strokeWidth="8"
+                      strokeDasharray={2 * Math.PI * 42}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - (analytics.disciplineScore || 0) / 100)}
+                      strokeLinecap="round"
+                      transform="rotate(-90 55 55)"
+                      filter="url(#glow)"
+                      style={{ transition: 'stroke-dashoffset var(--t-slow)' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{analytics.disciplineScore}</span>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: analytics.disciplineScore >= 80 ? 'var(--profit)' : (analytics.disciplineScore >= 65 ? 'var(--accent)' : (analytics.disciplineScore >= 45 ? 'var(--warn)' : 'var(--loss)')), textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>
+                      {analytics.disciplineScore >= 80 ? 'Disciplined' : (analytics.disciplineScore >= 65 ? 'Balanced' : (analytics.disciplineScore >= 45 ? 'Impulsive' : 'High Risk'))}
+                    </span>
                   </div>
-                ))}
+                </div>
+
+                <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* FOMO Level Indicator */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>FOMO Resistance</span>
+                      <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{(10 - analytics.avgFomo).toFixed(1)}/10</span>
+                    </div>
+                    <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(10 - analytics.avgFomo) * 10}%`,
+                        background: analytics.avgFomo <= 4 ? 'var(--profit)' : (analytics.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)'),
+                        borderRadius: '3px',
+                        transition: 'width var(--t-slow)'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Confidence Level Indicator */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Average Confidence</span>
+                      <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{analytics.avgConf.toFixed(1)}/10</span>
+                    </div>
+                    <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${analytics.avgConf * 10}%`,
+                        background: 'linear-gradient(90deg, #818cf8 0%, #34d399 100%)',
+                        borderRadius: '3px',
+                        transition: 'width var(--t-slow)'
+                      }} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* General Mindset Notes */}
+            <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+              <div>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Mindset Profile</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Key takeaways based on your emotional logging</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', justifyContent: 'center', flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>🧘</span>
+                  <span>
+                    {analytics.disciplineScore >= 80 
+                      ? 'Excellent risk control. Your executions are aligned with low FOMO and optimal confidence levels.' 
+                      : (analytics.disciplineScore >= 65 
+                        ? 'Good balance. However, minor emotional friction exists. Monitor setups that trigger FOMO.'
+                        : 'Significant emotional slippage. You are likely chasing trades or executing out of boredom.')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>📊</span>
+                  <span>
+                    {analytics.fomoCost < 0 
+                      ? `Chasing setups has cost you a net total of ` 
+                      : `Chasing setups has contributed a positive `}
+                    <strong style={{ color: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                      {analytics.fomoCost >= 0 ? '+' : ''}${analytics.fomoCost.toLocaleString()}
+                    </strong>. Keep FOMO levels low to avoid capital leaks.
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>🔥</span>
+                  <span>
+                    Disciplined trades (FOMO &le; 3, Conf &ge; 7) generated{' '}
+                    <strong style={{ color: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                      {analytics.disciplinedPnL >= 0 ? '+' : ''}${analytics.disciplinedPnL.toLocaleString()}
+                    </strong>. Focus on standardizing this execution model.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Psychology KPI Row */}
+          <div className="analytics-kpi-row-1" style={{ marginTop: '4px' }}>
+            {[
+              { label: 'AVG FOMO', val: `${analytics.avgFomo}/10`, col: analytics.avgFomo <= 4 ? 'var(--profit)' : (analytics.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)'), sub: 'Lower is better' },
+              { label: 'AVG CONFIDENCE', val: `${analytics.avgConf}/10`, col: 'var(--accent)', sub: 'Ideal is 6-8' },
+              { label: 'WIN CONFIDENCE', val: `${analytics.avgWinConf}/10`, col: 'var(--profit)', sub: 'On green days' },
+              { label: 'LOSS CONFIDENCE', val: `${analytics.avgLossConf}/10`, col: 'var(--loss)', sub: 'On red days' },
+              { label: 'REVENGE TRADES', val: `${analytics.revengeCount}`, col: analytics.revengeCount > 0 ? 'var(--loss)' : 'var(--text-secondary)', sub: 'Over-trading count' },
+              { label: 'FOMO PNL COST', val: `${analytics.fomoCost >= 0 ? '+' : ''}$${analytics.fomoCost.toLocaleString()}`, col: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'On FOMO >= 7' },
+              { label: 'DISCIPLINED PNL', val: `${analytics.disciplinedPnL >= 0 ? '+' : ''}$${analytics.disciplinedPnL.toLocaleString()}`, col: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'FOMO <=3, Conf >=7' }
+            ].map((k, i) => (
+              <div key={i} className="glass stat-card" style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-tertiary)' }}>{k.label}</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', wordBreak: 'break-word', lineHeight: 1.2 }}>{k.val}</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts Grid */}
+          <div className="analytics-grid">
+            {/* P&L vs FOMO (Scatter) */}
+            <div className="glass chart-panel anim-fade-up delay-2">
+              <div className="chart-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>P&L vs FOMO Level</span>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>Bubble colors: trade result</span>
+              </div>
+              <ResponsiveContainer width="100%" height={230}>
+                <ScatterChart margin={{ top: 15, right: 15, bottom: 5, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <XAxis type="number" dataKey="fomo" domain={[0, 10]} name="FOMO" {...axisProps}/>
+                  <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps} tickFormatter={(val) => `$${val}`}/>
+                  <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
+                  <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'var(--border-strong)' }}/>
+                  <Scatter data={analytics.scatterData}>
+                    {analytics.scatterData.map((e, i) => (
+                      <Cell key={i} fill={e.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.65} r={7}/>
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* P&L vs Confidence (Scatter) */}
+            <div className="glass chart-panel anim-fade-up delay-3">
+              <div className="chart-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>P&L vs Confidence</span>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>Bubble colors: trade result</span>
+              </div>
+              <ResponsiveContainer width="100%" height={230}>
+                <ScatterChart margin={{ top: 15, right: 15, bottom: 5, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <XAxis type="number" dataKey="confidence" domain={[0, 10]} name="Confidence" {...axisProps}/>
+                  <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps} tickFormatter={(val) => `$${val}`}/>
+                  <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
+                  <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'var(--border-strong)' }}/>
+                  <Scatter data={analytics.scatterData}>
+                    {analytics.scatterData.map((e, i) => (
+                      <Cell key={i} fill={e.pnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.65} r={7}/>
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Avg P&L by FOMO */}
+            <div className="glass chart-panel anim-fade-up delay-4">
+              <div className="chart-title"><span>Avg P&L by FOMO Level</span></div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={analytics.fomoBar} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <XAxis dataKey="name" {...axisProps}/>
+                  <YAxis {...axisProps} tickFormatter={(val) => `$${val}`}/>
+                  <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
+                  <Tooltip content={<BarTooltip />} cursor={{ fill: 'var(--surface-glass)' }}/>
+                  <Bar dataKey="avgPnl" radius={[4, 4, 0, 0]}>
+                    {analytics.fomoBar.map((e, i) => (
+                      <Cell key={i} fill={e.avgPnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.7}/>
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Avg P&L by Confidence */}
+            <div className="glass chart-panel anim-fade-up delay-5">
+              <div className="chart-title"><span>Avg P&L by Confidence Level</span></div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={analytics.confBar} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <XAxis dataKey="name" {...axisProps}/>
+                  <YAxis {...axisProps} tickFormatter={(val) => `$${val}`}/>
+                  <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
+                  <Tooltip content={<BarTooltip />} cursor={{ fill: 'var(--surface-glass)' }}/>
+                  <Bar dataKey="avgPnl" radius={[4, 4, 0, 0]}>
+                    {analytics.confBar.map((e, i) => (
+                      <Cell key={i} fill={e.avgPnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.7}/>
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Emotion Frequency Wide Panel */}
+            {analytics.topTags.length > 0 && (
+              <div className="glass chart-panel analytics-wide anim-fade-up delay-6" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+                <div className="chart-title" style={{ margin: 0 }}><span>Emotion Frequency</span></div>
+                <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
+                  {analytics.topTags.map(([tag, count]) => (
+                    <div key={tag} style={{
+                      display: 'flex', alignItems: 'center', gap: 'var(--s2)',
+                      padding: '6px 14px', background: `${EMOTION_COLORS[tag] || '#818cf8'}12`,
+                      border: `1px solid ${EMOTION_COLORS[tag] || '#818cf8'}30`,
+                      borderRadius: 'var(--r-full)', fontSize: '0.72rem',
+                      color: EMOTION_COLORS[tag] || '#818cf8', fontWeight: 600,
+                    }}>
+                      {tag}
+                      <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-full)', padding: '1px 6px', fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

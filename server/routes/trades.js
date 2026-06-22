@@ -352,6 +352,7 @@ router.post('/import', async (req, res) => {
     try {
       await client.query('BEGIN');
 
+      let count = 0;
       for (const t of trades) {
         const entryTimeVal = t.entryTime || new Date().toISOString();
         let tagsList = [];

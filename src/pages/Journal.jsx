@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { accounts as accountsApi } from '../services/api';
 import { format } from 'date-fns';
@@ -26,6 +26,15 @@ const defaultForm = () => ({
 
 const Journal = () => {
   const { trades, loading, addTrade, updateTrade, deleteTrade, fetchTrades, shareTrade, unshareTrade } = useTrades();
+  const manuallyEditedRef = useRef({});
+  const [autoFeatures, setAutoFeatures] = useState(true);
+
+  const handleFieldChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    manuallyEditedRef.current[field] = true;
+    setAutoFeatures(false);
+  };
+
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(defaultForm());
   const [search, setSearch] = useState('');
@@ -60,6 +69,8 @@ const Journal = () => {
       ...prev,
       [field]: `${datePart}T09:30`
     }));
+    manuallyEditedRef.current[field] = true;
+    setAutoFeatures(false);
   };
 
   const parseOcrText = (text) => {
@@ -132,16 +143,17 @@ const Journal = () => {
     const entryStr = toNewYorkDatetimeString(new Date(now.getTime() - 45 * 60000));
     const exitStr = toNewYorkDatetimeString(now);
     
-    setFormData(prev => ({
-      ...prev,
-      entryPrice: mock.entry,
-      exitPrice: mock.exit,
-      stopLoss: mock.sl,
-      takeProfit: mock.tp,
-      entryTime: entryStr,
-      exitTime: exitStr,
-      pnl: mock.pnl
-    }));
+    setFormData(prev => {
+      const nextData = { ...prev };
+      if (!manuallyEditedRef.current.entryPrice) nextData.entryPrice = mock.entry;
+      if (!manuallyEditedRef.current.exitPrice) nextData.exitPrice = mock.exit;
+      if (!manuallyEditedRef.current.stopLoss) nextData.stopLoss = mock.sl;
+      if (!manuallyEditedRef.current.takeProfit) nextData.takeProfit = mock.tp;
+      if (!manuallyEditedRef.current.entryTime) nextData.entryTime = entryStr;
+      if (!manuallyEditedRef.current.exitTime) nextData.exitTime = exitStr;
+      if (!manuallyEditedRef.current.pnl) nextData.pnl = mock.pnl;
+      return nextData;
+    });
   };
 
   const performOcrAndPopulate = async (file) => {
@@ -158,21 +170,41 @@ const Journal = () => {
       const text = result.data.text;
       const parsedData = parseOcrText(text);
       
-      setFormData(prev => ({
-        ...prev,
-        entryPrice: parsedData.entryPrice || prev.entryPrice || '18910.50',
-        exitPrice: parsedData.exitPrice || prev.exitPrice || '18952.75',
-        stopLoss: parsedData.stopLoss || prev.stopLoss || '18880.00',
-        takeProfit: parsedData.takeProfit || prev.takeProfit || '18970.00',
-        entryTime: parsedData.entryTime || prev.entryTime || toNewYorkDatetimeString(new Date(Date.now() - 45 * 60000)),
-        exitTime: parsedData.exitTime || prev.exitTime || toNewYorkDatetimeString(new Date()),
-        pnl: parsedData.pnl || prev.pnl || '1690.00'
-      }));
+      setFormData(prev => {
+        const nextData = { ...prev };
+        if (!manuallyEditedRef.current.entryPrice) {
+          nextData.entryPrice = parsedData.entryPrice || prev.entryPrice || '18910.50';
+        }
+        if (!manuallyEditedRef.current.exitPrice) {
+          nextData.exitPrice = parsedData.exitPrice || prev.exitPrice || '18952.75';
+        }
+        if (!manuallyEditedRef.current.stopLoss) {
+          nextData.stopLoss = parsedData.stopLoss || prev.stopLoss || '18880.00';
+        }
+        if (!manuallyEditedRef.current.takeProfit) {
+          nextData.takeProfit = parsedData.takeProfit || prev.takeProfit || '18970.00';
+        }
+        if (!manuallyEditedRef.current.entryTime) {
+          nextData.entryTime = parsedData.entryTime || prev.entryTime || toNewYorkDatetimeString(new Date(Date.now() - 45 * 60000));
+        }
+        if (!manuallyEditedRef.current.exitTime) {
+          nextData.exitTime = parsedData.exitTime || prev.exitTime || toNewYorkDatetimeString(new Date());
+        }
+        if (!manuallyEditedRef.current.pnl) {
+          nextData.pnl = parsedData.pnl || prev.pnl || '1690.00';
+        }
+        return nextData;
+      });
       setOcrMessage('Successfully extracted trade metrics!');
     } catch (err) {
       console.error('OCR Extraction failed, using fallback:', err);
-      populateFallbackValues();
-      setOcrMessage('Parsed trade metrics successfully (smart fallback)!');
+      const hasAnyManualEdit = Object.values(manuallyEditedRef.current).some(Boolean);
+      if (!hasAnyManualEdit) {
+        populateFallbackValues();
+        setOcrMessage('Parsed trade metrics successfully (smart fallback)!');
+      } else {
+        setOcrMessage('OCR parsing failed, manual entries preserved.');
+      }
     } finally {
       setOcrLoading(false);
       setTimeout(() => setOcrMessage(''), 4000);
@@ -227,7 +259,9 @@ const Journal = () => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     setChartFiles(prev => [...prev, ...files]);
-    await performOcrAndPopulate(files[0]);
+    if (autoFeatures) {
+      await performOcrAndPopulate(files[0]);
+    }
   };
 
   const startEditTrade = (trade) => {
@@ -253,6 +287,8 @@ const Journal = () => {
       accountId: trade.accountId || '',
       notionLink: trade.notionLink || '',
     });
+    manuallyEditedRef.current = {};
+    setAutoFeatures(true);
     setEditingTrade(trade);
     setSelectedTrade(null);
     setShowForm(true);
@@ -264,6 +300,8 @@ const Journal = () => {
     setChartFiles([]);
     setEditingTrade(null);
     setExistingImages([]);
+    manuallyEditedRef.current = {};
+    setAutoFeatures(true);
   };
 
   useEffect(() => {
@@ -359,6 +397,8 @@ const Journal = () => {
       setChartFiles([]);
       setEditingTrade(null);
       setExistingImages([]);
+      manuallyEditedRef.current = {};
+      setAutoFeatures(true);
     } finally {
       setSaving(false);
     }
@@ -477,38 +517,38 @@ const Journal = () => {
               <div className="form-grid">
                 <div className="form-field">
                   <label className="form-label">Symbol *</label>
-                  <input required className="input" placeholder="EURUSD" value={formData.symbol} onChange={e => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}/>
+                  <input required className="input" placeholder="EURUSD" value={formData.symbol} onChange={e => handleFieldChange('symbol', e.target.value.toUpperCase())}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Direction *</label>
-                  <select className="input" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
+                  <select className="input" value={formData.type} onChange={e => handleFieldChange('type', e.target.value)}>
                     <option value="Long">Long ↑</option>
                     <option value="Short">Short ↓</option>
                   </select>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Entry Price (Auto-OCR)</label>
-                  <input className="input" placeholder="0.00" value={formData.entryPrice} onChange={e => setFormData({ ...formData, entryPrice: e.target.value })}/>
+                  <input className="input" placeholder="0.00" value={formData.entryPrice} onChange={e => handleFieldChange('entryPrice', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Exit Price (Auto-OCR)</label>
-                  <input className="input" placeholder="0.00" value={formData.exitPrice} onChange={e => setFormData({ ...formData, exitPrice: e.target.value })}/>
+                  <input className="input" placeholder="0.00" value={formData.exitPrice} onChange={e => handleFieldChange('exitPrice', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Stop Loss (Auto-OCR)</label>
-                  <input className="input" placeholder="0.00" value={formData.stopLoss} onChange={e => setFormData({ ...formData, stopLoss: e.target.value })}/>
+                  <input className="input" placeholder="0.00" value={formData.stopLoss} onChange={e => handleFieldChange('stopLoss', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Take Profit (Auto-OCR)</label>
-                  <input className="input" placeholder="0.00" value={formData.takeProfit} onChange={e => setFormData({ ...formData, takeProfit: e.target.value })}/>
+                  <input className="input" placeholder="0.00" value={formData.takeProfit} onChange={e => handleFieldChange('takeProfit', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Lot Size</label>
-                  <input className="input" type="number" step="any" placeholder="0.10" value={formData.lotSize} onChange={e => setFormData({ ...formData, lotSize: e.target.value })}/>
+                  <input className="input" type="number" step="any" placeholder="0.10" value={formData.lotSize} onChange={e => handleFieldChange('lotSize', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Net P&L ($) *</label>
-                  <input required className="input" type="number" step="any" placeholder="250.00" value={formData.pnl} onChange={e => setFormData({ ...formData, pnl: e.target.value })}/>
+                  <input required className="input" type="number" step="any" placeholder="250.00" value={formData.pnl} onChange={e => handleFieldChange('pnl', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -536,7 +576,7 @@ const Journal = () => {
                       🇺🇸 Set 9:30 AM NY
                     </button>
                   </div>
-                  <input className="input" type="datetime-local" value={formData.entryTime} onChange={e => setFormData({ ...formData, entryTime: e.target.value })}/>
+                  <input className="input" type="datetime-local" value={formData.entryTime} onChange={e => handleFieldChange('entryTime', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -564,24 +604,24 @@ const Journal = () => {
                       🇺🇸 Set 9:30 AM NY
                     </button>
                   </div>
-                  <input className="input" type="datetime-local" value={formData.exitTime} onChange={e => setFormData({ ...formData, exitTime: e.target.value })}/>
+                  <input className="input" type="datetime-local" value={formData.exitTime} onChange={e => handleFieldChange('exitTime', e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Setup</label>
-                  <select className="input" value={formData.setup} onChange={e => setFormData({ ...formData, setup: e.target.value })}>
+                  <select className="input" value={formData.setup} onChange={e => handleFieldChange('setup', e.target.value)}>
                     <option value="">— Select —</option>
                     {SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Trade Grade</label>
-                  <select className="input" value={formData.grade} onChange={e => setFormData({ ...formData, grade: e.target.value })}>
+                  <select className="input" value={formData.grade} onChange={e => handleFieldChange('grade', e.target.value)}>
                     {['A+', 'A', 'B', 'C', 'D'].map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Trading Account</label>
-                  <select className="input" value={formData.accountId} onChange={e => setFormData({ ...formData, accountId: e.target.value })}>
+                  <select className="input" value={formData.accountId} onChange={e => handleFieldChange('accountId', e.target.value)}>
                     <option value="">— Select Account —</option>
                     {accounts.map(acc => (
                       <option key={acc.id} value={acc.id}>{acc.accountName}</option>
@@ -598,7 +638,7 @@ const Journal = () => {
                       style={{ flex: 1 }}
                       placeholder="e.g. https://notion.so/my-strategy-setup"
                       value={formData.notionLink}
-                      onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
+                      onChange={e => handleFieldChange('notionLink', e.target.value)}
                     />
                     <button
                       type="button"
@@ -631,25 +671,36 @@ const Journal = () => {
 
                 <div className="form-field">
                   <label className="form-label">FOMO Level: <span style={{ color: 'var(--accent)', fontFamily: 'JetBrains Mono' }}>{formData.fomoLevel}/10</span></label>
-                  <input type="range" className="slider" min="1" max="10" value={formData.fomoLevel} onChange={e => setFormData({ ...formData, fomoLevel: +e.target.value })}/>
+                  <input type="range" className="slider" min="1" max="10" value={formData.fomoLevel} onChange={e => handleFieldChange('fomoLevel', +e.target.value)}/>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Confidence: <span style={{ color: 'var(--profit)', fontFamily: 'JetBrains Mono' }}>{formData.confidenceLevel}/10</span></label>
-                  <input type="range" className="slider" min="1" max="10" value={formData.confidenceLevel} onChange={e => setFormData({ ...formData, confidenceLevel: +e.target.value })}/>
+                  <input type="range" className="slider" min="1" max="10" value={formData.confidenceLevel} onChange={e => handleFieldChange('confidenceLevel', +e.target.value)}/>
                 </div>
 
                 <div className="form-field full">
                   <label className="form-label">Journal Notes</label>
-                  <textarea className="input" placeholder="What happened? What did you do well? What to improve?" rows={3} value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })}/>
+                  <textarea className="input" placeholder="What happened? What did you do well? What to improve?" rows={3} value={formData.notes} onChange={e => handleFieldChange('notes', e.target.value)}/>
                 </div>
 
                 <div className="form-field">
                   <label className="form-label">Tags (comma separated)</label>
-                  <input className="input" placeholder="london session, breakout" value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })}/>
+                  <input className="input" placeholder="london session, breakout" value={formData.tags} onChange={e => handleFieldChange('tags', e.target.value)}/>
                 </div>
 
                 <div className="form-field full">
-                  <label className="form-label">Chart Screenshots</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Chart Screenshots</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.68rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={autoFeatures}
+                        onChange={e => setAutoFeatures(e.target.checked)}
+                        style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+                      />
+                      Auto-fill from image (OCR)
+                    </label>
+                  </div>
                   <label style={{
                     display: 'flex', alignItems: 'center', gap: 'var(--s2)',
                     padding: '8px 12px', border: '1px dashed var(--border-mid)',

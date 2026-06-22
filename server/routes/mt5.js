@@ -156,6 +156,7 @@ router.post('/sync-trades', async (req, res) => {
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
+      let inserted = 0;
       for (const t of mockTrades) {
         let tagsList = [];
         try {

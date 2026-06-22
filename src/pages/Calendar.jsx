@@ -228,12 +228,14 @@ const CalendarPage = () => {
               const pnlValue = isSaturday ? weekTotal.pnl : (dayData ? dayData.pnl : 0);
               const countValue = isSaturday ? weekTotal.count : (dayData ? dayData.count : 0);
 
+              const isProfit = hasData && pnlValue > 0;
+              const isLoss = hasData && pnlValue < 0;
+
               return (
                 <div
                   key={i}
-                  className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''}`}
+                  className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''} ${isProfit ? 'profit-day' : ''} ${isLoss ? 'loss-day' : ''}`}
                   style={{
-                    background: hasData ? getPnLColor(pnlValue) : undefined,
                     borderColor: isSelected ? 'var(--accent)' : undefined,
                     boxShadow: isSelected ? '0 0 8px var(--accent-glow)' : undefined,
                   }}

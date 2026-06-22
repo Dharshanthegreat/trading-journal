@@ -204,6 +204,143 @@
 .calendar-cell.week-total-cell.has-data {
   border-style: solid;
 }
+
+/* Custom profit and loss day cells for dark/default theme */
+.calendar-cell.profit-day {
+  background: #14532d !important; /* Solid forest green */
+  border-color: rgba(52, 211, 153, 0.25) !important;
+}
+.calendar-cell.profit-day:hover {
+  background: #166534 !important;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
+}
+.calendar-cell.profit-day .calendar-day {
+  color: #f8fafc !important;
+}
+.calendar-cell.profit-day .calendar-pnl {
+  color: #4ade80 !important; /* Brighter green for readability */
+}
+.calendar-cell.profit-day .calendar-trades {
+  color: rgba(248, 250, 252, 0.7) !important;
+}
+
+.calendar-cell.loss-day {
+  background: #7f1d1d !important; /* Solid dark red */
+  border-color: rgba(248, 113, 113, 0.25) !important;
+}
+.calendar-cell.loss-day:hover {
+  background: #991b1b !important;
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.15);
+}
+.calendar-cell.loss-day .calendar-day {
+  color: #f8fafc !important;
+}
+.calendar-cell.loss-day .calendar-pnl {
+  color: #fca5a5 !important; /* Brighter red/pink for readability */
+}
+.calendar-cell.loss-day .calendar-trades {
+  color: rgba(248, 250, 252, 0.7) !important;
+}
+
+/* Theme overrides for light and other styles */
+body.theme-minimal .calendar-cell.profit-day {
+  background: #e6f4ea !important;
+  border-color: rgba(9, 121, 105, 0.3) !important;
+}
+body.theme-minimal .calendar-cell.profit-day .calendar-day,
+body.theme-minimal .calendar-cell.profit-day .calendar-trades {
+  color: #1e293b !important;
+}
+body.theme-minimal .calendar-cell.profit-day .calendar-pnl {
+  color: #097969 !important;
+}
+
+body.theme-minimal .calendar-cell.loss-day {
+  background: #fce8e6 !important;
+  border-color: rgba(223, 46, 80, 0.3) !important;
+}
+body.theme-minimal .calendar-cell.loss-day .calendar-day,
+body.theme-minimal .calendar-cell.loss-day .calendar-trades {
+  color: #1e293b !important;
+}
+body.theme-minimal .calendar-cell.loss-day .calendar-pnl {
+  color: #df2e50 !important;
+}
+
+body.theme-claymorphism .calendar-cell.profit-day {
+  background: #d1fae5 !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+  box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.05), inset 3px 3px 6px rgba(255, 255, 255, 0.5) !important;
+}
+body.theme-claymorphism .calendar-cell.profit-day .calendar-pnl {
+  color: #065f46 !important;
+}
+body.theme-claymorphism .calendar-cell.profit-day .calendar-day,
+body.theme-claymorphism .calendar-cell.profit-day .calendar-trades {
+  color: #1e293b !important;
+}
+
+body.theme-claymorphism .calendar-cell.loss-day {
+  background: #fee2e2 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.05), inset 3px 3px 6px rgba(255, 255, 255, 0.5) !important;
+}
+body.theme-claymorphism .calendar-cell.loss-day .calendar-pnl {
+  color: #991b1b !important;
+}
+body.theme-claymorphism .calendar-cell.loss-day .calendar-day,
+body.theme-claymorphism .calendar-cell.loss-day .calendar-trades {
+  color: #1e293b !important;
+}
+
+body.theme-ventriloc .calendar-cell.profit-day {
+  background: #e2f0d9 !important;
+  border-color: #b5c7a3 !important;
+}
+body.theme-ventriloc .calendar-cell.profit-day .calendar-pnl {
+  color: #166534 !important;
+}
+body.theme-ventriloc .calendar-cell.profit-day .calendar-day,
+body.theme-ventriloc .calendar-cell.profit-day .calendar-trades {
+  color: #27272a !important;
+}
+
+body.theme-ventriloc .calendar-cell.loss-day {
+  background: #fce4e4 !important;
+  border-color: #dfb3b3 !important;
+}
+body.theme-ventriloc .calendar-cell.loss-day .calendar-pnl {
+  color: #991b1b !important;
+}
+body.theme-ventriloc .calendar-cell.loss-day .calendar-day,
+body.theme-ventriloc .calendar-cell.loss-day .calendar-trades {
+  color: #27272a !important;
+}
+
+body.theme-steep .calendar-cell.profit-day {
+  background: #eafaf1 !important;
+  border-color: #a3e635 !important;
+}
+body.theme-steep .calendar-cell.profit-day .calendar-pnl {
+  color: #15803d !important;
+}
+body.theme-steep .calendar-cell.profit-day .calendar-day,
+body.theme-steep .calendar-cell.profit-day .calendar-trades {
+  color: #1e293b !important;
+}
+
+body.theme-steep .calendar-cell.loss-day {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+body.theme-steep .calendar-cell.loss-day .calendar-pnl {
+  color: #b91c1c !important;
+}
+body.theme-steep .calendar-cell.loss-day .calendar-day,
+body.theme-steep .calendar-cell.loss-day .calendar-trades {
+  color: #1e293b !important;
+}
+
 .calendar-week-total-label {
   font-size: 0.58rem;
   font-weight: 700;
