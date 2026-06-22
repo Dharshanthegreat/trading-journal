@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTrades } from '../contexts/TradeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { accounts as accountsApi } from '../services/api';
 import {
@@ -50,7 +51,10 @@ const getTradeR = (t) => {
 
 const Analytics = () => {
   const { trades, fetchTrades, analytics, fetchAnalytics, loading } = useTrades();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  const startBalance = user?.accountSize ? parseFloat(user.accountSize) : 50000;
 
   // Filters State
   const [startDate, setStartDate] = useState('');
@@ -293,11 +297,15 @@ const Analytics = () => {
     };
   }, [filteredTrades, accounts]);
 
-  // Equity growth curve dataset starting from $50,000
+  // Equity growth curve dataset starting from dynamic balance
   const equityCurveData = useMemo(() => {
-    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    const chronoTrades = [...filteredTrades].sort((a, b) => {
+      const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
+      const timeB = b.entryTime ? new Date(b.entryTime).getTime() : (b.entry_time ? new Date(b.entry_time).getTime() : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || 0) - (b.id || 0);
+    });
     let running = 0;
-    const startBalance = 50000;
     
     const data = [{
       date: 'Start',
@@ -318,7 +326,7 @@ const Analytics = () => {
     });
 
     return data;
-  }, [filteredTrades]);
+  }, [filteredTrades, startBalance]);
 
   // Custom Equity Tooltip
   const EquityTooltip = ({ active, payload }) => {
@@ -329,7 +337,7 @@ const Analytics = () => {
         <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: 2 }}>Starting Point</div>
           <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}>
-            $50,000.00
+            ${startBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       );

@@ -126,7 +126,7 @@ const Dashboard = () => {
   const [bottomTab, setBottomTab] = useState('recent'); // 'recent' or 'open'
   const [showAiChat, setShowAiChat] = useState(false);
   const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem('dashboard_nvidia_ai_chat');
+    const saved = localStorage.getItem('dashboard_dtg_ai_chat');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -135,7 +135,7 @@ const Dashboard = () => {
     return [
       {
         role: 'assistant',
-        content: "Hello! I am **Zella AI**, your trading coach powered by **NVIDIA Llama-3.1-Nemotron-70B-Instruct**.\n\nI can analyze your trading metrics, evaluate your setups, and debug your execution psychology. What would you like to review today?"
+        content: "Hello! I am **DTG AI**, your trading coach powered by **NVIDIA Llama-3.1-Nemotron-70B-Instruct**.\n\nI can analyze your trading metrics, evaluate your setups, and debug your execution psychology. What would you like to review today?"
       }
     ];
   });
@@ -144,7 +144,7 @@ const Dashboard = () => {
   const chatBottomRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem('dashboard_nvidia_ai_chat', JSON.stringify(messages));
+    localStorage.setItem('dashboard_dtg_ai_chat', JSON.stringify(messages));
   }, [messages]);
 
   useEffect(() => {
@@ -393,7 +393,12 @@ const Dashboard = () => {
 
   // Compute charts data
   const chartsData = useMemo(() => {
-    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    const chronoTrades = [...filteredTrades].sort((a, b) => {
+      const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
+      const timeB = b.entryTime ? new Date(b.entryTime).getTime() : (b.entry_time ? new Date(b.entry_time).getTime() : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || 0) - (b.id || 0);
+    });
     
     let running = 0;
     let peak = 0;
@@ -415,7 +420,12 @@ const Dashboard = () => {
   // Group trades by day for the Net Daily P&L bar chart
   const dailyPnlData = useMemo(() => {
     const days = {};
-    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    const chronoTrades = [...filteredTrades].sort((a, b) => {
+      const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
+      const timeB = b.entryTime ? new Date(b.entryTime).getTime() : (b.entry_time ? new Date(b.entry_time).getTime() : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || 0) - (b.id || 0);
+    });
     chronoTrades.forEach(t => {
       const timeStr = t.entryTime || t.entry_time;
       if (!timeStr) return;
@@ -429,10 +439,16 @@ const Dashboard = () => {
     }));
   }, [filteredTrades]);
 
-  // Compute account balance curve
+  // Compute account balance curve based on dynamic user accountSize
   const balanceData = useMemo(() => {
-    let balance = 10000;
-    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    const startBalance = user?.accountSize ? parseFloat(user.accountSize) : 25000;
+    let balance = startBalance;
+    const chronoTrades = [...filteredTrades].sort((a, b) => {
+      const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
+      const timeB = b.entryTime ? new Date(b.entryTime).getTime() : (b.entry_time ? new Date(b.entry_time).getTime() : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || 0) - (b.id || 0);
+    });
     return chronoTrades.map((t, idx) => {
       balance += t.pnl;
       return {
@@ -442,13 +458,18 @@ const Dashboard = () => {
         pnl: t.pnl
       };
     });
-  }, [filteredTrades]);
+  }, [filteredTrades, user]);
 
   // Compute drawdown curve
   const drawdownData = useMemo(() => {
     let running = 0;
     let peak = 0;
-    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
+    const chronoTrades = [...filteredTrades].sort((a, b) => {
+      const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
+      const timeB = b.entryTime ? new Date(b.entryTime).getTime() : (b.entry_time ? new Date(b.entry_time).getTime() : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || 0) - (b.id || 0);
+    });
     return chronoTrades.map((t, idx) => {
       running += t.pnl;
       if (running > peak) peak = running;
@@ -562,7 +583,7 @@ const Dashboard = () => {
           </div>
 
           <button className="tz-filter-btn" onClick={() => setShowAiChat(true)} style={{ background: 'var(--accent-soft)', borderColor: 'var(--border-accent)', color: 'var(--text-primary)', fontWeight: 600 }}>
-            <Brain size={13} style={{ color: 'var(--accent)' }} /> Zella AI
+            <Brain size={13} style={{ color: 'var(--accent)' }} /> DTG AI
           </button>
         </div>
       </div>
@@ -600,11 +621,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Card 2: Trade win % */}
+        {/* Card 2: Win Rate */}
         <div className="tz-kpi-card">
           <div className="tz-kpi-header">
             <div className="tz-kpi-label">
-              Trade win % <Zap size={12} style={{ opacity: 0.6 }} />
+              Win Rate <Zap size={12} style={{ opacity: 0.6 }} />
             </div>
           </div>
           <div className="tz-kpi-body">
@@ -875,7 +896,7 @@ const Dashboard = () => {
                     <path d="M38 14L41 11M41 11H37M41 11V15" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M47 8L49 6M49 6H46M49 6V9" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <div className="tz-sleeping-text">No active positions open. Zella AI is currently sleeping.</div>
+                  <div className="tz-sleeping-text">No active positions open. DTG AI is currently sleeping.</div>
                 </div>
               )
             )}
@@ -942,7 +963,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Zella AI Chat Drawer Pop-up */}
+      {/* DTG AI Chat Drawer Pop-up */}
       {showAiChat && (
         <>
           {/* Drawer Backdrop overlay */}
@@ -994,7 +1015,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    Zella AI <span className="status-dot live" style={{ width: '6px', height: '6px' }} />
+                    DTG AI <span className="status-dot live" style={{ width: '6px', height: '6px' }} />
                   </div>
                   <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     NVIDIA Llama-3.1-Nemotron-70B
@@ -1027,7 +1048,7 @@ const Dashboard = () => {
                   }}
                 >
                   <div style={{ fontSize: '0.62rem', color: msg.role === 'user' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
-                    {msg.role === 'user' ? 'YOU' : 'ZELLA AI'}
+                    {msg.role === 'user' ? 'YOU' : 'DTG AI'}
                   </div>
                   <div style={{ whiteSpace: 'pre-wrap' }}>
                     {msg.role === 'user' ? msg.content : formatMessageContent(msg.content)}
@@ -1086,7 +1107,7 @@ const Dashboard = () => {
                 type="text"
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
-                placeholder="Ask Zella AI Coach..."
+                placeholder="Ask DTG AI Coach..."
                 style={{
                   flex: 1,
                   background: 'var(--bg-secondary)',

@@ -93,7 +93,7 @@ const AiCoach = () => {
 
   // Initialize with a welcome message from the coach if history is empty
   useEffect(() => {
-    const saved = localStorage.getItem('tradezella_ai_chat');
+    const saved = localStorage.getItem('dtg_ai_chat');
     if (saved) {
       try {
         setMessages(JSON.parse(saved));
@@ -122,7 +122,7 @@ How is your trading session going today? Feel free to ask me questions like:
   // Save chat to local storage
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem('tradezella_ai_chat', JSON.stringify(messages));
+      localStorage.setItem('dtg_ai_chat', JSON.stringify(messages));
     }
   }, [messages]);
 
@@ -211,7 +211,7 @@ How is your trading session going today? Feel free to ask me questions like:
         }
       ];
       setMessages(initial);
-      localStorage.setItem('tradezella_ai_chat', JSON.stringify(initial));
+      localStorage.setItem('dtg_ai_chat', JSON.stringify(initial));
     }
   };
 

@@ -1154,7 +1154,7 @@ body.theme-steep .calendar-cell.loss-day .calendar-trades {
   gap: 6px;
 }
 
-/* Radar & Zella Score styles */
+/* Radar & DTG Score styles */
 .tz-radar-container {
   display: flex;
   flex-direction: column;

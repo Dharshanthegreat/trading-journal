@@ -16,7 +16,7 @@ const Stoic = () => {
   const [pastReframes, setPastReframes] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
-  // Zella Stoic AI Chat
+  // DTG Stoic AI Chat
   const [messages, setMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);

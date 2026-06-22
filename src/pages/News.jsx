@@ -756,7 +756,7 @@ const News = () => {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Zella Economic Analyst AI Widget */}
+      {/* RIGHT COLUMN: DTG AI Economic Analyst Widget */}
       <div className="glass anim-fade-up delay-2" style={{
         display: 'flex',
         flexDirection: 'column',
@@ -777,7 +777,7 @@ const News = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: 'var(--accent)', display: 'flex' }}><Brain size={16} /></span>
             <div>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>Zella AI News Analyst</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>DTG AI News Analyst</span>
               <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Llama-3.1-Nemotron-70B-Instruct</span>
             </div>
           </div>

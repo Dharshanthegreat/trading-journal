@@ -102,7 +102,7 @@ const Notion = () => {
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Zella AI Chat States
+  // DTG AI Chat States
   const [messages, setMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -1242,7 +1242,7 @@ const Notion = () => {
               <input
                 type="text"
                 className="input"
-                placeholder={aiLoading ? "Co-writer is thinking..." : "Ask Zella to draft or review playbooks..."}
+                placeholder={aiLoading ? "Co-writer is thinking..." : "Ask DTG AI to draft or review playbooks..."}
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
                 disabled={aiLoading}
