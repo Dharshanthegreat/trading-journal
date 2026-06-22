@@ -32,7 +32,7 @@ import Stoic from './pages/Stoic';
 import TradovateConnect from './pages/TradovateConnect';
 import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
-import { ai as aiApi, publicApi } from './services/api';
+import { ai as aiApi, publicApi, accounts as accountsApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -123,8 +123,41 @@ const Dashboard = () => {
   const [selectedSymbol, setSelectedSymbol] = useState('All');
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
+  const [selectedAccount, setSelectedAccount] = useState('All');
+  const [accounts, setAccounts] = useState([]);
   const [bottomTab, setBottomTab] = useState('recent'); // 'recent' or 'open'
   const [showAiChat, setShowAiChat] = useState(false);
+
+  // Fetch/mock accounts list
+  const fetchDashboardAccounts = useCallback(async () => {
+    try {
+      if (user?.isGuest) {
+        const accIds = [...new Set(trades.map(t => t.accountId || t.account_id || 1))];
+        const guestAccs = accIds.map(id => {
+          if (String(id) === '1') {
+            return { id: 1, accountName: '25K Funded Futures Family', startingBalance: 25000.0 };
+          }
+          if (String(id) === '2') {
+            return { id: 2, accountName: '50K Apex Challenge Passed', startingBalance: 50000.0 };
+          }
+          if (String(id) === '3') {
+            return { id: 3, accountName: '10K MyForexFunds Failed', startingBalance: 10000.0 };
+          }
+          return { id, accountName: `Account ${id}`, startingBalance: 25000.0 };
+        });
+        setAccounts(guestAccs);
+      } else {
+        const data = await accountsApi.list();
+        setAccounts(data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch accounts in dashboard:', err);
+    }
+  }, [user, trades]);
+
+  useEffect(() => {
+    fetchDashboardAccounts();
+  }, [fetchDashboardAccounts]);
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('dashboard_dtg_ai_chat');
     if (saved) {
@@ -216,6 +249,11 @@ const Dashboard = () => {
       result = result.filter(t => new Date(t.entryTime || t.entry_time) >= startOfYear);
     }
 
+    // 1.5. Account filter
+    if (selectedAccount !== 'All') {
+      result = result.filter(t => String(t.accountId || t.account_id || 1) === String(selectedAccount));
+    }
+
     // 2. Symbol filter
     if (selectedSymbol !== 'All') {
       result = result.filter(t => t.symbol?.toUpperCase() === selectedSymbol.toUpperCase());
@@ -232,7 +270,7 @@ const Dashboard = () => {
     }
 
     return result;
-  }, [trades, dateRange, selectedSymbol, selectedSetup, selectedType]);
+  }, [trades, dateRange, selectedSymbol, selectedSetup, selectedType, selectedAccount]);
 
   // Handle reset
   const handleResetFilters = () => {
@@ -240,6 +278,7 @@ const Dashboard = () => {
     setSelectedSymbol('All');
     setSelectedSetup('All');
     setSelectedType('All');
+    setSelectedAccount('All');
   };
 
   // Recalculate stats dynamically based on filtered trades
@@ -439,9 +478,21 @@ const Dashboard = () => {
     }));
   }, [filteredTrades]);
 
+  // Compute starting balance dynamically based on accounts list and selected account
+  const startBalance = useMemo(() => {
+    if (selectedAccount === 'All') {
+      if (accounts.length > 0) {
+        return accounts.reduce((acc, curr) => acc + (parseFloat(curr.startingBalance) || 0), 0);
+      }
+      return user?.accountSize ? parseFloat(user.accountSize) : 25000;
+    } else {
+      const acc = accounts.find(a => String(a.id) === String(selectedAccount));
+      return acc ? (parseFloat(acc.startingBalance) || 0) : (user?.accountSize ? parseFloat(user.accountSize) : 25000);
+    }
+  }, [selectedAccount, accounts, user]);
+
   // Compute account balance curve based on dynamic user accountSize
   const balanceData = useMemo(() => {
-    const startBalance = user?.accountSize ? parseFloat(user.accountSize) : 25000;
     let balance = startBalance;
     const chronoTrades = [...filteredTrades].sort((a, b) => {
       const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
@@ -458,7 +509,7 @@ const Dashboard = () => {
         pnl: t.pnl
       };
     });
-  }, [filteredTrades, user]);
+  }, [filteredTrades, startBalance]);
 
   // Compute drawdown curve
   const drawdownData = useMemo(() => {
@@ -545,10 +596,10 @@ const Dashboard = () => {
             <span style={{ fontWeight: 700 }}>$</span>
           </button>
           
-          {(dateRange !== 'all' || selectedSymbol !== 'All' || selectedSetup !== 'All' || selectedType !== 'All') && (
+          {(dateRange !== 'all' || selectedSymbol !== 'All' || selectedSetup !== 'All' || selectedType !== 'All' || selectedAccount !== 'All') && (
             <div className="tz-filter-btn">
               <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                {[dateRange !== 'all', selectedSymbol !== 'All', selectedSetup !== 'All', selectedType !== 'All'].filter(Boolean).length} filter{[dateRange !== 'all', selectedSymbol !== 'All', selectedSetup !== 'All', selectedType !== 'All'].filter(Boolean).length > 1 ? 's' : ''}
+                {[dateRange !== 'all', selectedSymbol !== 'All', selectedSetup !== 'All', selectedType !== 'All', selectedAccount !== 'All'].filter(Boolean).length} filter{[dateRange !== 'all', selectedSymbol !== 'All', selectedSetup !== 'All', selectedType !== 'All', selectedAccount !== 'All'].filter(Boolean).length > 1 ? 's' : ''}
               </span>
               <button className="tz-filter-clear" onClick={handleResetFilters}>×</button>
             </div>
@@ -563,10 +614,19 @@ const Dashboard = () => {
               <option value="ytd">Year to Date</option>
             </select>
           </div>
+
+          <div className="tz-filter-btn">
+            <select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
+              <option value="All">All accounts</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.accountName}</option>
+              ))}
+            </select>
+          </div>
           
           <div className="tz-filter-btn">
             <select value={selectedSymbol} onChange={e => setSelectedSymbol(e.target.value)}>
-              <option value="All">All accounts</option>
+              <option value="All">All symbols</option>
               {uniqueSymbols.map(sym => (
                 <option key={sym} value={sym}>{sym}</option>
               ))}
