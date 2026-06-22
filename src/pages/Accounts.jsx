@@ -8,6 +8,7 @@ import {
 const Accounts = () => {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
@@ -165,6 +166,11 @@ const Accounts = () => {
   const activeCount = accountsArray.filter(a => a.status === 'Active').length;
   const passedCount = accountsArray.filter(a => a.status === 'Passed').length;
   const failedCount = accountsArray.filter(a => a.status === 'Failed').length;
+  
+  const filteredAccounts = accountsArray.filter(a => {
+    if (statusFilter === 'All') return true;
+    return a.status === statusFilter;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
@@ -196,7 +202,17 @@ const Accounts = () => {
 
       {/* KPI Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }}>
-        <div className="glass stat-card">
+        <div 
+          className="glass stat-card"
+          onClick={() => setStatusFilter('All')}
+          style={{
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            border: statusFilter === 'All' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid var(--border)',
+            boxShadow: statusFilter === 'All' ? '0 0 12px rgba(255, 255, 255, 0.05)' : 'none',
+            transform: statusFilter === 'All' ? 'translateY(-2px)' : 'none'
+          }}
+        >
           <div className="stat-label">
             <span style={{ color: 'var(--accent)' }}><Wallet size={13} /></span> Total Combined Balance
           </div>
@@ -206,7 +222,17 @@ const Accounts = () => {
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Across {accounts.length} accounts</div>
         </div>
 
-        <div className="glass stat-card">
+        <div 
+          className="glass stat-card"
+          onClick={() => setStatusFilter(statusFilter === 'Active' ? 'All' : 'Active')}
+          style={{
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            border: statusFilter === 'Active' ? '1px solid var(--accent)' : '1px solid var(--border)',
+            boxShadow: statusFilter === 'Active' ? '0 0 12px rgba(59, 130, 246, 0.15)' : 'none',
+            transform: statusFilter === 'Active' ? 'translateY(-2px)' : 'none'
+          }}
+        >
           <div className="stat-label">
             <span style={{ color: 'var(--accent)' }}><Activity size={13} /></span> Active Accounts
           </div>
@@ -214,7 +240,17 @@ const Accounts = () => {
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Challenges & Live logs</div>
         </div>
 
-        <div className="glass stat-card">
+        <div 
+          className="glass stat-card"
+          onClick={() => setStatusFilter(statusFilter === 'Passed' ? 'All' : 'Passed')}
+          style={{
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            border: statusFilter === 'Passed' ? '1px solid var(--profit)' : '1px solid var(--border)',
+            boxShadow: statusFilter === 'Passed' ? '0 0 12px rgba(52, 211, 153, 0.15)' : 'none',
+            transform: statusFilter === 'Passed' ? 'translateY(-2px)' : 'none'
+          }}
+        >
           <div className="stat-label">
             <span style={{ color: 'var(--profit)' }}><Award size={13} /></span> Passed Challenges
           </div>
@@ -222,7 +258,17 @@ const Accounts = () => {
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Funded credentials unlocked</div>
         </div>
 
-        <div className="glass stat-card">
+        <div 
+          className="glass stat-card"
+          onClick={() => setStatusFilter(statusFilter === 'Failed' ? 'All' : 'Failed')}
+          style={{
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            border: statusFilter === 'Failed' ? '1px solid var(--loss)' : '1px solid var(--border)',
+            boxShadow: statusFilter === 'Failed' ? '0 0 12px rgba(248, 113, 113, 0.15)' : 'none',
+            transform: statusFilter === 'Failed' ? 'translateY(-2px)' : 'none'
+          }}
+        >
           <div className="stat-label">
             <span style={{ color: 'var(--loss)' }}><AlertTriangle size={13} /></span> Failed Challenges
           </div>
@@ -231,7 +277,65 @@ const Accounts = () => {
         </div>
       </div>
 
-      {/* Accounts List Empty State */}
+      {/* Filter Tabs / Option Pills */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '8px', 
+        alignItems: 'center', 
+        background: 'rgba(255,255,255,0.02)', 
+        padding: '5px', 
+        borderRadius: 'var(--r-lg)', 
+        border: '1px solid var(--border-mid)',
+        width: 'fit-content',
+        alignSelf: 'flex-start',
+        marginTop: '-2px'
+      }}>
+        {[
+          { label: 'All Accounts', value: 'All', count: accountsArray.length, color: 'var(--text-primary)', activeBg: 'rgba(255,255,255,0.08)' },
+          { label: 'Active', value: 'Active', count: activeCount, color: 'var(--accent)', activeBg: 'rgba(59, 130, 246, 0.1)' },
+          { label: 'Passed', value: 'Passed', count: passedCount, color: 'var(--profit)', activeBg: 'rgba(52, 211, 153, 0.1)' },
+          { label: 'Failed', value: 'Failed', count: failedCount, color: 'var(--loss)', activeBg: 'rgba(248, 113, 113, 0.1)' }
+        ].map(tab => {
+          const isActive = statusFilter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className="btn btn-sm"
+              type="button"
+              style={{
+                background: isActive ? tab.activeBg : 'transparent',
+                color: isActive ? tab.color : 'var(--text-muted)',
+                border: isActive ? `1px solid ${tab.color}` : '1px solid transparent',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '0.72rem',
+                padding: '6px 14px',
+                borderRadius: 'var(--r-md)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
+                boxShadow: isActive ? `0 0 8px ${tab.color}15` : 'none'
+              }}
+            >
+              <span>{tab.label}</span>
+              <span style={{ 
+                fontSize: '0.62rem', 
+                background: 'rgba(0,0,0,0.2)', 
+                padding: '1px 5px', 
+                borderRadius: '6px',
+                color: isActive ? tab.color : 'var(--text-tertiary)',
+                border: '1px solid var(--border-mid)'
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Accounts List / Empty States */}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s4)' }}>
           {[...Array(3)].map((_, i) => (
@@ -244,9 +348,16 @@ const Accounts = () => {
           <div className="empty-title">No trading accounts logged</div>
           <div className="empty-desc">Create an account profile to sync prop challenges or live brokerage stats</div>
         </div>
+      ) : filteredAccounts.length === 0 ? (
+        <div className="glass empty-state" style={{ padding: 'var(--s12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--s3)' }}>
+          <Wallet size={32} style={{ opacity: 0.3 }} />
+          <div className="empty-title">No {statusFilter.toLowerCase()} accounts found</div>
+          <div className="empty-desc">There are no trading accounts with status "{statusFilter}" currently logged.</div>
+          <button className="btn btn-sm btn-ghost" onClick={() => setStatusFilter('All')}>Clear Filter</button>
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s5)' }}>
-          {accountsArray.map(acc => {
+          {filteredAccounts.map(acc => {
             const isProfit = (acc.totalPnL || 0) >= 0;
             return (
               <div
