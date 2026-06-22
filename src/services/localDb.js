@@ -227,9 +227,20 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       );
     }
     
+    const accountsList = getStorageItem(`accounts_${activeUser.id}`, []);
+    const getResult = (t) => {
+      const acc = accountsList.find(a => String(a.id) === String(t.accountId || 1));
+      const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
+      const threshold = startingBalance * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    };
+
     if (type && type !== 'All') {
-      if (type === 'Win') filtered = filtered.filter(t => t.pnl > 0);
-      else if (type === 'Loss') filtered = filtered.filter(t => t.pnl < 0);
+      if (type === 'Win') filtered = filtered.filter(t => getResult(t) === 'Win');
+      else if (type === 'Loss') filtered = filtered.filter(t => getResult(t) === 'Loss');
+      else if (type === 'Breakeven') filtered = filtered.filter(t => getResult(t) === 'Breakeven');
       else filtered = filtered.filter(t => t.type === type);
     }
     
@@ -543,12 +554,22 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
   if (url === '/analytics' && method === 'GET') {
     if (!trades.length) return { empty: true };
     
+    const accountsList = getStorageItem(`accounts_${activeUser.id}`, []);
+    const getResult = (t) => {
+      const acc = accountsList.find(a => String(a.id) === String(t.accountId || 1));
+      const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
+      const threshold = startingBalance * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    };
+
     // Sort trades chronologically for curve calculations
     const chronoTrades = [...trades].sort((a, b) => new Date(a.entryTime).getTime() - new Date(b.entryTime).getTime());
     
     const totalPnL = trades.reduce((a, t) => a + t.pnl, 0);
-    const wins = trades.filter(t => t.pnl > 0);
-    const losses = trades.filter(t => t.pnl < 0);
+    const wins = trades.filter(t => getResult(t) === 'Win');
+    const losses = trades.filter(t => getResult(t) === 'Loss');
     const winRate = (wins.length / trades.length * 100).toFixed(1);
     const totalWin = wins.reduce((a, t) => a + t.pnl, 0);
     const totalLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
@@ -580,7 +601,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       if (!symbolMap[sym]) symbolMap[sym] = { pnl: 0, count: 0, wins: 0 };
       symbolMap[sym].pnl += t.pnl;
       symbolMap[sym].count++;
-      if (t.pnl > 0) symbolMap[sym].wins++;
+      if (getResult(t) === 'Win') symbolMap[sym].wins++;
     });
     
     // By Setup
@@ -590,7 +611,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       if (!setupMap[s]) setupMap[s] = { pnl: 0, count: 0, wins: 0 };
       setupMap[s].pnl += t.pnl;
       setupMap[s].count++;
-      if (t.pnl > 0) setupMap[s].wins++;
+      if (getResult(t) === 'Win') setupMap[s].wins++;
     });
     
     // Day of Week
@@ -629,8 +650,8 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
         if (!dailyMap[d]) dailyMap[d] = { pnl: 0, count: 0, wins: 0, losses: 0 };
         dailyMap[d].pnl += t.pnl;
         dailyMap[d].count++;
-        if (t.pnl > 0) dailyMap[d].wins++;
-        else if (t.pnl < 0) dailyMap[d].losses++;
+        if (getResult(t) === 'Win') dailyMap[d].wins++;
+        else if (getResult(t) === 'Loss') dailyMap[d].losses++;
       }
     });
     
@@ -638,7 +659,9 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     let currentStreak = 0, maxWinStreak = 0, maxLossStreak = 0;
     let streakType = null;
     chronoTrades.forEach(t => {
-      const isWin = t.pnl > 0;
+      const res = getResult(t);
+      if (res === 'Breakeven') return;
+      const isWin = res === 'Win';
       if (streakType === null) {
         streakType = isWin;
         currentStreak = 1;

@@ -47,6 +47,7 @@ const Journal = () => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
   const [editingTrade, setEditingTrade] = useState(null);
+  const [formError, setFormError] = useState('');
   const [existingImages, setExistingImages] = useState([]);
 
   const [accounts, setAccounts] = useState([]);
@@ -312,6 +313,7 @@ const Journal = () => {
     setChartFiles([]);
     setEditingTrade(null);
     setExistingImages([]);
+    setFormError('');
     manuallyEditedRef.current = {};
     setAutoFeatures(true);
   };
@@ -357,9 +359,14 @@ const Journal = () => {
     return trades.filter(t => {
       const q = search.toLowerCase();
       const matchSearch = !q || t.symbol?.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q) || t.setup?.toLowerCase().includes(q);
+      
+      const acc = accounts.find(a => String(a.id) === String(t.accountId || 1));
+      const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
+      const threshold = startingBalance * 0.001;
+
       const matchType = filterType === 'All' || t.type === filterType ||
-        (filterType === 'Win' && t.pnl > 0) ||
-        (filterType === 'Loss' && t.pnl < 0);
+        (filterType === 'Win' && t.pnl > threshold) ||
+        (filterType === 'Loss' && t.pnl < -threshold);
       
       const matchAccount = filterAccount === 'All' || 
         String(t.accountId) === String(filterAccount) ||
@@ -367,7 +374,7 @@ const Journal = () => {
         
       return matchSearch && matchType && matchAccount;
     });
-  }, [trades, search, filterType, filterAccount]);
+  }, [trades, search, filterType, filterAccount, accounts]);
 
   const toggleEmotion = (e) => {
     setFormData(prev => ({
@@ -381,7 +388,11 @@ const Journal = () => {
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     setSaving(true);
+    setFormError('');
     try {
+      const entryTimeParsed = formData.entryTime ? parseNewYorkDatetimeToDate(formData.entryTime) : null;
+      const exitTimeParsed = formData.exitTime ? parseNewYorkDatetimeToDate(formData.exitTime) : null;
+
       const tradeData = {
         symbol: formData.symbol,
         type: formData.type,
@@ -391,8 +402,8 @@ const Journal = () => {
         stopLoss: parseFloat(formData.stopLoss) || 0,
         takeProfit: parseFloat(formData.takeProfit) || 0,
         pnl: parseFloat(formData.pnl) || 0,
-        entryTime: formData.entryTime ? parseNewYorkDatetimeToDate(formData.entryTime).toISOString() : new Date().toISOString(),
-        exitTime: formData.exitTime ? parseNewYorkDatetimeToDate(formData.exitTime).toISOString() : '',
+        entryTime: entryTimeParsed && !isNaN(entryTimeParsed.getTime()) ? entryTimeParsed.toISOString() : new Date().toISOString(),
+        exitTime: exitTimeParsed && !isNaN(exitTimeParsed.getTime()) ? exitTimeParsed.toISOString() : '',
         setup: formData.setup,
         grade: formData.grade,
         notes: formData.notes,
@@ -416,6 +427,10 @@ const Journal = () => {
       setExistingImages([]);
       manuallyEditedRef.current = {};
       setAutoFeatures(true);
+      setFormError('');
+    } catch (err) {
+      console.error('Failed to save trade:', err);
+      setFormError(err?.message || 'Failed to save trade. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -527,7 +542,14 @@ const Journal = () => {
                     <td style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{t.setup || '—'}</td>
                     <td style={{
                       fontWeight: 700, fontSize: '0.82rem', fontFamily: 'JetBrains Mono',
-                      color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', whiteSpace: 'nowrap'
+                      color: (() => {
+                        const acc = accounts.find(a => String(a.id) === String(t.accountId || 1));
+                        const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
+                        const threshold = startingBalance * 0.001;
+                        if (Math.abs(t.pnl) <= threshold) return 'var(--warn)';
+                        return t.pnl > 0 ? 'var(--profit)' : 'var(--loss)';
+                      })(),
+                      whiteSpace: 'nowrap'
                     }}>
                       {t.pnl >= 0 ? '+' : ''}${Math.abs(t.pnl).toFixed(2)}
                     </td>
@@ -854,6 +876,22 @@ const Journal = () => {
                   </div>
                 )}
               </div>
+
+              {formError && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--r-md)',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#ef4444',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  marginTop: '4px'
+                }}>
+                  ⚠️ {formError}
+                </div>
+              )}
 
               <div className="form-actions">
                 <button type="button" className="btn btn-ghost" onClick={handleCancelForm}>Cancel</button>

@@ -10,13 +10,28 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  * @param {Array} trades - Array of trade DB records
  * @returns {Object} Complete analytics object
  */
-export function computeAnalytics(trades) {
+export function computeAnalytics(trades, accounts) {
   if (!trades || trades.length === 0) {
     return { empty: true };
   }
 
-  const wins = trades.filter(t => t.pnl > 0);
-  const losses = trades.filter(t => t.pnl < 0);
+  const getResult = (t) => {
+    if (!accounts || !Array.isArray(accounts)) {
+      const threshold = 10000.0 * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    }
+    const acc = accounts.find(a => a.id === t.account_id);
+    const balance = acc ? acc.balance : 10000.0;
+    const threshold = balance * 0.001;
+    if (t.pnl > threshold) return 'Win';
+    if (t.pnl < -threshold) return 'Loss';
+    return 'Breakeven';
+  };
+
+  const wins = trades.filter(t => getResult(t) === 'Win');
+  const losses = trades.filter(t => getResult(t) === 'Loss');
   const totalPnL = trades.reduce((a, t) => a + t.pnl, 0);
   const totalWin = wins.reduce((a, t) => a + t.pnl, 0);
   const totalLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
@@ -48,7 +63,7 @@ export function computeAnalytics(trades) {
     if (!symbolMap[t.symbol]) symbolMap[t.symbol] = { pnl: 0, count: 0, wins: 0 };
     symbolMap[t.symbol].pnl += t.pnl;
     symbolMap[t.symbol].count++;
-    if (t.pnl > 0) symbolMap[t.symbol].wins++;
+    if (getResult(t) === 'Win') symbolMap[t.symbol].wins++;
   });
 
   // By setup
@@ -58,7 +73,7 @@ export function computeAnalytics(trades) {
     if (!setupMap[s]) setupMap[s] = { pnl: 0, count: 0, wins: 0 };
     setupMap[s].pnl += t.pnl;
     setupMap[s].count++;
-    if (t.pnl > 0) setupMap[s].wins++;
+    if (getResult(t) === 'Win') setupMap[s].wins++;
   });
 
   // By day of week
@@ -96,8 +111,8 @@ export function computeAnalytics(trades) {
       if (!dailyMap[d]) dailyMap[d] = { pnl: 0, count: 0, wins: 0, losses: 0 };
       dailyMap[d].pnl += t.pnl;
       dailyMap[d].count++;
-      if (t.pnl > 0) dailyMap[d].wins++;
-      else if (t.pnl < 0) dailyMap[d].losses++;
+      if (getResult(t) === 'Win') dailyMap[d].wins++;
+      else if (getResult(t) === 'Loss') dailyMap[d].losses++;
     }
   });
 
@@ -105,7 +120,9 @@ export function computeAnalytics(trades) {
   let currentStreak = 0, maxWinStreak = 0, maxLossStreak = 0;
   let streakType = null;
   trades.forEach(t => {
-    const isWin = t.pnl > 0;
+    const res = getResult(t);
+    if (res === 'Breakeven') return;
+    const isWin = res === 'Win';
     if (streakType === null) {
       streakType = isWin;
       currentStreak = 1;
@@ -175,7 +192,7 @@ export function computeAnalytics(trades) {
  * @param {Array} trades - Array of trade DB records
  * @returns {Object} Metrics object used for AI system prompt
  */
-export function computeMetrics(trades) {
+export function computeMetrics(trades, accounts) {
   if (!trades || !trades.length) {
     return {
       tradeCount: 0,
@@ -191,8 +208,23 @@ export function computeMetrics(trades) {
     };
   }
 
-  const wins = trades.filter(t => t.pnl > 0);
-  const losses = trades.filter(t => t.pnl < 0);
+  const getResult = (t) => {
+    if (!accounts || !Array.isArray(accounts)) {
+      const threshold = 10000.0 * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    }
+    const acc = accounts.find(a => a.id === t.account_id);
+    const balance = acc ? acc.balance : 10000.0;
+    const threshold = balance * 0.001;
+    if (t.pnl > threshold) return 'Win';
+    if (t.pnl < -threshold) return 'Loss';
+    return 'Breakeven';
+  };
+
+  const wins = trades.filter(t => getResult(t) === 'Win');
+  const losses = trades.filter(t => getResult(t) === 'Loss');
   const totalPnL = trades.reduce((a, t) => a + t.pnl, 0);
   const totalWin = wins.reduce((a, t) => a + t.pnl, 0);
   const totalLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));

@@ -32,10 +32,12 @@ router.post('/chat', async (req, res) => {
       return res.status(429).json({ error: 'Too many requests. Please wait a minute before sending more messages.' });
     }
 
-    // Fetch user trades for context
+    // Fetch user trades and accounts for context
     const result = await db.query('SELECT * FROM trades WHERE user_id = $1', [userId]);
     const trades = result.rows;
-    const metrics = computeMetrics(trades);
+    const accountsResult = await db.query('SELECT * FROM accounts WHERE user_id = $1', [userId]);
+    const accounts = accountsResult.rows;
+    const metrics = computeMetrics(trades, accounts);
     const { tradeCount, winRate, totalPnL, profitFactor, avgWin, avgLoss, avgFomo, avgConfidence, highFomoCount, bestSetup, wins, losses, bestPnL } = metrics;
 
     // Check if NVIDIA API key exists

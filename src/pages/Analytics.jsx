@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { useNavigate } from 'react-router-dom';
+import { accounts as accountsApi } from '../services/api';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
@@ -60,10 +61,12 @@ const Analytics = () => {
   const [selectedDirection, setSelectedDirection] = useState('All');
   const [selectedResult, setSelectedResult] = useState('All');
   const [selectedGrade, setSelectedGrade] = useState('All');
+  const [accounts, setAccounts] = useState([]);
 
   useEffect(() => {
     fetchTrades({ limit: 1000 });
     fetchAnalytics();
+    accountsApi.list().then(setAccounts).catch(console.error);
   }, [fetchTrades, fetchAnalytics]);
 
   const tradesList = useMemo(() => trades || [], [trades]);
@@ -126,9 +129,13 @@ const Analytics = () => {
 
       // 6. Result
       if (selectedResult !== 'All') {
-        if (selectedResult === 'Win' && t.pnl <= 0) return false;
-        if (selectedResult === 'Loss' && t.pnl >= 0) return false;
-        if (selectedResult === 'Breakeven' && t.pnl !== 0) return false;
+        const acc = accounts.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
+        const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
+        const threshold = startingBalance * 0.001;
+
+        if (selectedResult === 'Win' && t.pnl <= threshold) return false;
+        if (selectedResult === 'Loss' && t.pnl >= -threshold) return false;
+        if (selectedResult === 'Breakeven' && Math.abs(t.pnl) > threshold) return false;
       }
 
       // 7. Grade
@@ -138,7 +145,7 @@ const Analytics = () => {
 
       return true;
     });
-  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade]);
+  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade, accounts]);
 
   // Compute stats on filtered trades
   const stats = useMemo(() => {
@@ -167,9 +174,18 @@ const Analytics = () => {
       };
     }
 
-    const wins = filteredTrades.filter(t => t.pnl > 0);
-    const losses = filteredTrades.filter(t => t.pnl < 0);
-    const breakevens = filteredTrades.filter(t => t.pnl === 0);
+    const getResult = (t) => {
+      const acc = accounts.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
+      const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
+      const threshold = startingBalance * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    };
+
+    const wins = filteredTrades.filter(t => getResult(t) === 'Win');
+    const losses = filteredTrades.filter(t => getResult(t) === 'Loss');
+    const breakevens = filteredTrades.filter(t => getResult(t) === 'Breakeven');
 
     const netPnL = parseFloat(filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
     const totalWin = wins.reduce((acc, t) => acc + (t.pnl || 0), 0);
@@ -206,14 +222,14 @@ const Analytics = () => {
     let isWinningStreak = null;
     if (chronoTrades.length > 0) {
       const lastTrade = chronoTrades[chronoTrades.length - 1];
-      isWinningStreak = lastTrade.pnl > 0;
+      isWinningStreak = getResult(lastTrade) === 'Win';
       for (let i = chronoTrades.length - 1; i >= 0; i--) {
-        const tradePnL = chronoTrades[i].pnl || 0;
-        if (isWinningStreak && tradePnL > 0) {
+        const tradeResult = getResult(chronoTrades[i]);
+        if (isWinningStreak && tradeResult === 'Win') {
           currentStreak++;
-        } else if (!isWinningStreak && tradePnL < 0) {
+        } else if (!isWinningStreak && tradeResult === 'Loss') {
           currentStreak++;
-        } else {
+        } else if (tradeResult !== 'Breakeven') {
           break;
         }
       }
@@ -225,10 +241,11 @@ const Analytics = () => {
     let maxLossStreak = 0;
     let tempLossStreak = 0;
     chronoTrades.forEach(t => {
-      if (t.pnl < 0) {
+      const res = getResult(t);
+      if (res === 'Loss') {
         tempLossStreak++;
         if (tempLossStreak > maxLossStreak) maxLossStreak = tempLossStreak;
-      } else if (t.pnl > 0) {
+      } else if (res === 'Win') {
         tempLossStreak = 0;
       }
     });
@@ -274,7 +291,7 @@ const Analytics = () => {
         consistencyScore
       }
     };
-  }, [filteredTrades]);
+  }, [filteredTrades, accounts]);
 
   // Equity growth curve dataset starting from $50,000
   const equityCurveData = useMemo(() => {

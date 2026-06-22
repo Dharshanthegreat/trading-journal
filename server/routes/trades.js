@@ -41,12 +41,17 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const { search, type, setup, sort, order, page, limit } = req.query;
-    let sql = 'SELECT * FROM trades WHERE user_id = $1';
+    let sql = `
+      SELECT t.* 
+      FROM trades t
+      LEFT JOIN accounts a ON t.account_id = a.id
+      WHERE t.user_id = $1
+    `;
     const params = [req.user.id];
     let paramIndex = 2;
 
     if (search) {
-      sql += ` AND (symbol LIKE $${paramIndex} OR notes LIKE $${paramIndex + 1} OR setup LIKE $${paramIndex + 2})`;
+      sql += ` AND (t.symbol LIKE $${paramIndex} OR t.notes LIKE $${paramIndex + 1} OR t.setup LIKE $${paramIndex + 2})`;
       const q = `%${search}%`;
       params.push(q, q, q);
       paramIndex += 3;
@@ -54,18 +59,18 @@ router.get('/', async (req, res) => {
 
     if (type && type !== 'All') {
       if (type === 'Win') {
-        sql += ' AND pnl > 0';
+        sql += ' AND t.pnl > (COALESCE(a.balance, 10000.0) * 0.001)';
       } else if (type === 'Loss') {
-        sql += ' AND pnl < 0';
+        sql += ' AND t.pnl < -(COALESCE(a.balance, 10000.0) * 0.001)';
       } else {
-        sql += ` AND type = $${paramIndex}`;
+        sql += ` AND t.type = $${paramIndex}`;
         params.push(type);
         paramIndex++;
       }
     }
 
     if (setup) {
-      sql += ` AND setup = $${paramIndex}`;
+      sql += ` AND t.setup = $${paramIndex}`;
       params.push(setup);
       paramIndex++;
     }
@@ -74,9 +79,9 @@ router.get('/', async (req, res) => {
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
     const validSorts = ['entry_time', 'symbol', 'pnl', 'created_at', 'type', 'setup'];
     if (validSorts.includes(sortField)) {
-      sql += ` ORDER BY ${sortField} ${sortOrder}`;
+      sql += ` ORDER BY t.${sortField} ${sortOrder}`;
     } else {
-      sql += ' ORDER BY entry_time DESC';
+      sql += ' ORDER BY t.entry_time DESC';
     }
 
     const pageNum = parseInt(page) || 1;
@@ -421,9 +426,21 @@ router.get('/analytics', async (req, res) => {
       return res.json({ empty: true });
     }
 
+    const accountsResult = await db.query('SELECT * FROM accounts WHERE user_id = $1', [req.user.id]);
+    const accounts = accountsResult.rows;
+
+    const getResult = (t) => {
+      const acc = accounts.find(a => a.id === t.account_id);
+      const balance = acc ? acc.balance : 10000.0;
+      const threshold = balance * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    };
+
     const totalPnL = trades.reduce((a, t) => a + t.pnl, 0);
-    const wins = trades.filter(t => t.pnl > 0);
-    const losses = trades.filter(t => t.pnl < 0);
+    const wins = trades.filter(t => getResult(t) === 'Win');
+    const losses = trades.filter(t => getResult(t) === 'Loss');
     const winRate = (wins.length / trades.length * 100).toFixed(1);
     const totalWin = wins.reduce((a, t) => a + t.pnl, 0);
     const totalLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
@@ -454,7 +471,7 @@ router.get('/analytics', async (req, res) => {
       if (!symbolMap[t.symbol]) symbolMap[t.symbol] = { pnl: 0, count: 0, wins: 0 };
       symbolMap[t.symbol].pnl += t.pnl;
       symbolMap[t.symbol].count++;
-      if (t.pnl > 0) symbolMap[t.symbol].wins++;
+      if (getResult(t) === 'Win') symbolMap[t.symbol].wins++;
     });
 
     // By setup
@@ -464,7 +481,7 @@ router.get('/analytics', async (req, res) => {
       if (!setupMap[s]) setupMap[s] = { pnl: 0, count: 0, wins: 0 };
       setupMap[s].pnl += t.pnl;
       setupMap[s].count++;
-      if (t.pnl > 0) setupMap[s].wins++;
+      if (getResult(t) === 'Win') setupMap[s].wins++;
     });
 
     // By day of week
@@ -503,8 +520,8 @@ router.get('/analytics', async (req, res) => {
         if (!dailyMap[d]) dailyMap[d] = { pnl: 0, count: 0, wins: 0, losses: 0 };
         dailyMap[d].pnl += t.pnl;
         dailyMap[d].count++;
-        if (t.pnl > 0) dailyMap[d].wins++;
-        else if (t.pnl < 0) dailyMap[d].losses++;
+        if (getResult(t) === 'Win') dailyMap[d].wins++;
+        else if (getResult(t) === 'Loss') dailyMap[d].losses++;
       }
     });
 
@@ -512,7 +529,9 @@ router.get('/analytics', async (req, res) => {
     let currentStreak = 0, maxWinStreak = 0, maxLossStreak = 0;
     let streakType = null;
     trades.forEach(t => {
-      const isWin = t.pnl > 0;
+      const res = getResult(t);
+      if (res === 'Breakeven') return;
+      const isWin = res === 'Win';
       if (streakType === null) {
         streakType = isWin;
         currentStreak = 1;
