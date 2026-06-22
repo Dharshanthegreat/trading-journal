@@ -1142,6 +1142,45 @@ const handleAchievements = async (url, method, body) => {
     return newAchievement;
   }
 
+  if (url.startsWith('/') && method === 'PUT') {
+    const id = parseInt(url.slice(1));
+    const idx = achievements.findIndex(a => a.id === id);
+    if (idx === -1) throw { status: 404, message: 'Achievement not found' };
+
+    let data = {};
+    let certFile = null;
+    
+    if (body instanceof FormData) {
+      for (const [k, v] of body.entries()) {
+        if (k === 'certificate') certFile = v;
+        else data[k] = v;
+      }
+    } else {
+      data = body;
+    }
+
+    let certificateUrl = achievements[idx].certificateUrl;
+    if (certFile && certFile instanceof File) {
+      await deleteLocalImage(id);
+      certificateUrl = await saveLocalImage(id, certFile);
+    }
+
+    const updated = {
+      ...achievements[idx],
+      title: data.title !== undefined ? data.title : achievements[idx].title,
+      type: data.type !== undefined ? data.type : achievements[idx].type,
+      accountName: data.accountName !== undefined ? data.accountName : achievements[idx].accountName,
+      amount: data.amount !== undefined ? parseFloat(data.amount) : achievements[idx].amount,
+      date: data.date !== undefined ? data.date : achievements[idx].date,
+      notes: data.notes !== undefined ? data.notes : achievements[idx].notes,
+      certificateUrl,
+    };
+
+    achievements[idx] = updated;
+    setStorageItem(`achievements_${activeUser.id}`, achievements);
+    return updated;
+  }
+
   if (url.startsWith('/') && method === 'DELETE') {
     const id = parseInt(url.slice(1));
     const beforeLength = achievements.length;

@@ -74,6 +74,17 @@ const Journal = () => {
     setAutoFeatures(false);
   };
 
+  const handleSetBreakeven = () => {
+    setFormData(prev => ({
+      ...prev,
+      pnl: '0.00',
+      exitPrice: prev.entryPrice || prev.exitPrice || '0.00'
+    }));
+    manuallyEditedRef.current.pnl = true;
+    manuallyEditedRef.current.exitPrice = true;
+    setAutoFeatures(false);
+  };
+
   const parseOcrText = (text) => {
     const result = {
       entryPrice: '',
@@ -581,7 +592,31 @@ const Journal = () => {
                   <input className="input" type="number" step="any" placeholder="0.10" value={formData.lotSize} onChange={e => handleFieldChange('lotSize', e.target.value)}/>
                 </div>
                 <div className="form-field">
-                  <label className="form-label">Net P&L ($) *</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label">Net P&L ($) *</label>
+                    <button
+                      type="button"
+                      onClick={handleSetBreakeven}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--accent)',
+                        cursor: 'pointer',
+                        fontSize: '0.65rem',
+                        fontFamily: 'Inter, sans-serif',
+                        padding: 0,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        transition: 'color var(--t-fast)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-hover, #a78bfa)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--accent)'}
+                    >
+                      ⚖️ Set Breakeven
+                    </button>
+                  </div>
                   <input required className="input" type="number" step="any" placeholder="250.00" value={formData.pnl} onChange={e => handleFieldChange('pnl', e.target.value)}/>
                 </div>
                 <div className="form-field">

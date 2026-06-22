@@ -133,4 +133,65 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ─── Update Achievement ───────────────────────────────
+router.put('/:id', upload.single('certificate'), async (req, res) => {
+  try {
+    const achievementId = req.params.id;
+    const userId = req.user.id;
+    const { title, type, accountName, amount, date, notes } = req.body;
+
+    const check = await db.query('SELECT * FROM achievements WHERE id = $1 AND user_id = $2', [achievementId, userId]);
+    const oldA = check.rows[0];
+    if (!oldA) {
+      return res.status(404).json({ error: 'Achievement not found' });
+    }
+
+    let imagePath = oldA.certificate_image_path;
+    if (req.file) {
+      // Delete old file if exists
+      if (imagePath && fs.existsSync(imagePath)) {
+        try {
+          fs.unlinkSync(imagePath);
+        } catch (err) {
+          console.error('Failed to delete old certificate file:', err);
+        }
+      }
+      imagePath = req.file.path;
+    }
+
+    const result = await db.query(`
+      UPDATE achievements 
+      SET title = $1, type = $2, account_name = $3, amount = $4, date = $5, certificate_image_path = $6, notes = $7
+      WHERE id = $8 AND user_id = $9
+      RETURNING *
+    `, [
+      title || oldA.title,
+      type || oldA.type,
+      accountName !== undefined ? accountName : oldA.account_name,
+      amount !== undefined ? parseFloat(amount) : oldA.amount,
+      date || oldA.date,
+      imagePath,
+      notes !== undefined ? notes : oldA.notes,
+      achievementId,
+      userId
+    ]);
+
+    const a = result.rows[0];
+    res.json({
+      id: a.id,
+      title: a.title,
+      type: a.type,
+      accountName: a.account_name,
+      amount: a.amount,
+      date: a.date,
+      notes: a.notes,
+      certificateUrl: a.certificate_image_path ? `/api/uploads/${path.basename(a.certificate_image_path)}` : null,
+      createdAt: a.created_at,
+    });
+  } catch (err) {
+    console.error('Update achievement error:', err);
+    res.status(500).json({ error: 'Failed to update achievement' });
+  }
+});
+
 export default router;

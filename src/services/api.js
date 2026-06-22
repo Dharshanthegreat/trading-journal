@@ -315,6 +315,11 @@ export const achievements = {
       method: 'POST',
       body: formData, // FormData for certificate upload
     }),
+  update: (id, formData) =>
+    request(`/achievements/${id}`, {
+      method: 'PUT',
+      body: formData,
+    }),
   delete: (id) =>
     request(`/achievements/${id}`, { method: 'DELETE' }),
 };

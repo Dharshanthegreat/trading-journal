@@ -24,6 +24,7 @@ const Achievements = () => {
   const [certFile, setCertFile] = useState(null);
   const [selectedAchievement, setSelectedAchievement] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [editingAchievement, setEditingAchievement] = useState(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -35,6 +36,36 @@ const Achievements = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingAchievement(null);
+    setCertFile(null);
+    setFormData({
+      title: '',
+      type: 'passed',
+      accountName: '',
+      amount: '',
+      date: new Date().toISOString().slice(0, 10),
+      notes: ''
+    });
+    setError('');
+  };
+
+  const startEditAchievement = (achievement) => {
+    setFormData({
+      title: achievement.title || '',
+      type: achievement.type || 'passed',
+      accountName: achievement.accountName || '',
+      amount: achievement.amount !== undefined ? String(achievement.amount) : '',
+      date: achievement.date ? new Date(achievement.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      notes: achievement.notes || ''
+    });
+    setCertFile(null);
+    setEditingAchievement(achievement);
+    setSelectedAchievement(null);
+    setShowForm(true);
+  };
 
   const fetchAchievements = async () => {
     try {
@@ -74,20 +105,15 @@ const Achievements = () => {
         data.append('certificate', certFile);
       }
 
-      await achievementsApi.create(data);
-      setShowForm(false);
-      setCertFile(null);
-      setFormData({
-        title: '',
-        type: 'passed',
-        accountName: '',
-        amount: '',
-        date: new Date().toISOString().slice(0, 10),
-        notes: ''
-      });
+      if (editingAchievement) {
+        await achievementsApi.update(editingAchievement.id, data);
+      } else {
+        await achievementsApi.create(data);
+      }
+      handleCancelForm();
       fetchAchievements();
     } catch (err) {
-      setError(err.message || 'Failed to add achievement');
+      setError(err.message || (editingAchievement ? 'Failed to update achievement' : 'Failed to add achievement'));
     } finally {
       setSubmitting(false);
     }
@@ -267,11 +293,13 @@ const Achievements = () => {
 
       {/* Add Achievement Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelForm()}>
           <div className="glass-deep modal-panel" style={{ width: 440 }}>
             <div className="modal-header">
-              <div className="modal-title">Record Achievement or Reflection</div>
-              <button className="modal-close" onClick={() => setShowForm(false)}><X size={18} /></button>
+              <div className="modal-title">
+                {editingAchievement ? 'Edit Achievement / Reflection' : 'Record Achievement or Reflection'}
+              </div>
+              <button className="modal-close" onClick={handleCancelForm}><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
@@ -371,7 +399,7 @@ const Achievements = () => {
               )}
 
               <div className="form-actions" style={{ marginTop: 'var(--s6)' }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" className="btn btn-ghost" onClick={handleCancelForm}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Submitting...' : 'Save Achievement'}
                 </button>
@@ -434,9 +462,16 @@ const Achievements = () => {
                 </p>
               </div>
 
-              {/* Delete Trigger */}
+              {/* Actions: Edit & Delete Trigger */}
               {!user?.isGuest && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    style={{ fontSize: '0.72rem', gap: '4px', border: '1px solid var(--border)' }}
+                    onClick={() => startEditAchievement(selectedAchievement)}
+                  >
+                    Edit Trophy
+                  </button>
                   <button
                     className="btn btn-sm btn-danger"
                     style={{ fontSize: '0.72rem', gap: '4px' }}
