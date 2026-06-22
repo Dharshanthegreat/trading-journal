@@ -503,7 +503,7 @@ const Analytics = () => {
         />
         
         <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
-          <option value="All">Account: All</option>
+          <option value="All">Account: All accounts</option>
           {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.accountName}</option>)}
         </select>
 

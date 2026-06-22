@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { accounts as accountsApi } from '../services/api';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, BarChart, Bar, ReferenceLine
@@ -35,6 +37,7 @@ const getTradeSession = (t) => {
 
 const Emotions = () => {
   const { trades, fetchTrades, loading } = useTrades();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // Filters State
@@ -46,10 +49,40 @@ const Emotions = () => {
   const [selectedDirection, setSelectedDirection] = useState('All');
   const [selectedResult, setSelectedResult] = useState('All');
   const [selectedGrade, setSelectedGrade] = useState('All');
+  const [selectedAccount, setSelectedAccount] = useState('All');
+  const [accounts, setAccounts] = useState([]);
+
+  // Fetch/mock accounts list
+  const fetchAnalyticsAccounts = useCallback(async () => {
+    try {
+      if (user?.isGuest) {
+        const accIds = [...new Set((trades || []).map(t => t.accountId || t.account_id || 1))];
+        const guestAccs = accIds.map(id => {
+          if (String(id) === '1') {
+            return { id: 1, accountName: '25K Funded Futures Family', startingBalance: 25000.0 };
+          }
+          if (String(id) === '2') {
+            return { id: 2, accountName: '50K Apex Challenge Passed', startingBalance: 50000.0 };
+          }
+          if (String(id) === '3') {
+            return { id: 3, accountName: '10K MyForexFunds Failed', startingBalance: 10000.0 };
+          }
+          return { id, accountName: `Account ${id}`, startingBalance: 25000.0 };
+        });
+        setAccounts(guestAccs);
+      } else {
+        const data = await accountsApi.list();
+        setAccounts(data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch accounts in psychology:', err);
+    }
+  }, [user, trades]);
 
   useEffect(() => {
     fetchTrades({ limit: 1000 });
-  }, [fetchTrades]);
+    fetchAnalyticsAccounts();
+  }, [fetchTrades, fetchAnalyticsAccounts]);
 
   const tradesList = useMemo(() => trades || [], [trades]);
 
@@ -73,6 +106,7 @@ const Emotions = () => {
     setSelectedDirection('All');
     setSelectedResult('All');
     setSelectedGrade('All');
+    setSelectedAccount('All');
   };
 
   // Filter trades list client-side
@@ -86,6 +120,12 @@ const Emotions = () => {
       if (endDate) {
         const entryDateStr = t.entryTime || t.entry_time;
         if (entryDateStr && entryDateStr.split('T')[0] > endDate) return false;
+      }
+
+      // 1.5. Account
+      if (selectedAccount !== 'All') {
+        const accId = t.accountId || t.account_id || 1;
+        if (String(accId) !== String(selectedAccount)) return false;
       }
 
       // 2. Pair
@@ -123,7 +163,7 @@ const Emotions = () => {
 
       return true;
     });
-  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade]);
+  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade, selectedAccount]);
 
   const analytics = useMemo(() => {
     if (!filteredTrades.length) return null;
@@ -284,6 +324,11 @@ const Emotions = () => {
           placeholder="dd/mm/yyyy"
         />
         
+        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
+          <option value="All">Account: All accounts</option>
+          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.accountName}</option>)}
+        </select>
+
         <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedPair} onChange={e => setSelectedPair(e.target.value)}>
           <option value="All">Pair: All</option>
           {uniquePairs.map(p => <option key={p} value={p}>{p}</option>)}
