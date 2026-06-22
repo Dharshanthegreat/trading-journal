@@ -601,14 +601,7 @@ const Journal = () => {
                   <label className="form-label">Exit Price (Auto-OCR)</label>
                   <input className="input" placeholder="0.00" value={formData.exitPrice} onChange={e => handleFieldChange('exitPrice', e.target.value)}/>
                 </div>
-                <div className="form-field">
-                  <label className="form-label">Stop Loss (Auto-OCR)</label>
-                  <input className="input" placeholder="0.00" value={formData.stopLoss} onChange={e => handleFieldChange('stopLoss', e.target.value)}/>
-                </div>
-                <div className="form-field">
-                  <label className="form-label">Take Profit (Auto-OCR)</label>
-                  <input className="input" placeholder="0.00" value={formData.takeProfit} onChange={e => handleFieldChange('takeProfit', e.target.value)}/>
-                </div>
+
                 <div className="form-field">
                   <label className="form-label">Lot Size</label>
                   <input className="input" type="number" step="any" placeholder="0.10" value={formData.lotSize} onChange={e => handleFieldChange('lotSize', e.target.value)}/>
