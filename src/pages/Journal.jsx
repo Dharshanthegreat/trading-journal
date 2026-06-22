@@ -39,6 +39,7 @@ const Journal = () => {
   const [formData, setFormData] = useState(defaultForm());
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [filterAccount, setFilterAccount] = useState('All');
   const [saving, setSaving] = useState(false);
   const [chartFiles, setChartFiles] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -348,9 +349,14 @@ const Journal = () => {
       const matchType = filterType === 'All' || t.type === filterType ||
         (filterType === 'Win' && t.pnl > 0) ||
         (filterType === 'Loss' && t.pnl < 0);
-      return matchSearch && matchType;
+      
+      const matchAccount = filterAccount === 'All' || 
+        String(t.accountId) === String(filterAccount) ||
+        (!t.accountId && String(filterAccount) === '1');
+        
+      return matchSearch && matchType && matchAccount;
     });
-  }, [trades, search, filterType]);
+  }, [trades, search, filterType, filterAccount]);
 
   const toggleEmotion = (e) => {
     setFormData(prev => ({
@@ -429,12 +435,35 @@ const Journal = () => {
             <Search size={13} className="search-icon"/>
             <input className="input" placeholder="Search symbol, notes..." style={{ paddingLeft: '2rem', width: 240 }} value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+          <div style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center' }}>
             {['All', 'Long', 'Short', 'Win', 'Loss'].map(f => (
               <button key={f} onClick={() => setFilterType(f)} className={`btn btn-sm ${filterType === f ? 'btn-primary' : 'btn-ghost'}`}>
                 {f}
               </button>
             ))}
+            
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', margin: '0 4px 0 12px' }}>Account:</span>
+            <select
+              className="input"
+              value={filterAccount}
+              onChange={e => setFilterAccount(e.target.value)}
+              style={{
+                fontSize: '0.72rem',
+                height: '30px',
+                padding: '0 24px 0 8px',
+                width: '180px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderColor: 'var(--border-mid)',
+                borderRadius: 'var(--r-md)',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)'
+              }}
+            >
+              <option value="All">All Accounts</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.accountName}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -469,7 +498,12 @@ const Journal = () => {
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                       {t.entryTime ? formatInNewYork(t.entryTime, 'MMM d, yy HH:mm') : '—'}
                     </td>
-                    <td style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--accent)' }}>{t.symbol}</td>
+                    <td style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--accent)' }}>
+                      {t.symbol}
+                      <div style={{ fontSize: '0.62rem', fontWeight: 500, color: 'var(--text-tertiary)', marginTop: '2px', textTransform: 'none' }}>
+                        {accounts.find(a => String(a.id) === String(t.accountId || 1))?.accountName || 'Default Account'}
+                      </div>
+                    </td>
                     <td>
                       <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`}>
                         {t.type === 'Long' ? <ArrowUpRight size={10}/> : <ArrowDownRight size={10}/>}
