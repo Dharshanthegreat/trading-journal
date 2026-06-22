@@ -916,20 +916,51 @@ const handleAccounts = async (url, method, body) => {
   let accountsList = getStorageItem(`accounts_${activeUser.id}`, null);
   
   if (!Array.isArray(accountsList) || accountsList.length === 0) {
-    accountsList = [{
-      id: 1,
-      accountName: 'Default Account',
-      accountType: 'Live',
-      startingBalance: activeUser.accountSize || 10000,
-      currentBalance: activeUser.accountSize || 10000,
-      totalPnL: 0,
-      tradesCount: 0,
-      currency: activeUser.currency || 'USD',
-      status: 'Active',
-      notionLink: '',
-      createdAt: new Date().toISOString()
-    }];
+    accountsList = [
+      {
+        id: 1,
+        accountName: '25K Funded Futures Family',
+        accountType: 'Prop Funded',
+        startingBalance: 25000.0,
+        currentBalance: 25378.50,
+        totalPnL: 378.50,
+        tradesCount: 6,
+        currency: 'USD',
+        status: 'Active',
+        notionLink: 'https://notion.so/my-playbook',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 2,
+        accountName: '50K Apex Challenge Passed',
+        accountType: 'Prop Challenge',
+        startingBalance: 50000.0,
+        currentBalance: 53120.0,
+        totalPnL: 3120.0,
+        tradesCount: 15,
+        currency: 'USD',
+        status: 'Passed',
+        notionLink: '',
+        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 3,
+        accountName: '10K MyForexFunds Failed',
+        accountType: 'Prop Challenge',
+        startingBalance: 10000.0,
+        currentBalance: 9250.0,
+        totalPnL: -750.0,
+        tradesCount: 8,
+        currency: 'USD',
+        status: 'Failed',
+        notionLink: '',
+        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
     setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    try {
+      localStorage.setItem(`demo_accounts_seeded_${activeUser.id}`, 'true');
+    } catch (e) {}
   } else {
     // Migration: make sure all stored local database accounts have startingBalance
     let migrated = false;
@@ -944,6 +975,47 @@ const handleAccounts = async (url, method, body) => {
       }
       return acc;
     });
+
+    // Check if we need to seed the Passed and Failed demo accounts for existing users
+    try {
+      const demoSeeded = localStorage.getItem(`demo_accounts_seeded_${activeUser.id}`);
+      if (!demoSeeded) {
+        if (!accountsList.some(acc => acc.status === 'Passed')) {
+          accountsList.push({
+            id: 2,
+            accountName: '50K Apex Challenge Passed',
+            accountType: 'Prop Challenge',
+            startingBalance: 50000.0,
+            currentBalance: 53120.0,
+            totalPnL: 3120.0,
+            tradesCount: 15,
+            currency: 'USD',
+            status: 'Passed',
+            notionLink: '',
+            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+          });
+          migrated = true;
+        }
+        if (!accountsList.some(acc => acc.status === 'Failed')) {
+          accountsList.push({
+            id: 3,
+            accountName: '10K MyForexFunds Failed',
+            accountType: 'Prop Challenge',
+            startingBalance: 10000.0,
+            currentBalance: 9250.0,
+            totalPnL: -750.0,
+            tradesCount: 8,
+            currency: 'USD',
+            status: 'Failed',
+            notionLink: '',
+            createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
+          });
+          migrated = true;
+        }
+        localStorage.setItem(`demo_accounts_seeded_${activeUser.id}`, 'true');
+      }
+    } catch (e) {}
+
     if (migrated) {
       setStorageItem(`accounts_${activeUser.id}`, accountsList);
     }

@@ -11,18 +11,37 @@ async function seed() {
   const userId = userResult.rows[0].id;
   console.log(`Found user test@example.com with ID: ${userId}`);
 
-  // Check if user has an account
-  let accountResult = await db.query('SELECT id FROM accounts WHERE user_id = $1', [userId]);
+  // Check if user has accounts
+  let accountResult = await db.query('SELECT id, status FROM accounts WHERE user_id = $1', [userId]);
   if (accountResult.rows.length === 0) {
-    console.log('No account found for user. Creating a default "Apex Challenge" account...');
+    console.log('No accounts found for user. Creating default accounts (Active, Passed, Failed)...');
+    
+    // Create Active account
     await db.query(`
       INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [userId, 'Apex Challenge Account', 'Challenge', 50000.0, 'USD', 'Active']);
-    accountResult = await db.query('SELECT id FROM accounts WHERE user_id = $1', [userId]);
+
+    // Create Passed account
+    await db.query(`
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [userId, '50K Evaluation Challenge', 'Prop Challenge', 50000.0, 'USD', 'Passed']);
+
+    // Create Failed account
+    await db.query(`
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [userId, '10K Micro Live Build', 'Live', 10000.0, 'USD', 'Failed']);
+
+    accountResult = await db.query('SELECT id, status FROM accounts WHERE user_id = $1', [userId]);
   }
-  const accountId = accountResult.rows[0].id;
-  console.log(`Using account ID: ${accountId}`);
+  
+  const activeAccount = accountResult.rows.find(r => r.status === 'Active') || accountResult.rows[0];
+  const passedAccount = accountResult.rows.find(r => r.status === 'Passed') || accountResult.rows[0];
+  const failedAccount = accountResult.rows.find(r => r.status === 'Failed') || accountResult.rows[0];
+  
+  console.log(`Using active account ID: ${activeAccount.id}, passed: ${passedAccount.id}, failed: ${failedAccount.id}`);
 
   // Clear existing trades to start fresh
   await db.query('DELETE FROM trades WHERE user_id = $1', [userId]);
@@ -62,7 +81,25 @@ async function seed() {
       if (symbol === 'NQ') entryPrice = 18000 + Math.random() * 1000;
       if (symbol === 'ES') entryPrice = 5000 + Math.random() * 200;
 
-      const win = Math.random() > 0.45;
+      // Distribute trades across accounts:
+      // Active account: 50% chance, random win/loss
+      // Passed account: 30% chance, high win rate (75% win rate)
+      // Failed account: 20% chance, low win rate (25% win rate)
+      let targetAccountId = activeAccount.id;
+      let win = Math.random() > 0.45;
+
+      const roll = Math.random();
+      if (roll < 0.5) {
+        targetAccountId = activeAccount.id;
+        win = Math.random() > 0.45;
+      } else if (roll < 0.8) {
+        targetAccountId = passedAccount.id;
+        win = Math.random() > 0.25; // 75% win rate
+      } else {
+        targetAccountId = failedAccount.id;
+        win = Math.random() > 0.75; // 25% win rate
+      }
+
       const percentChange = (0.1 + Math.random() * 1.5) / 100;
       let exitPrice;
       if (type === 'Long') {
@@ -102,7 +139,7 @@ async function seed() {
         JSON.stringify(tradeTags), JSON.stringify(emotionTags),
         Math.floor(Math.random() * 5) + 1,
         Math.floor(Math.random() * 5) + 1,
-        accountId
+        targetAccountId
       ]);
     }
 
