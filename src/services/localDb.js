@@ -11,6 +11,25 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
   reader.onerror = (err) => reject(err);
 });
 
+const dataURItoFile = (dataURI, filename) => {
+  try {
+    const parts = dataURI.split(',');
+    if (parts.length < 2) return null;
+    const byteString = atob(parts[1]);
+    const mimeString = parts[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new File([ab], filename, { type: mimeString });
+  } catch (e) {
+    console.error('Failed to convert dataURI to File:', e);
+    return null;
+  }
+};
+
+
 // ─── IndexedDB Setup for Images ─────────────────────
 const dbPromise = new Promise((resolve, reject) => {
   if (typeof window === 'undefined') return resolve(null);
@@ -97,6 +116,106 @@ const setStorageItem = (key, val) => {
 const addLocalSessionTags = (tagsArr, entryTimeStr) => {
   return tagsArr || [];
 };
+
+let migrationsRun = {};
+
+const runStorageMigrations = async (userId) => {
+  if (migrationsRun[userId]) return;
+  migrationsRun[userId] = true;
+
+  try {
+    // 1. Migrate achievements
+    const achievementsKey = `achievements_${userId}`;
+    const achievements = getStorageItem(achievementsKey, []);
+    let achievementsChanged = false;
+
+    const cleanedAchievements = await Promise.all(achievements.map(async (a) => {
+      // If certificateUrl starts with 'data:image/', it's a legacy base64 image stored in localStorage.
+      if (a.certificateUrl && a.certificateUrl.startsWith('data:image/')) {
+        const key = a.certImageKey || `cert_${a.id}_${Date.now()}`;
+        const fileObj = dataURItoFile(a.certificateUrl, `cert_${a.id}`);
+        if (fileObj) {
+          await saveLocalImage(key, fileObj);
+          achievementsChanged = true;
+          const cleaned = { ...a, certImageKey: key };
+          delete cleaned.certificateUrl;
+          return cleaned;
+        }
+      }
+      // If it's already optimized, but still has certificateUrl in localStorage
+      if (a.certificateUrl && a.certImageKey) {
+        achievementsChanged = true;
+        const cleaned = { ...a };
+        delete cleaned.certificateUrl;
+        return cleaned;
+      }
+      return a;
+    }));
+
+    if (achievementsChanged) {
+      setStorageItem(achievementsKey, cleanedAchievements);
+      console.log(`Migrated legacy base64 achievements to IndexedDB for user ${userId}`);
+    }
+
+    // 2. Migrate trades
+    const tradesKey = `trades_${userId}`;
+    const trades = getStorageItem(tradesKey, []);
+    let tradesChanged = false;
+
+    const cleanedTrades = await Promise.all(trades.map(async (t) => {
+      let imageKeys = t.imageKeys || [];
+      let updated = false;
+
+      // Handle legacy imageUrl
+      if (t.imageUrl && t.imageUrl.startsWith('data:image/')) {
+        const key = `${t.id}_0`;
+        const fileObj = dataURItoFile(t.imageUrl, `chart_${t.id}_0`);
+        if (fileObj) {
+          await saveLocalImage(key, fileObj);
+          if (!imageKeys.includes(key)) {
+            imageKeys = [key, ...imageKeys];
+          }
+          updated = true;
+        }
+      }
+
+      // Handle legacy imageUrls array
+      if (Array.isArray(t.imageUrls)) {
+        for (let i = 0; i < t.imageUrls.length; i++) {
+          const url = t.imageUrls[i];
+          if (url && url.startsWith('data:image/')) {
+            const key = `${t.id}_${i}`;
+            const fileObj = dataURItoFile(url, `chart_${t.id}_${i}`);
+            if (fileObj) {
+              await saveLocalImage(key, fileObj);
+              if (!imageKeys.includes(key)) {
+                imageKeys.push(key);
+              }
+              updated = true;
+            }
+          }
+        }
+      }
+
+      if (updated || t.imageUrl || t.imageUrls) {
+        tradesChanged = true;
+        const cleaned = { ...t, imageKeys };
+        delete cleaned.imageUrl;
+        delete cleaned.imageUrls;
+        return cleaned;
+      }
+      return t;
+    }));
+
+    if (tradesChanged) {
+      setStorageItem(tradesKey, cleanedTrades);
+      console.log(`Migrated legacy base64 trades to IndexedDB for user ${userId}`);
+    }
+  } catch (err) {
+    console.error('Failed to run localDb storage migrations:', err);
+  }
+};
+
 
 // ─── Local Handler Functions ─────────────────────────
 
@@ -362,7 +481,10 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       imageUrls
     };
     
-    setStorageItem(`trades_${activeUser.id}`, [newTrade, ...trades]);
+    const forStorage = { ...newTrade };
+    delete forStorage.imageUrl;
+    delete forStorage.imageUrls;
+    setStorageItem(`trades_${activeUser.id}`, [forStorage, ...trades]);
     return newTrade;
   }
   
@@ -474,7 +596,10 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       imageUrls
     };
     
-    trades[tradeIndex] = updated;
+    const forStorage = { ...updated };
+    delete forStorage.imageUrl;
+    delete forStorage.imageUrls;
+    trades[tradeIndex] = forStorage;
     setStorageItem(`trades_${activeUser.id}`, trades);
     return updated;
   }
@@ -1839,6 +1964,16 @@ export const handleRequest = async (fullUrl, options = {}) => {
     new URLSearchParams(queryString).forEach((v, k) => {
       queryParams[k] = v;
     });
+  }
+
+  // Run storage migrations for active user if logged in
+  try {
+    const activeUser = getActiveUser();
+    if (activeUser && activeUser.id) {
+      await runStorageMigrations(activeUser.id);
+    }
+  } catch (err) {
+    // Ignore unauthorized or missing session errors
   }
   
   // Routing logic matching express paths
