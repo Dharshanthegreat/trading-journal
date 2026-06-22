@@ -20,6 +20,12 @@ export const ThemeProvider = ({ children }) => {
     return localStorage.getItem('bg_effect') || 'none'; // 'none' | 'grid' | 'dots'
   });
 
+  const [fontStyle, setFontStyleState] = useState(() => {
+    const saved = localStorage.getItem('font_style');
+    const validStyles = ['sans', 'serif', 'mono', 'display', 'geometric', 'techno', 'classic', 'rounded'];
+    return validStyles.includes(saved) ? saved : 'sans';
+  });
+
   useEffect(() => {
     // List of all theme classes to clean up
     const themeClasses = [
@@ -48,6 +54,14 @@ export const ThemeProvider = ({ children }) => {
     localStorage.setItem('bg_effect', bgEffect);
   }, [bgEffect]);
 
+  useEffect(() => {
+    document.body.classList.remove(
+      'font-sans', 'font-serif', 'font-mono', 'font-display', 'font-geometric', 'font-techno', 'font-classic', 'font-rounded'
+    );
+    document.body.classList.add(`font-${fontStyle}`);
+    localStorage.setItem('font_style', fontStyle);
+  }, [fontStyle]);
+
   const changeTheme = (newTheme) => {
     const validThemes = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc'];
     setThemeState(validThemes.includes(newTheme) ? newTheme : 'dark');
@@ -69,6 +83,11 @@ export const ThemeProvider = ({ children }) => {
     setBgEffectState(val);
   };
 
+  const changeFontStyle = (style) => {
+    const validStyles = ['sans', 'serif', 'mono', 'display', 'geometric', 'techno', 'classic', 'rounded'];
+    setFontStyleState(validStyles.includes(style) ? style : 'sans');
+  };
+
   return (
     <ThemeContext.Provider value={{ 
       theme, 
@@ -77,7 +96,9 @@ export const ThemeProvider = ({ children }) => {
       cursorEffect, 
       setCursorEffect: changeCursorEffect,
       bgEffect,
-      setBgEffect: changeBgEffect
+      setBgEffect: changeBgEffect,
+      fontStyle,
+      setFontStyle: changeFontStyle
     }}>
       {children}
     </ThemeContext.Provider>

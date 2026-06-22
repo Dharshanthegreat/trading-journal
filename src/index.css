@@ -1,8 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --font-heading: 'Lora', Georgia, 'Times New Roman', serif;
-  --font-body: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-geometric: 'Outfit', sans-serif;
+  --font-techno: 'Space Grotesk', sans-serif;
+  --font-classic: 'Merriweather', serif;
+  --font-rounded: 'Poppins', sans-serif;
+
+  /* Default */
+  --font-heading: var(--font-sans);
+  --font-body: var(--font-sans);
 
   /* ═══ CORE PALETTE ═══ */
   --bg-primary:      #0a0b0f;
@@ -65,6 +75,46 @@
 
   /* Transitions */
   --t-fast: 120ms ease; --t-mid: 200ms ease; --t-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.font-sans {
+  --font-heading: var(--font-sans);
+  --font-body: var(--font-sans);
+}
+
+body.font-serif {
+  --font-heading: var(--font-serif);
+  --font-body: var(--font-serif);
+}
+
+body.font-mono {
+  --font-heading: var(--font-mono);
+  --font-body: var(--font-mono);
+}
+
+body.font-display {
+  --font-heading: var(--font-display);
+  --font-body: var(--font-display);
+}
+
+body.font-geometric {
+  --font-heading: var(--font-geometric);
+  --font-body: var(--font-geometric);
+}
+
+body.font-techno {
+  --font-heading: var(--font-techno);
+  --font-body: var(--font-techno);
+}
+
+body.font-classic {
+  --font-heading: var(--font-classic);
+  --font-body: var(--font-classic);
+}
+
+body.font-rounded {
+  --font-heading: var(--font-rounded);
+  --font-body: var(--font-rounded);
 }
 
 

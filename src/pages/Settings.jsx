@@ -17,7 +17,7 @@ import {
 const Settings = () => {
   const { importTrades, exportTrades, loading, fetchTrades, fetchAnalytics } = useTrades();
   const { user, updateProfile, refreshUser } = useAuth();
-  const { theme, setTheme, cursorEffect, setCursorEffect, bgEffect, setBgEffect } = useTheme();
+  const { theme, setTheme, cursorEffect, setCursorEffect, bgEffect, setBgEffect, fontStyle, setFontStyle } = useTheme();
   const { fetchEntries } = useJournal();
   
   const [importStatus, setImportStatus] = useState(null);
@@ -670,6 +670,67 @@ const Settings = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Workspace Typography / Font style selection */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginBottom: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+          <div>
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Workspace Typography</h4>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Choose the typeface style for your entire journal interface.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--s4)', marginTop: '8px' }}>
+            {[
+              { id: 'sans', name: 'Default', font: 'var(--font-sans)' },
+              { id: 'serif', name: 'Serif', font: 'var(--font-serif)' },
+              { id: 'mono', name: 'Mono', font: 'var(--font-mono)' },
+              { id: 'display', name: 'Editorial', font: 'var(--font-display)' },
+              { id: 'geometric', name: 'Modernist', font: 'var(--font-geometric)' },
+              { id: 'techno', name: 'Futuristic', font: 'var(--font-techno)' },
+              { id: 'classic', name: 'Classical', font: 'var(--font-classic)' },
+              { id: 'rounded', name: 'Rounded', font: 'var(--font-rounded)' },
+            ].map(f => (
+              <div
+                key={f.id}
+                onClick={() => setFontStyle(f.id)}
+                style={{
+                  border: `1.5px solid ${fontStyle === f.id ? 'var(--accent)' : 'var(--border-mid)'}`,
+                  borderRadius: 'var(--r-md)',
+                  padding: 'var(--s4) var(--s3)',
+                  cursor: 'pointer',
+                  background: fontStyle === f.id ? 'var(--bg-active)' : 'var(--bg-secondary)',
+                  transition: 'all var(--t-mid)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={e => {
+                  if (fontStyle !== f.id) e.currentTarget.style.borderColor = 'var(--border-strong)';
+                }}
+                onMouseLeave={e => {
+                  if (fontStyle !== f.id) e.currentTarget.style.borderColor = 'var(--border-mid)';
+                }}
+              >
+                <div style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: 600, 
+                  fontFamily: f.font,
+                  color: fontStyle === f.id ? 'var(--accent)' : 'var(--text-primary)',
+                  lineHeight: 1
+                }}>
+                  Ag
+                </div>
+                <div style={{ 
+                  fontSize: '0.7rem', 
+                  fontWeight: 500, 
+                  color: fontStyle === f.id ? 'var(--text-primary)' : 'var(--text-secondary)'
+                }}>
+                  {f.name}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Cursor Settings */}
