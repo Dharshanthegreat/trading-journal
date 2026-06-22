@@ -162,12 +162,18 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_users_dashboard_share_token ON users(dashboard_share_token);
     `);
 
-    // Add foreign key for trades.account_id if not exists
-    // PostgreSQL doesn't support ADD COLUMN IF NOT EXISTS directly in older versions,
-    // but since we defined account_id in the CREATE TABLE, it's already there.
+    // Database schema migrations
+    await client.query(`
+      ALTER TABLE achievements ADD COLUMN IF NOT EXISTS account_name TEXT DEFAULT '';
+      ALTER TABLE achievements ADD COLUMN IF NOT EXISTS amount DOUBLE PRECISION DEFAULT 0.0;
+      ALTER TABLE achievements ADD COLUMN IF NOT EXISTS certificate_image_path TEXT DEFAULT '';
+      ALTER TABLE achievements ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+      ALTER TABLE trades ADD COLUMN IF NOT EXISTS account_id INTEGER;
+      ALTER TABLE trades ADD COLUMN IF NOT EXISTS notion_link TEXT DEFAULT '';
+    `);
 
     await client.query('COMMIT');
-    console.log('  ✅ PostgreSQL database initialized successfully');
+    console.log('  ✅ PostgreSQL database initialized and migrated successfully');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Failed to initialize PostgreSQL database:', err);

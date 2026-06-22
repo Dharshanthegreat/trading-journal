@@ -8,6 +8,16 @@ import { format } from 'date-fns';
 
 const Achievements = () => {
   const { user } = { user: useAuth().user };
+  const safeFormatDate = (dateStr, formatPattern = 'MMM d, yyyy') => {
+    try {
+      if (!dateStr) return '—';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return format(d, formatPattern);
+    } catch (e) {
+      return dateStr || '—';
+    }
+  };
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -159,7 +169,7 @@ const Achievements = () => {
                     <div>
                       <h4 style={{ fontSize: '0.82rem', fontWeight: 700, margin: '0 0 2px 0', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cert.title}</h4>
                       <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 600 }}>{cert.accountName || 'Funded Account'}</span>
-                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>Date: {format(new Date(cert.date), 'MMM d, yyyy')}</span>
+                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>Date: {safeFormatDate(cert.date, 'MMM d, yyyy')}</span>
                     </div>
                   </div>
                 ))}
@@ -204,7 +214,7 @@ const Achievements = () => {
                         </span>
                       </div>
                       <span style={{ fontSize: '0.65rem', color: 'var(--profit)', fontWeight: 600 }}>{cert.accountName || 'Funded Account'}</span>
-                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>Paid on: {format(new Date(cert.date), 'MMM d, yyyy')}</span>
+                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>Paid on: {safeFormatDate(cert.date, 'MMM d, yyyy')}</span>
                     </div>
                   </div>
                 ))}
@@ -244,7 +254,7 @@ const Achievements = () => {
                     <div>
                       <h4 style={{ fontSize: '0.82rem', fontWeight: 700, margin: '0 0 2px 0', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cert.title}</h4>
                       <span style={{ fontSize: '0.65rem', color: 'var(--loss)', fontWeight: 600 }}>{cert.accountName || 'Failed Account'}</span>
-                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>Breached on: {format(new Date(cert.date), 'MMM d, yyyy')}</span>
+                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>Breached on: {safeFormatDate(cert.date, 'MMM d, yyyy')}</span>
                     </div>
                   </div>
                 ))}
@@ -401,7 +411,7 @@ const Achievements = () => {
                 </div>
                 <div className="glass-deep" style={{ padding: '10px', borderRadius: 'var(--r-md)' }}>
                   <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Date Stamp</span>
-                  <div style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{format(new Date(selectedAchievement.date), 'MMMM d, yyyy')}</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{safeFormatDate(selectedAchievement.date, 'MMMM d, yyyy')}</div>
                 </div>
               </div>
 
