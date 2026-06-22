@@ -1126,7 +1126,16 @@ const handleAchievements = async (url, method, body) => {
   let achievements = getStorageItem(`achievements_${activeUser.id}`, []);
 
   if (url === '' && method === 'GET') {
-    return achievements;
+    // Reconstruct certificateUrl from IndexedDB for each achievement
+    const withImages = await Promise.all(achievements.map(async (a) => {
+      if (a.certImageKey) {
+        const base64 = await getLocalImage(a.certImageKey);
+        return { ...a, certificateUrl: base64 || null };
+      }
+      // Legacy: certificateUrl was stored directly in localStorage
+      return a;
+    }));
+    return withImages;
   }
 
   if (url === '' && method === 'POST') {
@@ -1144,8 +1153,14 @@ const handleAchievements = async (url, method, body) => {
 
     const newId = Date.now();
     let certificateUrl = null;
+    let certImageKey = null;
     if (certFile && certFile instanceof File) {
-      certificateUrl = await saveLocalImage(newId, certFile);
+      const key = `cert_${newId}`;
+      const base64 = await saveLocalImage(key, certFile);
+      if (base64) {
+        certificateUrl = base64;
+        certImageKey = key;
+      }
     }
 
     const newAchievement = {
@@ -1156,11 +1171,15 @@ const handleAchievements = async (url, method, body) => {
       amount: parseFloat(data.amount) || 0,
       date: data.date || new Date().toISOString().split('T')[0],
       notes: data.notes || '',
-      certificateUrl,
+      certImageKey, // Store only the key in localStorage
+      certificateUrl, // Return base64 for immediate display
       createdAt: new Date().toISOString()
     };
 
-    achievements = [newAchievement, ...achievements];
+    // Store WITHOUT the base64 certificateUrl in localStorage (it's in IndexedDB)
+    const forStorage = { ...newAchievement };
+    delete forStorage.certificateUrl;
+    achievements = [forStorage, ...achievements];
     setStorageItem(`achievements_${activeUser.id}`, achievements);
     return newAchievement;
   }
@@ -1182,10 +1201,26 @@ const handleAchievements = async (url, method, body) => {
       data = body;
     }
 
-    let certificateUrl = achievements[idx].certificateUrl;
+    let certImageKey = achievements[idx].certImageKey || null;
+    let certificateUrl = null;
+
     if (certFile && certFile instanceof File) {
-      await deleteLocalImage(id);
-      certificateUrl = await saveLocalImage(id, certFile);
+      // Delete old image if exists
+      if (certImageKey) {
+        await deleteLocalImage(certImageKey);
+      }
+      const key = `cert_${id}_${Date.now()}`;
+      const base64 = await saveLocalImage(key, certFile);
+      if (base64) {
+        certificateUrl = base64;
+        certImageKey = key;
+      }
+    } else if (certImageKey) {
+      // Load existing image from IndexedDB for the response
+      certificateUrl = await getLocalImage(certImageKey);
+    } else if (achievements[idx].certificateUrl) {
+      // Legacy: certificateUrl was stored directly
+      certificateUrl = achievements[idx].certificateUrl;
     }
 
     const updated = {
@@ -1196,21 +1231,30 @@ const handleAchievements = async (url, method, body) => {
       amount: data.amount !== undefined ? parseFloat(data.amount) : achievements[idx].amount,
       date: data.date !== undefined ? data.date : achievements[idx].date,
       notes: data.notes !== undefined ? data.notes : achievements[idx].notes,
+      certImageKey,
       certificateUrl,
     };
 
-    achievements[idx] = updated;
+    // Store WITHOUT the base64 certificateUrl in localStorage
+    const forStorage = { ...updated };
+    delete forStorage.certificateUrl;
+    achievements[idx] = forStorage;
     setStorageItem(`achievements_${activeUser.id}`, achievements);
     return updated;
   }
 
   if (url.startsWith('/') && method === 'DELETE') {
     const id = parseInt(url.slice(1));
-    const beforeLength = achievements.length;
-    achievements = achievements.filter(a => a.id !== id);
-    if (achievements.length === beforeLength) throw { status: 404, message: 'Achievement not found' };
+    const target = achievements.find(a => a.id === id);
+    if (!target) throw { status: 404, message: 'Achievement not found' };
 
-    await deleteLocalImage(id);
+    // Clean up image from IndexedDB
+    if (target.certImageKey) {
+      await deleteLocalImage(target.certImageKey);
+    }
+    await deleteLocalImage(id); // Legacy cleanup
+
+    achievements = achievements.filter(a => a.id !== id);
     setStorageItem(`achievements_${activeUser.id}`, achievements);
     return { success: true, message: 'Achievement deleted' };
   }
