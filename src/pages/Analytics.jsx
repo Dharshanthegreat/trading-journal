@@ -684,14 +684,14 @@ const Analytics = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s4)' }}>
           <div>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Account Equity</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: '12px' }}>Balance growth from a $50,000 starting point (filtered trades)</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: '12px' }}>Balance growth from a ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting point (filtered trades)</p>
             <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
-              ${(50000 + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              ${(startBalance + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', minHeight: '65px' }}>
             <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--profit)', fontFamily: 'JetBrains Mono' }}>
-              ${(50000 + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              ${(startBalance + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
           </div>
         </div>
@@ -713,7 +713,7 @@ const Analytics = () => {
                 tickFormatter={(val) => `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                 tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
               />
-              <ReferenceLine y={50000} stroke="var(--border-strong)" strokeDasharray="3 3" />
+              <ReferenceLine y={startBalance} stroke="var(--border-strong)" strokeDasharray="3 3" />
               <Tooltip content={<EquityTooltip />} />
               <Area 
                 type="monotone" 
