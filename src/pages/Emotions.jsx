@@ -5,8 +5,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { accounts as accountsApi } from '../services/api';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, BarChart, Bar, ReferenceLine
+  Tooltip, ResponsiveContainer, Cell, BarChart, Bar, ReferenceLine,
+  AreaChart, Area
 } from 'recharts';
+import { format } from 'date-fns';
 import { Brain, Zap, Activity, ArrowRight, TrendingUp, TrendingDown, Target, Plus } from 'lucide-react';
 
 const EMOTION_COLORS = {
@@ -85,6 +87,18 @@ const Emotions = () => {
   }, [fetchTrades, fetchAnalyticsAccounts]);
 
   const tradesList = useMemo(() => trades || [], [trades]);
+
+  const startBalance = useMemo(() => {
+    if (selectedAccount === 'All') {
+      if (accounts.length > 0) {
+        return accounts.reduce((acc, curr) => acc + (parseFloat(curr.startingBalance) || 0), 0);
+      }
+      return user?.accountSize ? parseFloat(user.accountSize) : 25000;
+    } else {
+      const acc = accounts.find(a => String(a.id) === String(selectedAccount));
+      return acc ? (parseFloat(acc.startingBalance) || 0) : (user?.accountSize ? parseFloat(user.accountSize) : 25000);
+    }
+  }, [selectedAccount, accounts, user]);
 
   // Extract unique symbol/pair and setup list dynamically
   const uniquePairs = useMemo(() => {
@@ -236,6 +250,74 @@ const Emotions = () => {
       avgFomo, avgConf, disciplineScore, revengeCount, fomoCost, disciplinedPnL
     };
   }, [filteredTrades]);
+
+  // Equity curve data for psychology page
+  const equityCurveData = useMemo(() => {
+    const chronoTrades = [...filteredTrades].sort((a, b) => {
+      const timeA = a.entryTime ? new Date(a.entryTime).getTime() : (a.entry_time ? new Date(a.entry_time).getTime() : 0);
+      const timeB = b.entryTime ? new Date(b.entryTime).getTime() : (b.entry_time ? new Date(b.entry_time).getTime() : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || 0) - (b.id || 0);
+    });
+    let running = 0;
+    
+    const data = [{
+      date: 'Start',
+      equity: startBalance,
+      pnl: 0,
+      symbol: 'Start'
+    }];
+
+    chronoTrades.forEach((t, idx) => {
+      running += t.pnl || 0;
+      data.push({
+        index: idx + 1,
+        date: t.entryTime ? format(new Date(t.entryTime), 'MMM d, yy') : '',
+        equity: parseFloat((startBalance + running).toFixed(2)),
+        pnl: t.pnl,
+        symbol: t.symbol
+      });
+    });
+
+    return data;
+  }, [filteredTrades, startBalance]);
+
+  const netPnL = useMemo(() => {
+    return parseFloat(filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
+  }, [filteredTrades]);
+
+  // Custom Equity Tooltip
+  const EquityTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    const p = payload[0].payload;
+    if (p.date === 'Start') {
+      return (
+        <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: 2 }}>Starting Point</div>
+          <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}>
+            ${startBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>{p.date}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{p.symbol}</span>
+          <span style={{ color: p.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 700 }}>
+            {p.pnl >= 0 ? '+' : ''}${p.pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem' }}>Account Equity:</span>
+          <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
+            ${p.equity.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   const axisProps = {
     stroke: 'transparent',
@@ -497,6 +579,56 @@ const Emotions = () => {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Account Equity Growth Curve */}
+          <div className="glass" style={{ padding: 'var(--s4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s4)' }}>
+              <div>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Account Equity</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: '12px' }}>Balance growth from a ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting point (filtered trades)</p>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
+                  ${(startBalance + netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', minHeight: '65px' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                  {netPnL >= 0 ? '+' : ''}${netPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Net P&L</div>
+              </div>
+            </div>
+            
+            <div style={{ width: '100%', height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={equityCurveData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                  <defs>
+                    <linearGradient id="eqGradientPsych" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="date" {...axisProps} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} />
+                  <YAxis 
+                    {...axisProps} 
+                    domain={['auto', 'auto']}
+                    tickFormatter={(val) => `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                    tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+                  />
+                  <ReferenceLine y={startBalance} stroke="var(--border-strong)" strokeDasharray="3 3" />
+                  <Tooltip content={<EquityTooltip />} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="equity" 
+                    stroke="#a78bfa" 
+                    strokeWidth={2} 
+                    fill="url(#eqGradientPsych)" 
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
