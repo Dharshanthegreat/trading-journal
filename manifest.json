@@ -1,0 +1,16 @@
+{
+  "short_name": "Trading Journal",
+  "name": "Trading Journal",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "./",
+  "background_color": "#0a0b0f",
+  "theme_color": "#818cf8",
+  "display": "standalone",
+  "orientation": "any"
+}
