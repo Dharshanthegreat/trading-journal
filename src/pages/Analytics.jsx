@@ -351,27 +351,51 @@ const Analytics = () => {
       return (a.id || 0) - (b.id || 0);
     });
     let running = 0;
+    let peak = startBalance;
     
     const data = [{
       date: 'Start',
       equity: startBalance,
+      baseline: startBalance,
       pnl: 0,
-      symbol: 'Start'
+      symbol: 'Start',
+      drawdownPct: 0
     }];
 
     chronoTrades.forEach((t, idx) => {
       running += t.pnl || 0;
+      const currentEquity = parseFloat((startBalance + running).toFixed(2));
+      if (currentEquity > peak) peak = currentEquity;
+      const drawdownPct = peak > 0 ? parseFloat((((peak - currentEquity) / peak) * 100).toFixed(2)) : 0;
       data.push({
         index: idx + 1,
         date: t.entryTime ? format(new Date(t.entryTime), 'MMM d, yy') : '',
-        equity: parseFloat((startBalance + running).toFixed(2)),
+        equity: currentEquity,
+        baseline: startBalance,
         pnl: t.pnl,
-        symbol: t.symbol
+        symbol: t.symbol,
+        drawdownPct
       });
     });
 
     return data;
   }, [filteredTrades, startBalance]);
+
+  // Equity curve color logic — adapts to P&L state
+  const eqCurveColor = stats.netPnL >= 0 ? '#34d399' : '#f87171';
+  const eqCurveColorDim = stats.netPnL >= 0 ? '#10b981' : '#ef4444';
+
+  // High/low equity markers
+  const equityExtremes = useMemo(() => {
+    if (equityCurveData.length <= 1) return { high: startBalance, low: startBalance, highDate: '', lowDate: '' };
+    const dataOnly = equityCurveData.slice(1);
+    let high = -Infinity, low = Infinity, highDate = '', lowDate = '';
+    dataOnly.forEach(d => {
+      if (d.equity > high) { high = d.equity; highDate = d.date; }
+      if (d.equity < low) { low = d.equity; lowDate = d.date; }
+    });
+    return { high, low, highDate, lowDate };
+  }, [equityCurveData, startBalance]);
 
   // Custom Equity Tooltip
   const EquityTooltip = ({ active, payload }) => {
@@ -679,49 +703,128 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* Account Equity Growth Curve */}
-      <div className="glass" style={{ padding: 'var(--s4)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s4)' }}>
+      {/* Performance Over Time — Equity Growth Curve */}
+      <div className="glass" style={{ padding: 'var(--s5)', position: 'relative', overflow: 'hidden' }}>
+        {/* Subtle ambient glow behind the chart — dynamic color */}
+        <div style={{
+          position: 'absolute', top: '20%', left: '15%', width: '70%', height: '60%',
+          background: stats.netPnL >= 0
+            ? 'radial-gradient(ellipse at center, rgba(52, 211, 153, 0.10) 0%, transparent 70%)'
+            : 'radial-gradient(ellipse at center, rgba(248, 113, 113, 0.10) 0%, transparent 70%)',
+          pointerEvents: 'none', zIndex: 0
+        }} />
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s3)', position: 'relative', zIndex: 1 }}>
           <div>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Account Equity</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: '12px' }}>Balance growth from a ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting point (filtered trades)</p>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
+            <h3 style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: eqCurveColor, boxShadow: `0 0 8px ${eqCurveColor}`, animation: 'pulse 2s infinite' }} />
+              Performance Over Time
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.68rem', opacity: 0.7 }}>Equity growth from ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting balance</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>
               ${(startBalance + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', minHeight: '65px' }}>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--profit)', fontFamily: 'JetBrains Mono' }}>
-              ${(startBalance + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            <div style={{
+              fontSize: '0.75rem', fontWeight: 700, fontFamily: 'JetBrains Mono',
+              color: eqCurveColor,
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}>
+              {stats.netPnL >= 0 ? '▲' : '▼'} {stats.netPnL >= 0 ? '+' : ''}${stats.netPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                ({startBalance > 0 ? ((stats.netPnL / startBalance) * 100).toFixed(1) : '0.0'}%)
+              </span>
             </div>
           </div>
         </div>
+
+        {/* High / Low / Drawdown Badges */}
+        {filteredTrades.length > 0 && (
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', fontSize: '0.65rem' }}>
+              <TrendingUp size={11} style={{ color: '#34d399' }} />
+              <span style={{ color: 'var(--text-muted)' }}>Peak:</span>
+              <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#34d399' }}>${equityExtremes.high.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <span style={{ color: 'var(--text-muted)', opacity: 0.6 }}>{equityExtremes.highDate}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'rgba(248, 113, 113, 0.08)', border: '1px solid rgba(248, 113, 113, 0.2)', fontSize: '0.65rem' }}>
+              <TrendingDown size={11} style={{ color: '#f87171' }} />
+              <span style={{ color: 'var(--text-muted)' }}>Trough:</span>
+              <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#f87171' }}>${equityExtremes.low.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <span style={{ color: 'var(--text-muted)', opacity: 0.6 }}>{equityExtremes.lowDate}</span>
+            </div>
+            {stats.maxDrawdown > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'rgba(251, 191, 36, 0.08)', border: '1px solid rgba(251, 191, 36, 0.2)', fontSize: '0.65rem' }}>
+                <Target size={11} style={{ color: '#fbbf24' }} />
+                <span style={{ color: 'var(--text-muted)' }}>Max DD:</span>
+                <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#fbbf24' }}>-${stats.maxDrawdown.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              </div>
+            )}
+          </div>
+        )}
         
-        <div style={{ width: '100%', height: 220 }}>
+        <div style={{ width: '100%', height: 260, position: 'relative', zIndex: 1 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={equityCurveData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
               <defs>
                 <linearGradient id="eqGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.25}/>
-                  <stop offset="95%" stopColor="var(--profit)" stopOpacity={0.0}/>
+                  <stop offset="0%" stopColor={eqCurveColor} stopOpacity={0.30}/>
+                  <stop offset="35%" stopColor={eqCurveColor} stopOpacity={0.10}/>
+                  <stop offset="100%" stopColor={eqCurveColor} stopOpacity={0.0}/>
                 </linearGradient>
+                <linearGradient id="eqStrokeGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor={eqCurveColorDim}/>
+                  <stop offset="50%" stopColor={eqCurveColor}/>
+                  <stop offset="100%" stopColor={eqCurveColor}/>
+                </linearGradient>
+                <filter id="eqGlow">
+                  <feGaussianBlur stdDeviation="4" result="blur"/>
+                  <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                </filter>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="date" {...axisProps} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
+              <XAxis dataKey="date" {...axisProps} tick={{ fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' }} />
               <YAxis 
                 {...axisProps} 
                 domain={['auto', 'auto']}
                 tickFormatter={(val) => `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+                tick={{ fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' }}
               />
-              <ReferenceLine y={startBalance} stroke="var(--border-strong)" strokeDasharray="3 3" />
+              <ReferenceLine y={startBalance} stroke="var(--border-strong)" strokeDasharray="4 4" strokeOpacity={0.6} label={{ value: 'Start', position: 'right', fill: 'var(--text-muted)', fontSize: 8 }} />
               <Tooltip content={<EquityTooltip />} />
+              {/* Baseline fill — subtle grey area to show start level */}
+              <Area 
+                type="monotone" 
+                dataKey="baseline" 
+                stroke="none"
+                fill="var(--border)" 
+                fillOpacity={0.08}
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+              />
+              {/* Glow layer — rendered behind the main line */}
               <Area 
                 type="monotone" 
                 dataKey="equity" 
-                stroke="var(--profit)" 
-                strokeWidth={2} 
+                stroke={eqCurveColor}
+                strokeWidth={7} 
+                strokeOpacity={0.12}
+                fill="none" 
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+              />
+              {/* Main equity line with gradient fill */}
+              <Area 
+                type="monotone" 
+                dataKey="equity" 
+                stroke="url(#eqStrokeGrad)" 
+                strokeWidth={2.5} 
                 fill="url(#eqGradient)" 
                 dot={false}
+                activeDot={{ r: 5, fill: eqCurveColor, stroke: '#0a0b0f', strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>

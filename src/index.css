@@ -705,6 +705,10 @@ textarea.input { resize: vertical; line-height: 1.7; font-family: 'Inter', sans-
   100% { background-position: 200% 0; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
 
 .anim-fade-up { animation: fadeUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) both; }
 .anim-fade-in { animation: fadeIn var(--t-mid) ease both; }
