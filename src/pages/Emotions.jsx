@@ -182,21 +182,28 @@ const Emotions = () => {
   const analytics = useMemo(() => {
     if (!filteredTrades.length) return null;
 
-    const scatterData = filteredTrades.map(t => ({
-      fomo: t.fomoLevel || 5,
-      confidence: t.confidenceLevel || 5,
-      pnl: t.pnl || 0,
-      symbol: t.symbol,
-      date: t.entryTime ? new Date(t.entryTime).toLocaleDateString() : '',
-    }));
+    const scatterData = filteredTrades.map(t => {
+      const f = parseFloat(t.fomoLevel);
+      const c = parseFloat(t.confidenceLevel);
+      const p = parseFloat(t.pnl);
+      return {
+        fomo: isNaN(f) ? 5 : f,
+        confidence: isNaN(c) ? 5 : c,
+        pnl: isNaN(p) ? 0 : p,
+        symbol: t.symbol || '',
+        date: t.entryTime ? new Date(t.entryTime).toLocaleDateString() : '',
+      };
+    });
 
     const fomoGroups = { 'Low (1-3)': [], 'Med (4-7)': [], 'High (8-10)': [] };
     const confGroups = { 'Low (1-3)': [], 'Med (4-7)': [], 'High (8-10)': [] };
 
     filteredTrades.forEach(t => {
-      const pnl = t.pnl || 0;
-      const fomo = t.fomoLevel || 5;
-      const conf = t.confidenceLevel || 5;
+      const pnl = parseFloat(t.pnl) || 0;
+      const fomoVal = parseFloat(t.fomoLevel);
+      const confVal = parseFloat(t.confidenceLevel);
+      const fomo = isNaN(fomoVal) ? 5 : fomoVal;
+      const conf = isNaN(confVal) ? 5 : confVal;
       if (fomo <= 3) fomoGroups['Low (1-3)'].push(pnl);
       else if (fomo <= 7) fomoGroups['Med (4-7)'].push(pnl);
       else fomoGroups['High (8-10)'].push(pnl);
@@ -216,19 +223,33 @@ const Emotions = () => {
     });
     const topTags = Object.entries(tagMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
 
-    const wins = filteredTrades.filter(t => t.pnl > 0);
-    const losses = filteredTrades.filter(t => t.pnl < 0);
+    const wins = filteredTrades.filter(t => (parseFloat(t.pnl) || 0) > 0);
+    const losses = filteredTrades.filter(t => (parseFloat(t.pnl) || 0) < 0);
 
-    const winConf = wins.map(t => t.confidenceLevel || 5);
-    const lossConf = losses.map(t => t.confidenceLevel || 5);
-    const avgFomo = +(filteredTrades.reduce((a, t) => a + (t.fomoLevel || 5), 0) / filteredTrades.length).toFixed(1);
-    const avgConf = +(filteredTrades.reduce((a, t) => a + (t.confidenceLevel || 5), 0) / filteredTrades.length).toFixed(1);
+    const winConf = wins.map(t => {
+      const c = parseFloat(t.confidenceLevel);
+      return isNaN(c) ? 5 : c;
+    });
+    const lossConf = losses.map(t => {
+      const c = parseFloat(t.confidenceLevel);
+      return isNaN(c) ? 5 : c;
+    });
+    const avgFomo = +(filteredTrades.reduce((a, t) => {
+      const f = parseFloat(t.fomoLevel);
+      return a + (isNaN(f) ? 5 : f);
+    }, 0) / filteredTrades.length).toFixed(1);
+    const avgConf = +(filteredTrades.reduce((a, t) => {
+      const c = parseFloat(t.confidenceLevel);
+      return a + (isNaN(c) ? 5 : c);
+    }, 0) / filteredTrades.length).toFixed(1);
 
     // Compute Discipline Index Score (Discipline = Avg of (10 - fomo)/9 + (conf - 1)/9 per trade)
     let totalScore = 0;
     filteredTrades.forEach(t => {
-      const f = t.fomoLevel || 5;
-      const c = t.confidenceLevel || 5;
+      const fomoVal = parseFloat(t.fomoLevel);
+      const confVal = parseFloat(t.confidenceLevel);
+      const f = isNaN(fomoVal) ? 5 : fomoVal;
+      const c = isNaN(confVal) ? 5 : confVal;
       const fomoScore = (10 - f) / 9;
       const confidenceScore = (c - 1) / 9;
       totalScore += (fomoScore + confidenceScore) / 2 * 100;
@@ -239,10 +260,17 @@ const Emotions = () => {
     const revengeCount = filteredTrades.filter(t => (t.emotionTags || []).includes('Revenge')).length;
 
     // FOMO losses cost (FOMO >= 7)
-    const fomoCost = parseFloat(filteredTrades.filter(t => (t.fomoLevel || 5) >= 7).reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
+    const fomoCost = parseFloat(filteredTrades.filter(t => {
+      const f = parseFloat(t.fomoLevel);
+      return (isNaN(f) ? 5 : f) >= 7;
+    }).reduce((acc, t) => acc + (parseFloat(t.pnl) || 0), 0).toFixed(2));
 
     // Disciplined P&L impact (FOMO <= 3, Confidence >= 7)
-    const disciplinedPnL = parseFloat(filteredTrades.filter(t => (t.fomoLevel || 5) <= 3 && (t.confidenceLevel || 5) >= 7).reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
+    const disciplinedPnL = parseFloat(filteredTrades.filter(t => {
+      const f = parseFloat(t.fomoLevel);
+      const c = parseFloat(t.confidenceLevel);
+      return (isNaN(f) ? 5 : f) <= 3 && (isNaN(c) ? 5 : c) >= 7;
+    }).reduce((acc, t) => acc + (parseFloat(t.pnl) || 0), 0).toFixed(2));
 
     return {
       scatterData, fomoBar, confBar, topTags,
@@ -781,9 +809,9 @@ const Emotions = () => {
                   <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps} tickFormatter={(val) => `$${val}`}/>
                   <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
                   <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'var(--border-strong)' }}/>
-                  <Scatter data={analytics.scatterData}>
+                  <Scatter name="FOMO" data={analytics.scatterData} fill="var(--profit)" r={6}>
                     {analytics.scatterData.map((e, i) => (
-                      <Cell key={i} fill={e.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.65} r={7}/>
+                      <Cell key={`fomo-cell-${i}`} fill={e.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} opacity={0.7} />
                     ))}
                   </Scatter>
                 </ScatterChart>
@@ -803,9 +831,9 @@ const Emotions = () => {
                   <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps} tickFormatter={(val) => `$${val}`}/>
                   <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
                   <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'var(--border-strong)' }}/>
-                  <Scatter data={analytics.scatterData}>
+                  <Scatter name="Confidence" data={analytics.scatterData} fill="var(--accent)" r={6}>
                     {analytics.scatterData.map((e, i) => (
-                      <Cell key={i} fill={e.pnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.65} r={7}/>
+                      <Cell key={`conf-cell-${i}`} fill={e.pnl >= 0 ? 'var(--accent)' : 'var(--loss)'} opacity={0.7} />
                     ))}
                   </Scatter>
                 </ScatterChart>
