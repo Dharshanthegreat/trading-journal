@@ -924,53 +924,27 @@ const Notion = () => {
 
             {/* Document Content Textarea or External Notion Card */}
             {externalUrl ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* LOW PROFILE LINK BAR */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '10px var(--s5)', 
-                  background: 'var(--bg-tertiary)', 
-                  borderBottom: '1px solid var(--border)' 
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1 }}>
-                    <span style={{ fontSize: '0.62rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, whiteSpace: 'nowrap' }}>Notion Link:</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '320px' }}>{externalUrl}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(externalUrl)}
-                      className="btn btn-secondary btn-sm"
-                      style={{ height: '26px', padding: '0 8px', fontSize: '0.68rem', gap: '4px' }}
-                    >
-                      {copied ? <Check size={11} style={{ color: 'var(--profit)' }} /> : <Copy size={11} />}
-                      {copied ? 'Copied' : 'Copy Link'}
-                    </button>
-                    <a
-                      href={externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-primary btn-sm"
-                      style={{ height: '26px', padding: '0 8px', fontSize: '0.68rem', gap: '4px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                    >
-                      <ExternalLink size={11} /> Open Notion
-                    </a>
-                  </div>
-                </div>
-
-
-                {/* Clean, Premium Placeholder for Linked Notion Page */}
-                <div style={{
-                  flex: 1,
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 'var(--s8)',
+                textAlign: 'center',
+                background: 'var(--bg-primary)'
+              }}>
+                <div className="glass" style={{
+                  padding: 'var(--s6) var(--s8)',
+                  borderRadius: 'var(--r-lg)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-mid)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 'var(--s8)',
-                  textAlign: 'center',
-                  background: 'var(--bg-primary)'
+                  gap: 'var(--s4)',
+                  maxWidth: '480px',
+                  boxShadow: 'var(--shadow-md)'
                 }}>
                   <div style={{
                     width: '48px',
@@ -980,15 +954,40 @@ const Notion = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--accent)',
-                    marginBottom: 'var(--s4)'
+                    color: 'var(--accent)'
                   }}>
-                    <ExternalLink size={20} />
+                    <Link size={20} />
                   </div>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Linked to Notion</h4>
-                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', maxWidth: '280px', lineHeight: '1.4' }}>
-                    This document is synced with an external Notion resource. Use the buttons above to copy the link or open it in your browser.
-                  </p>
+                  
+                  <div>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                      Linked to External Notion Page
+                    </h4>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '1.5', wordBreak: 'break-all', fontFamily: 'var(--font-mono)' }}>
+                      {externalUrl}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(externalUrl)}
+                      className="btn btn-secondary"
+                      style={{ height: '32px', padding: '0 var(--s4)', fontSize: '0.75rem', gap: '6px' }}
+                    >
+                      {copied ? <Check size={13} style={{ color: 'var(--profit)' }} /> : <Copy size={13} />}
+                      {copied ? 'Link Copied' : 'Copy Link'}
+                    </button>
+                    <a
+                      href={externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary"
+                      style={{ height: '32px', padding: '0 var(--s4)', fontSize: '0.75rem', gap: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      <ExternalLink size={13} /> Open Notion Page
+                    </a>
+                  </div>
                 </div>
               </div>
             ) : (
