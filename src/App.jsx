@@ -896,20 +896,20 @@ const Dashboard = () => {
                 <table className="tz-table">
                   <thead>
                     <tr>
-                      <th>Close Date</th>
                       <th>Symbol</th>
+                      <th>Close Date</th>
                       <th style={{ textAlign: 'right' }}>Net P&L</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredTrades.slice(0, 5).map((t, idx) => (
                       <tr key={t.id || idx}>
-                        <td>{t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}</td>
                         <td>
                           <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
                             {t.symbol} · {t.type}
                           </span>
                         </td>
+                        <td>{t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}</td>
                         <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
                           {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
                         </td>
@@ -927,20 +927,20 @@ const Dashboard = () => {
                 <table className="tz-table">
                   <thead>
                     <tr>
-                      <th>Open Date</th>
                       <th>Symbol</th>
+                      <th>Open Date</th>
                       <th style={{ textAlign: 'right' }}>P&L</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trades.filter(t => !t.exitTime && !t.exit_time).slice(0, 5).map((t, idx) => (
                       <tr key={t.id || idx}>
-                        <td>{t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—'}</td>
                         <td>
                           <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
                             {t.symbol} · {t.type}
                           </span>
                         </td>
+                        <td>{t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—'}</td>
                         <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
                           {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
                         </td>
