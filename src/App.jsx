@@ -120,6 +120,8 @@ const Dashboard = () => {
   
   // Filter states
   const [dateRange, setDateRange] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [selectedSymbol, setSelectedSymbol] = useState('All');
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
@@ -247,6 +249,19 @@ const Dashboard = () => {
     } else if (dateRange === 'ytd') {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
       result = result.filter(t => new Date(t.entryTime || t.entry_time) >= startOfYear);
+    } else if (dateRange === 'custom') {
+      if (customStartDate) {
+        result = result.filter(t => {
+          const tDate = (t.entryTime || t.entry_time || '').split(/[T ]/)[0];
+          return tDate && tDate >= customStartDate;
+        });
+      }
+      if (customEndDate) {
+        result = result.filter(t => {
+          const tDate = (t.entryTime || t.entry_time || '').split(/[T ]/)[0];
+          return tDate && tDate <= customEndDate;
+        });
+      }
     }
 
     // 1.5. Account filter
@@ -270,7 +285,7 @@ const Dashboard = () => {
     }
 
     return result;
-  }, [trades, dateRange, selectedSymbol, selectedSetup, selectedType, selectedAccount]);
+  }, [trades, dateRange, selectedSymbol, selectedSetup, selectedType, selectedAccount, customStartDate, customEndDate]);
 
   // Handle reset
   const handleResetFilters = () => {
@@ -279,6 +294,8 @@ const Dashboard = () => {
     setSelectedSetup('All');
     setSelectedType('All');
     setSelectedAccount('All');
+    setCustomStartDate('');
+    setCustomEndDate('');
   };
 
   // Recalculate stats dynamically based on filtered trades
@@ -613,8 +630,48 @@ const Dashboard = () => {
               <option value="30d">Last 30 Days</option>
               <option value="90d">Last 90 Days</option>
               <option value="ytd">Year to Date</option>
+              <option value="custom">Custom Date</option>
             </select>
           </div>
+
+          {dateRange === 'custom' && (
+            <>
+              <div className="tz-filter-btn" style={{ padding: '4px 10px' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>From:</span>
+                <input 
+                  type="date" 
+                  value={customStartDate} 
+                  onChange={e => setCustomStartDate(e.target.value)} 
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.72rem',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+              <div className="tz-filter-btn" style={{ padding: '4px 10px' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>To:</span>
+                <input 
+                  type="date" 
+                  value={customEndDate} 
+                  onChange={e => setCustomEndDate(e.target.value)} 
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.72rem',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+            </>
+          )}
 
           <div className="tz-filter-btn">
             <select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
