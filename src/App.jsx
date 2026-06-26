@@ -384,7 +384,7 @@ const Dashboard = () => {
   }, [filteredTrades]);
 
   // Compute Zella Radar Chart Data and Overall Zella Score
-  const { scoreValue, radarData } = useMemo(() => {
+  const { scoreValue, radarData, consistencyScore } = useMemo(() => {
     if (filteredTrades.length === 0) {
       return {
         scoreValue: 0,
@@ -395,7 +395,8 @@ const Dashboard = () => {
           { subject: 'Recovery Factor', value: 0 },
           { subject: 'Max Drawdown', value: 0 },
           { subject: 'Consistency', value: 0 },
-        ]
+        ],
+        consistencyScore: 0
       };
     }
 
@@ -427,7 +428,7 @@ const Dashboard = () => {
       { subject: 'Consistency', value: consistencyScore },
     ];
 
-    return { scoreValue, radarData };
+    return { scoreValue, radarData, consistencyScore };
   }, [filteredTrades, stats]);
 
   // Compute charts data
@@ -728,27 +729,25 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Card 4: Day win % */}
+        {/* Card 4: Consistency */}
         <div className="tz-kpi-card">
           <div className="tz-kpi-header">
             <div className="tz-kpi-label">
-              Day win % <Activity size={12} style={{ opacity: 0.6 }} />
+              Consistency <Shield size={12} style={{ opacity: 0.6 }} />
             </div>
           </div>
           <div className="tz-kpi-body">
-            <div className="tz-kpi-val">{dayStats.winRate.toFixed(0)}%</div>
+            <div className="tz-kpi-val">{consistencyScore.toFixed(0)}%</div>
             <div className="tz-kpi-gauge">
               <svg viewBox="0 0 100 50" style={{ width: '58px', height: '29px' }}>
                 <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--border-strong)" strokeWidth="8" strokeLinecap="round" />
                 <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--profit)" strokeWidth="8" strokeLinecap="round"
-                      strokeDasharray="125.66" strokeDashoffset={125.66 * (1 - dayStats.winRate / 100)} />
+                      strokeDasharray="125.66" strokeDashoffset={125.66 * (1 - consistencyScore / 100)} />
               </svg>
             </div>
           </div>
-          <div className="tz-kpi-subtext">
-            <span style={{ color: 'var(--profit)' }}>{dayStats.wins} W</span>
-            <span style={{ color: 'var(--loss)' }}>{dayStats.losses} L</span>
-            <span>{dayStats.scratch} S</span>
+          <div className="tz-kpi-subtext" style={{ color: 'var(--text-muted)' }}>
+            Max loss streak: <span style={{ color: 'var(--loss)', fontWeight: 600 }}>{stats.maxLossStreak}</span>
           </div>
         </div>
 

@@ -162,7 +162,9 @@ const Accounts = () => {
   };
 
   const accountsArray = Array.isArray(accounts) ? accounts : [];
-  const totalBalance = accountsArray.reduce((acc, curr) => acc + (curr.currentBalance || 0), 0);
+  const totalBalance = accountsArray
+    .filter(a => a.status === 'Active')
+    .reduce((acc, curr) => acc + (curr.currentBalance || 0), 0);
   const activeCount = accountsArray.filter(a => a.status === 'Active').length;
   const passedCount = accountsArray.filter(a => a.status === 'Passed').length;
   const failedCount = accountsArray.filter(a => a.status === 'Failed').length;
@@ -219,7 +221,9 @@ const Accounts = () => {
           <div className="stat-value" style={{ fontFamily: 'JetBrains Mono', color: totalBalance >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
             ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Across {accounts.length} accounts</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            Across {activeCount} active account{activeCount !== 1 ? 's' : ''}
+          </div>
         </div>
 
         <div 
