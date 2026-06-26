@@ -113,6 +113,26 @@ const formatMessageContent = (text) => {
   });
 };
 
+// Calculate Risk for a trade
+const getTradeRisk = (t) => {
+  if (!t.stopLoss || !t.entryPrice || !t.lotSize) return 500; // default fallback risk
+  const riskPerUnit = Math.abs(t.entryPrice - t.stopLoss);
+  let multiplier = 1;
+  const sym = (t.symbol || '').toUpperCase();
+  if (sym === 'NQ') multiplier = 20;
+  else if (sym === 'ES') multiplier = 50;
+  else if (sym === 'YM') multiplier = 5;
+  
+  const risk = riskPerUnit * t.lotSize * multiplier;
+  return risk > 0 ? risk : 500;
+};
+
+// Calculate R-multiple for a trade
+const getTradeR = (t) => {
+  const risk = getTradeRisk(t);
+  return t.pnl / risk;
+};
+
 /* ─── Dashboard ─────────────────────────────────── */
 const Dashboard = () => {
   const { trades, fetchTrades, analytics, fetchAnalytics, loading } = useTrades();
@@ -457,20 +477,28 @@ const Dashboard = () => {
     });
     
     let running = 0;
-    let peak = 0;
+    let peak = -Infinity;
+    let trough = Infinity;
     
     const equityCurve = chronoTrades.map((t, idx) => {
-      running += t.pnl;
+      const tradeR = getTradeR(t);
+      running += tradeR;
+      if (running > peak) peak = running;
+      if (running < trough) trough = running;
       return {
         index: idx + 1,
         date: t.entryTime ? format(new Date(t.entryTime), 'MMM d') : '',
         equity: parseFloat(running.toFixed(2)),
         pnl: t.pnl,
+        r: parseFloat(tradeR.toFixed(2)),
         symbol: t.symbol,
       };
     });
 
-    return { equityCurve };
+    const maxR = chronoTrades.length > 0 ? parseFloat(peak.toFixed(1)) : 0;
+    const minR = chronoTrades.length > 0 ? parseFloat(trough.toFixed(1)) : 0;
+
+    return { equityCurve, maxR, minR };
   }, [filteredTrades]);
 
   // Group trades by day for the Net Daily P&L bar chart
@@ -569,13 +597,13 @@ const Dashboard = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s4)' }}>
           <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{p.symbol}</span>
           <span style={{ color: p.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 700 }}>
-            {p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}
+            {p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)} ({p.r >= 0 ? '+' : ''}{p.r?.toFixed(2)}R)
           </span>
         </div>
         <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem' }}>Cumulative P&L:</span>
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem' }}>Cumulative R:</span>
           <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: p.equity >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-            {p.equity >= 0 ? '+' : ''}${p.equity?.toFixed(2)}
+            {p.equity >= 0 ? '+' : ''}{p.equity?.toFixed(2)}R
           </span>
         </div>
       </div>
@@ -874,29 +902,71 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Daily Net Cumulative P&L */}
+        {/* Cumulative R */}
         <div className="tz-card">
-          <div className="tz-card-header">
+          <div className="tz-card-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
             <div className="tz-card-title">
-              <TrendingUp size={14} /> Daily Net Cumulative P&L
+              <TrendingUp size={14} /> Cumulative R
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              R multiple built up over time
             </div>
           </div>
           {filteredTrades.length > 0 ? (
-            <ResponsiveContainer width="100%" height={230}>
-              <AreaChart data={chartsData.equityCurve} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="tzEquityGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="var(--profit)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
-                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="equity" stroke="var(--profit)" strokeWidth={2} fill="url(#tzEquityGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div style={{ position: 'relative', width: '100%', height: '230px', overflow: 'hidden' }}>
+              {/* Peak Badge */}
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                left: '12px',
+                zIndex: 10,
+                background: 'rgba(52, 211, 153, 0.15)',
+                color: 'var(--profit)',
+                border: '1px solid rgba(52, 211, 153, 0.3)',
+                borderRadius: '9999px',
+                padding: '2px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                fontFamily: 'JetBrains Mono, monospace',
+                pointerEvents: 'none'
+              }}>
+                {chartsData.maxR >= 0 ? '+' : ''}{chartsData.maxR.toFixed(1)}R
+              </div>
+              
+              {/* Trough Badge */}
+              <div style={{
+                position: 'absolute',
+                bottom: '30px',
+                left: '12px',
+                zIndex: 10,
+                background: 'rgba(252, 165, 165, 0.15)',
+                color: 'var(--loss)',
+                border: '1px solid rgba(252, 165, 165, 0.3)',
+                borderRadius: '9999px',
+                padding: '2px 8px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                fontFamily: 'JetBrains Mono, monospace',
+                pointerEvents: 'none'
+              }}>
+                {chartsData.minR >= 0 ? '+' : ''}{chartsData.minR.toFixed(1)}R
+              </div>
+
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartsData.equityCurve} margin={{ top: 10, right: 10, bottom: 0, left: 10 }}>
+                  <defs>
+                    <linearGradient id="tzEquityGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="var(--profit)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
+                  <YAxis hide={true} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area type="monotone" dataKey="equity" stroke="var(--profit)" strokeWidth={2} fill="url(#tzEquityGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               No trade data available
