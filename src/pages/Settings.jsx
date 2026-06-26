@@ -636,6 +636,8 @@ const Settings = () => {
             { id: 'tiffany-light', name: 'Tiffany Green', desc: 'Teal & Charcoal', icon: <SunDim size={14} />, bg: '#21F1A8', accent: '#171717' },
             { id: 'true-pink', name: 'True Pink', desc: 'Hot Pink & White', icon: <Sparkles size={14} />, bg: '#FD1843', accent: '#FFF9FA' },
             { id: 'chill-white', name: 'Chill White', desc: 'Soft White & Pink', icon: <SunDim size={14} />, bg: '#FFF9FA', accent: '#FD1843' },
+            { id: 'cyprus-green', name: 'Cyprus Green', desc: 'Forest & Sand', icon: <Compass size={14} />, bg: '#004741', accent: '#F0EDE4' },
+            { id: 'sand-pine', name: 'Sand Pine', desc: 'Warm Ivory & Cyprus', icon: <Leaf size={14} />, bg: '#F0EDE4', accent: '#004741' },
           ].map(t => (
             <div
               key={t.id}
