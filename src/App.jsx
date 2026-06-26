@@ -127,7 +127,6 @@ const Dashboard = () => {
   const [selectedType, setSelectedType] = useState('All');
   const [selectedAccount, setSelectedAccount] = useState('All');
   const [accounts, setAccounts] = useState([]);
-  const [bottomTab, setBottomTab] = useState('recent'); // 'recent' or 'open'
   const [showAiChat, setShowAiChat] = useState(false);
 
   // Fetch/mock accounts list
@@ -936,85 +935,44 @@ const Dashboard = () => {
 
       {/* Bottom Grid */}
       <div className="tz-bottom-grid">
-        {/* Recent Trades / Open Positions Table */}
+        {/* Recent Trades Table */}
         <div className="tz-card">
-          <div className="tz-tabs">
-            <button className={`tz-tab ${bottomTab === 'recent' ? 'active' : ''}`} onClick={() => setBottomTab('recent')}>
-              Recent trades
-            </button>
-            <button className={`tz-tab ${bottomTab === 'open' ? 'active' : ''}`} onClick={() => setBottomTab('open')}>
-              Open positions
-            </button>
+          <div className="tz-card-header">
+            <div className="tz-card-title">
+              <Activity size={14} /> Recent Trades
+            </div>
           </div>
           
           <div className="tz-table-wrapper">
-            {bottomTab === 'recent' ? (
-              filteredTrades.length > 0 ? (
-                <table className="tz-table">
-                  <thead>
-                    <tr>
-                      <th>Symbol</th>
-                      <th>Close Date</th>
-                      <th style={{ textAlign: 'right' }}>Net P&L</th>
+            {filteredTrades.length > 0 ? (
+              <table className="tz-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Close Date</th>
+                    <th style={{ textAlign: 'right' }}>Net P&L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTrades.slice(0, 5).map((t, idx) => (
+                    <tr key={t.id || idx}>
+                      <td>
+                        <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
+                          {t.symbol} · {t.type}
+                        </span>
+                      </td>
+                      <td>{t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}</td>
+                      <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
+                        {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTrades.slice(0, 5).map((t, idx) => (
-                      <tr key={t.id || idx}>
-                        <td>
-                          <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
-                            {t.symbol} · {t.type}
-                          </span>
-                        </td>
-                        <td>{t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}</td>
-                        <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
-                          {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div style={{ padding: 'var(--s8) 0', textTransform: 'uppercase', color: 'var(--text-muted)', fontSize: '0.7rem', textAlign: 'center', fontWeight: 600 }}>
-                  No recent trades
-                </div>
-              )
+                  ))}
+                </tbody>
+              </table>
             ) : (
-              trades.filter(t => !t.exitTime && !t.exit_time).length > 0 ? (
-                <table className="tz-table">
-                  <thead>
-                    <tr>
-                      <th>Symbol</th>
-                      <th>Open Date</th>
-                      <th style={{ textAlign: 'right' }}>P&L</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.filter(t => !t.exitTime && !t.exit_time).slice(0, 5).map((t, idx) => (
-                      <tr key={t.id || idx}>
-                        <td>
-                          <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
-                            {t.symbol} · {t.type}
-                          </span>
-                        </td>
-                        <td>{t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—'}</td>
-                        <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
-                          {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="tz-sleeping-cloud-container">
-                  <svg className="tz-sleeping-cloud" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M46.5 37.5C48.9853 37.5 51 35.4853 51 33C51 30.5147 48.9853 28.5 46.5 28.5C45.8906 28.5 45.313 28.6212 44.7865 28.8406C43.8344 24.8727 40.2796 22 36 22C34.1843 22 32.5085 22.5273 31.0967 23.4357C29.625 21.3283 27.2246 20 24.5 20C19.8056 20 16 23.8056 16 28.5C16 28.8415 16.0201 29.1783 16.0592 29.5093C13.167 30.2974 11 32.9022 11 36C11 39.59 13.91 42.5 17.5 42.5H46.5" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M38 14L41 11M41 11H37M41 11V15" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M47 8L49 6M49 6H46M49 6V9" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <div className="tz-sleeping-text">No active positions open. DTG AI is currently sleeping.</div>
-                </div>
-              )
+              <div style={{ padding: 'var(--s8) 0', textTransform: 'uppercase', color: 'var(--text-muted)', fontSize: '0.7rem', textAlign: 'center', fontWeight: 600 }}>
+                No recent trades
+              </div>
             )}
           </div>
         </div>
