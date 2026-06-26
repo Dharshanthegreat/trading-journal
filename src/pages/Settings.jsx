@@ -632,6 +632,8 @@ const Settings = () => {
             { id: 'slash', name: 'Slash (Gold)', desc: 'Obsidian & Gold', icon: <Sparkles size={14} />, bg: '#09090b', accent: '#f59e0b' },
             { id: 'steep', name: 'Steep (Blue)', desc: 'Ice Blue & Royal', icon: <Compass size={14} />, bg: '#f4f6f9', accent: '#2563eb' },
             { id: 'ventriloc', name: 'Ventriloc (Zinc)', desc: 'Warm Parchment', icon: <Layers size={14} />, bg: '#f7f4eb', accent: '#3f3f46' },
+            { id: 'tiffany-dark', name: 'Tiffany Dark', desc: 'Dark Gray & Tiffany', icon: <Moon size={14} />, bg: '#171717', accent: '#21F1A8' },
+            { id: 'tiffany-light', name: 'Tiffany Green', desc: 'Teal & Charcoal', icon: <SunDim size={14} />, bg: '#21F1A8', accent: '#171717' },
           ].map(t => (
             <div
               key={t.id}

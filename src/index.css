@@ -818,4 +818,149 @@ textarea.input { resize: vertical; line-height: 1.7; font-family: 'Inter', sans-
 }
 
 
+/* ═══ TIFFANY DARK THEME OVERRIDES ═══ */
+body.theme-tiffany-dark {
+  --bg-primary:      #121212;
+  --bg-secondary:    #171717;
+  --bg-tertiary:     #1e1e1e;
+  --bg-elevated:     #242424;
+  --bg-hover:        #2c2c2c;
+  --bg-active:       #383838;
+
+  /* Surfaces */
+  --surface:         rgba(23, 23, 23, 0.85);
+  --surface-hover:   rgba(34, 34, 34, 0.9);
+  --surface-glass:   rgba(33, 241, 168, 0.02);
+  --surface-glass-h: rgba(33, 241, 168, 0.05);
+
+  /* Text */
+  --text-primary:    #f0f1f5;
+  --text-secondary:  rgba(240, 241, 245, 0.75);
+  --text-tertiary:   rgba(240, 241, 245, 0.48);
+  --text-muted:      rgba(240, 241, 245, 0.3);
+
+  /* Accent */
+  --accent:          #21F1A8;
+  --accent-hover:    #1de09a;
+  --accent-soft:     rgba(33, 241, 168, 0.08);
+  --accent-glow:     rgba(33, 241, 168, 0.25);
+
+  /* Status */
+  --profit:          #21F1A8;
+  --profit-soft:     rgba(33, 241, 168, 0.12);
+  --profit-border:   rgba(33, 241, 168, 0.25);
+  --loss:            #fca5a5;
+  --loss-soft:       rgba(252, 165, 165, 0.12);
+  --loss-border:     rgba(252, 165, 165, 0.25);
+
+  /* Borders */
+  --border:          rgba(255, 255, 255, 0.05);
+  --border-mid:      rgba(255, 255, 255, 0.10);
+  --border-strong:   rgba(255, 255, 255, 0.18);
+  --border-accent:   rgba(33, 241, 168, 0.25);
+
+  /* Shadows */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.55);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg:  0 8px 32px rgba(0, 0, 0, 0.65);
+  --shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 24px rgba(33, 241, 168, 0.1);
+}
+
+body.theme-tiffany-dark .btn-primary {
+  color: #171717 !important;
+  font-weight: 700;
+}
+body.theme-tiffany-dark .btn-primary:hover {
+  color: #171717 !important;
+}
+body.theme-tiffany-dark .badge-accent {
+  color: #21F1A8 !important;
+}
+
+body.theme-tiffany-dark .logo-icon,
+body.theme-tiffany-dark .sidebar-avatar,
+body.theme-tiffany-dark .header-avatar,
+body.theme-tiffany-dark .progress-fill,
+body.theme-tiffany-dark div[style*="linear-gradient(135deg, var(--accent), #a78bfa)"],
+body.theme-tiffany-dark div[style*="linear-gradient(90deg, var(--accent), #a78bfa)"] {
+  background: linear-gradient(135deg, var(--accent), #159b72) !important;
+}
+
+
+/* ═══ TIFFANY GREEN (VIBRANT BACKGROUND) THEME OVERRIDES ═══ */
+body.theme-tiffany-light {
+  --bg-primary:      #21F1A8;
+  --bg-secondary:    #1fe29e;
+  --bg-tertiary:     #1cd394;
+  --bg-elevated:     #ffffff;
+  --bg-hover:        #18c48a;
+  --bg-active:       #14b57e;
+
+  /* Surfaces */
+  --surface:         rgba(255, 255, 255, 0.3);
+  --surface-hover:   rgba(255, 255, 255, 0.5);
+  --surface-glass:   rgba(23, 23, 23, 0.03);
+  --surface-glass-h: rgba(23, 23, 23, 0.06);
+
+  /* Text */
+  --text-primary:    #171717;
+  --text-secondary:  rgba(23, 23, 23, 0.82);
+  --text-tertiary:   rgba(23, 23, 23, 0.6);
+  --text-muted:      rgba(23, 23, 23, 0.4);
+
+  /* Accent */
+  --accent:          #171717;
+  --accent-hover:    #000000;
+  --accent-soft:     rgba(23, 23, 23, 0.08);
+  --accent-glow:     rgba(23, 23, 23, 0.15);
+
+  /* Status */
+  --profit:          #085b3f;
+  --profit-soft:     rgba(8, 91, 63, 0.1);
+  --profit-border:   rgba(8, 91, 63, 0.2);
+  --loss:            #b91c1c;
+  --loss-soft:       rgba(185, 28, 28, 0.1);
+  --loss-border:     rgba(185, 28, 28, 0.2);
+
+  /* Borders */
+  --border:          rgba(23, 23, 23, 0.08);
+  --border-mid:      rgba(23, 23, 23, 0.15);
+  --border-strong:   rgba(23, 23, 23, 0.25);
+  --border-accent:   rgba(23, 23, 23, 0.2);
+
+  /* Shadows */
+  --shadow-xs:  0 1px 2px rgba(23, 23, 23, 0.1);
+  --shadow-sm:  0 2px 8px rgba(23, 23, 23, 0.08);
+  --shadow-md:  0 4px 16px rgba(23, 23, 23, 0.12);
+  --shadow-lg:  0 8px 32px rgba(23, 23, 23, 0.15);
+  --shadow-xl:  0 16px 48px rgba(23, 23, 23, 0.2);
+  --shadow-glow: 0 0 24px rgba(23, 23, 23, 0.05);
+}
+
+body.theme-tiffany-light .btn-primary {
+  background: #171717 !important;
+  color: #21F1A8 !important;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+body.theme-tiffany-light .btn-primary:hover {
+  background: #000000 !important;
+  color: #21F1A8 !important;
+}
+body.theme-tiffany-light .badge-accent {
+  color: #171717 !important;
+}
+
+body.theme-tiffany-light .logo-icon,
+body.theme-tiffany-light .sidebar-avatar,
+body.theme-tiffany-light .header-avatar,
+body.theme-tiffany-light .progress-fill,
+body.theme-tiffany-light div[style*="linear-gradient(135deg, var(--accent), #a78bfa)"],
+body.theme-tiffany-light div[style*="linear-gradient(90deg, var(--accent), #a78bfa)"] {
+  background: linear-gradient(135deg, var(--accent), #333333) !important;
+}
+
+
 

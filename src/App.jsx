@@ -1468,6 +1468,8 @@ const Header = ({ onMenuToggle }) => {
     { id: 'dark', name: 'Dark Theme', icon: <Moon size={13} />, bg: '#0a0b0f', accent: '#818cf8' },
     { id: 'minimal', name: 'Minimalist', icon: <Palette size={13} />, bg: '#ffffff', accent: '#000000' },
     { id: 'claymorphism', name: 'Claymorphism', icon: <Paintbrush size={13} />, bg: '#edf2f7', accent: '#6366f1' },
+    { id: 'tiffany-dark', name: 'Tiffany Dark', icon: <Moon size={13} />, bg: '#171717', accent: '#21F1A8' },
+    { id: 'tiffany-light', name: 'Tiffany Green', icon: <SunDim size={13} />, bg: '#21F1A8', accent: '#171717' },
   ];
 
   const currentThemeObj = themeList.find(t => t.id === theme) || themeList[0];
