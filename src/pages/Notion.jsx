@@ -773,30 +773,27 @@ const Notion = () => {
               gap: 'var(--s2)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  fontSize: '0.62rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  color: saveStatus === 'saving' ? 'var(--accent)' : saveStatus === 'error' ? 'var(--loss)' : 'var(--profit)'
-                }}>
-                  {saveStatus === 'saving' && (
-                    <>
-                      <RefreshCw size={10} className="spin-anim" /> Saving changes...
-                    </>
-                  )}
-                  {saveStatus === 'saved' && (
-                    <>
-                      <Check size={10} /> Saved to DB
-                    </>
-                  )}
-                  {saveStatus === 'error' && (
-                    <>
-                      <AlertCircle size={10} /> Auto-save failed
-                    </>
-                  )}
-                </span>
+                {saveStatus !== 'saved' && (
+                  <span style={{
+                    fontSize: '0.62rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: saveStatus === 'saving' ? 'var(--accent)' : 'var(--loss)'
+                  }}>
+                    {saveStatus === 'saving' && (
+                      <>
+                        <RefreshCw size={10} className="spin-anim" /> Saving changes...
+                      </>
+                    )}
+                    {saveStatus === 'error' && (
+                      <>
+                        <AlertCircle size={10} /> Auto-save failed
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
 
               {/* AI Quick Chips */}
