@@ -7,7 +7,7 @@ export const useTheme = () => useContext(ThemeContext);
 export const ThemeProvider = ({ children }) => {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem('theme');
-    const validThemes = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc', 'tiffany-dark', 'tiffany-light'];
+    const validThemes = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc', 'tiffany-dark', 'tiffany-light', 'true-pink', 'chill-white'];
     return validThemes.includes(saved) ? saved : 'dark';
   });
 
@@ -33,7 +33,7 @@ export const ThemeProvider = ({ children }) => {
       'theme-spiderman', 'theme-cyberpunk', 'theme-glass',
       'theme-claymorphism', 'theme-neomorphism', 'theme-glassmorphism', 'theme-skeuomorphism',
       'theme-maximalism', 'theme-brutalism', 'theme-liquidglass', 'theme-bentogrid', 'theme-spatial',
-      'theme-refero', 'theme-slash', 'theme-steep', 'theme-ventriloc', 'theme-tiffany-dark', 'theme-tiffany-light'
+      'theme-refero', 'theme-slash', 'theme-steep', 'theme-ventriloc', 'theme-tiffany-dark', 'theme-tiffany-light', 'theme-true-pink', 'theme-chill-white'
     ];
     document.body.classList.remove(...themeClasses);
 
@@ -63,12 +63,12 @@ export const ThemeProvider = ({ children }) => {
   }, [fontStyle]);
 
   const changeTheme = (newTheme) => {
-    const validThemes = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc', 'tiffany-dark', 'tiffany-light'];
+    const validThemes = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc', 'tiffany-dark', 'tiffany-light', 'true-pink', 'chill-white'];
     setThemeState(validThemes.includes(newTheme) ? newTheme : 'dark');
   };
 
   const toggleTheme = () => {
-    const cycle = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc', 'tiffany-dark', 'tiffany-light'];
+    const cycle = ['dark', 'minimal', 'claymorphism', 'refero', 'slash', 'steep', 'ventriloc', 'tiffany-dark', 'tiffany-light', 'true-pink', 'chill-white'];
     const idx = cycle.indexOf(theme);
     const nextTheme = cycle[(idx + 1) % cycle.length];
     setThemeState(nextTheme);
