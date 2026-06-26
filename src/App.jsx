@@ -32,6 +32,7 @@ import Stoic from './pages/Stoic';
 import TradovateConnect from './pages/TradovateConnect';
 import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
+import Mondays from './pages/Mondays';
 import { ai as aiApi, publicApi, accounts as accountsApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
@@ -1325,6 +1326,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/accounts',      icon: <Wallet size={16}/>,          label: 'Accounts' },
     { path: '/journal',       icon: <BookOpen size={16}/>,        label: 'Journal' },
     { path: '/calendar',      icon: <CalendarDays size={16}/>,    label: 'Calendar' },
+    { path: '/mondays',       icon: <CalendarDays size={16}/>,    label: "Monday's" },
     { path: '/news',          icon: <Newspaper size={16}/>,       label: 'News Feed' },
     { path: '/notion',        icon: <FileText size={16}/>,        label: 'Notion Workspace' },
     { path: '/achievements',  icon: <Trophy size={16}/>,          label: 'Achievements' },
@@ -1451,6 +1453,7 @@ const Header = ({ onMenuToggle }) => {
 
   const pageNames = {
     '/': 'Landing Page', '/dashboard': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
+    '/mondays': "Monday's",
     '/news': 'News Feed', '/notion': 'Notion Workspace', '/stoic': 'Stoic Mindset',
     '/analytics': 'Analytics', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
@@ -1757,6 +1760,7 @@ function AppContent() {
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/daily-journal" element={<DailyJournal />} />
             <Route path="/charts" element={<Charts />} />
+            <Route path="/mondays" element={<Mondays />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
