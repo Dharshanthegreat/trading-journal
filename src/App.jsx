@@ -28,7 +28,6 @@ import TradingViewPage from './pages/TradingView';
 import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
 import News from './pages/News';
-import Notion from './pages/Notion';
 import Stoic from './pages/Stoic';
 import TradovateConnect from './pages/TradovateConnect';
 import Accounts from './pages/Accounts';
@@ -1331,7 +1330,6 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/calendar',      icon: <CalendarDays size={16}/>,    label: 'Calendar' },
     { path: '/mondays',       icon: <CalendarDays size={16}/>,    label: "Monday's" },
     { path: '/news',          icon: <Newspaper size={16}/>,       label: 'News Feed' },
-    { path: '/notion',        icon: <FileText size={16}/>,        label: 'Notion Workspace' },
     { path: '/achievements',  icon: <Trophy size={16}/>,          label: 'Achievements' },
     { path: '/analytics',     icon: <BarChart2 size={16}/>,       label: 'Analytics' },
     { path: '/psychology',    icon: <Brain size={16}/>,           label: 'Psychology' },
@@ -1457,7 +1455,7 @@ const Header = ({ onMenuToggle }) => {
   const pageNames = {
     '/': 'Landing Page', '/dashboard': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
     '/mondays': "Monday's",
-    '/news': 'News Feed', '/notion': 'Notion Workspace', '/stoic': 'Stoic Mindset',
+    '/news': 'News Feed', '/stoic': 'Stoic Mindset',
     '/analytics': 'Analytics', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
     '/tradingview': 'TradingView Analysis', '/ai-coach': 'AI Coach',
@@ -1754,7 +1752,6 @@ function AppContent() {
             <Route path="/journal" element={<Journal />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/news" element={<News />} />
-            <Route path="/notion" element={<Notion />} />
             <Route path="/stoic" element={<Stoic />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/psychology" element={<Emotions />} />
