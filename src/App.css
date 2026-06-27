@@ -429,7 +429,7 @@ body.theme-steep .calendar-cell.loss-day .calendar-trades {
   opacity: 1;
 }
 body.theme-minimal .chart-card {
-  border: 1px solid #000000;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   padding: 12px;
   background: #ffffff;
   border-radius: 8px;
@@ -438,10 +438,10 @@ body.theme-minimal .chart-card {
 body.theme-minimal .chart-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-  border-color: #000000;
+  border-color: rgba(0, 0, 0, 0.25);
 }
 body.theme-minimal .chart-card-img-wrapper {
-  border: 1px solid #000000;
+  border: none;
   border-radius: 4px;
 }
 body.theme-minimal .chart-card-info {
@@ -449,7 +449,7 @@ body.theme-minimal .chart-card-info {
   background: transparent;
 }
 body.theme-minimal .chart-card-setup {
-  border: 1px solid #000000;
+  border: 1px solid rgba(0, 0, 0, 0.15);
   background: transparent;
   color: #000000;
   font-weight: 500;
