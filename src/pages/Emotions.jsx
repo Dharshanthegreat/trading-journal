@@ -324,8 +324,8 @@ const Emotions = () => {
   }, [filteredTrades]);
 
   // Equity curve color logic — adapts to P&L state
-  const eqCurveColor = netPnL >= 0 ? '#34d399' : '#f87171';
-  const eqCurveColorDim = netPnL >= 0 ? '#10b981' : '#ef4444';
+  const eqCurveColor = netPnL >= 0 ? 'var(--profit)' : 'var(--loss)';
+  const eqCurveColorDim = netPnL >= 0 ? 'var(--profit)' : 'var(--loss)';
 
   // Max drawdown for badges
   const maxDrawdown = useMemo(() => {
@@ -710,7 +710,7 @@ const Emotions = () => {
                     stroke="var(--border-strong)" 
                     strokeDasharray="4 4" 
                     strokeOpacity={0.6} 
-                    label={{ value: 'Start', position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 9, offset: 10, style: { transform: 'translateY(-10px)' } }} 
+                    label={{ value: 'Start', position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 9, dy: -10, dx: 10 }} 
                   />
                   <Tooltip content={<EquityTooltip />} />
                   {/* Main equity line with gradient fill */}
