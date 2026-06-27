@@ -460,8 +460,11 @@ const Mondays = () => {
           </div>
           <div>
             <div className="page-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>Monday's Dashboard</div>
-            <div className="page-subtitle" style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-              Dedicated planning, review, and psychology metrics for Monday trading sessions.
+            <div className="page-subtitle" style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+              <span>Dedicated planning, review, and psychology metrics.</span>
+              <span className="badge" style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 700, letterSpacing: '0.03em' }}>
+                I Do Not Trade On Mondays (Demo Only)
+              </span>
             </div>
           </div>
         </div>
