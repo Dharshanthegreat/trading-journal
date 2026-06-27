@@ -1093,16 +1093,18 @@ const Journal = () => {
                       {currentSelectedTrade.lotSize || '—'}
                     </div>
                   </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Stop Loss</div>
-                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2 }}>
-                      {currentSelectedTrade.stopLoss || '—'}
-                    </div>
-                  </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Take Profit</div>
-                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2 }}>
-                      {currentSelectedTrade.takeProfit || '—'}
+                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', gridColumn: 'span 2', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Tags</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center', alignItems: 'center' }}>
+                      {currentSelectedTrade.tags && currentSelectedTrade.tags.length > 0 ? (
+                        currentSelectedTrade.tags.map((tag, tagIdx) => (
+                          <span key={tagIdx} style={{ fontSize: '0.62rem', background: 'rgba(167, 139, 250, 0.08)', border: '1px solid rgba(167, 139, 250, 0.2)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
+                      )}
                     </div>
                   </div>
                 </div>
