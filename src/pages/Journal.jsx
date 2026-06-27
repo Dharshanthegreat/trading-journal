@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTrades } from '../contexts/TradeContext';
-import { accounts as accountsApi } from '../services/api';
+import { accounts as accountsApi, rules as rulesApi } from '../services/api';
 import { format } from 'date-fns';
 import Tesseract from 'tesseract.js';
 import {
   Plus, X, Search, Trash2,
   ArrowUpRight, ArrowDownRight,
-  Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn, Globe
+  Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn, Globe, Shield, ListTodo
 } from 'lucide-react';
 
 const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
@@ -49,6 +49,8 @@ const Journal = () => {
   const [editingTrade, setEditingTrade] = useState(null);
   const [formError, setFormError] = useState('');
   const [existingImages, setExistingImages] = useState([]);
+  const [modalTab, setModalTab] = useState('metrics');
+  const [accountRules, setAccountRules] = useState([]);
 
   const [accounts, setAccounts] = useState([]);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -329,6 +331,7 @@ const Journal = () => {
     setAutoFeatures(true);
     setEditingTrade(trade);
     setSelectedTrade(null);
+    setModalTab('metrics');
     setShowForm(true);
   };
 
@@ -339,6 +342,7 @@ const Journal = () => {
     setEditingTrade(null);
     setExistingImages([]);
     setFormError('');
+    setModalTab('metrics');
     manuallyEditedRef.current = {};
     setAutoFeatures(true);
   };
@@ -347,6 +351,23 @@ const Journal = () => {
     fetchTrades({ limit: 200 });
     accountsApi.list().then(setAccounts).catch(console.error);
   }, [fetchTrades]);
+
+  // Load active rules for selected account in modal
+  useEffect(() => {
+    if (!formData.accountId) {
+      setAccountRules([]);
+      return;
+    }
+    const loadRules = async () => {
+      try {
+        const data = await rulesApi.list({ accountId: formData.accountId });
+        setAccountRules((data || []).filter(r => r.isActive));
+      } catch (err) {
+        console.error('Failed to load rules for account in modal:', err);
+      }
+    };
+    loadRules();
+  }, [formData.accountId]);
 
   // Sync selectedTrade state if trades are updated in the background/context
   const currentSelectedTrade = useMemo(() => {
@@ -604,12 +625,40 @@ const Journal = () => {
       {showForm && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelForm()}>
           <div className="glass-deep modal-panel">
-            <div className="modal-header">
-              <div className="modal-title">{editingTrade ? 'Edit Trade' : 'Log New Trade'}</div>
-              <button className="modal-close" onClick={handleCancelForm}><X size={18}/></button>
+            <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="modal-title">{editingTrade ? 'Edit Trade' : 'Log New Trade'}</div>
+                <button type="button" className="modal-close" onClick={handleCancelForm}><X size={18}/></button>
+              </div>
+              
+              {/* Tab Selector */}
+              <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('metrics')}
+                  className={`btn btn-sm ${modalTab === 'metrics' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ fontSize: '0.72rem', padding: '6px 14px', borderRadius: 'var(--r-md)' }}
+                >
+                  Trade Metrics
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('rules')}
+                  className={`btn btn-sm ${modalTab === 'rules' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ fontSize: '0.72rem', padding: '6px 14px', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  Rules Checklist
+                  {accountRules.length > 0 && (
+                    <span style={{ fontSize: '0.6rem', background: 'rgba(0,0,0,0.2)', padding: '1px 5px', borderRadius: '6px', border: '1px solid var(--border-mid)' }}>
+                      {accountRules.length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="form-grid">
+              {modalTab === 'metrics' ? (
+                <div className="form-grid">
                 <div className="form-field">
                   <label className="form-label">Symbol *</label>
                   <input required className="input" placeholder="EURUSD" value={formData.symbol} onChange={e => handleFieldChange('symbol', e.target.value.toUpperCase())}/>
@@ -896,7 +945,70 @@ const Journal = () => {
                     {ocrMessage}
                   </div>
                 )}
-              </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px 0', minHeight: '300px' }}>
+                  <div className="glass-deep" style={{ padding: '14px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)', background: 'var(--bg-secondary)' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                      <Shield size={14} style={{ color: 'var(--warn)' }} />
+                      Active Account Constraints
+                    </span>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                      Confirm that your execution adhered to the rules configured for this account.
+                    </p>
+                  </div>
+
+                  {accountRules.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <ListTodo size={28} style={{ opacity: 0.25 }} />
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>No active rules configured</div>
+                      <div style={{ fontSize: '0.68rem', maxWidth: '300px', margin: '0 auto', lineHeight: 1.4 }}>
+                        {formData.accountId ? 'There are no active constraints for this account. Configure rules in the Trading Rules playbook page.' : 'Select a Trading Account on the Trade Metrics tab to review its rules.'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {accountRules.map((rule, idx) => (
+                        <div
+                          key={rule.id}
+                          className="glass-deep"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '10px 14px',
+                            borderRadius: 'var(--r-md)',
+                            border: '1px solid var(--border)'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            id={`rule-check-${rule.id}`}
+                            style={{
+                              width: '16px',
+                              height: '16px',
+                              cursor: 'pointer',
+                              accentColor: 'var(--profit)'
+                            }}
+                          />
+                          <label
+                            htmlFor={`rule-check-${rule.id}`}
+                            style={{
+                              fontSize: '0.78rem',
+                              color: 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                              lineHeight: 1.4
+                            }}
+                          >
+                            <strong>{idx + 1}.</strong> {rule.ruleText}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {formError && (
                 <div style={{
