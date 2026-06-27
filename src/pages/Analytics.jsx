@@ -67,50 +67,54 @@ const Analytics = () => {
   const [selectedAccount, setSelectedAccount] = useState('All');
   const [accounts, setAccounts] = useState([]);
 
-  // Fetch/mock accounts list
-  const fetchAnalyticsAccounts = useCallback(async () => {
-    try {
-      if (user?.isGuest) {
-        const accIds = [...new Set((trades || []).map(t => t.accountId || t.account_id || 1))];
-        const guestAccs = accIds.map(id => {
-          if (String(id) === '1') {
-            return { id: 1, accountName: '25K Funded Futures Family', startingBalance: 25000.0 };
-          }
-          if (String(id) === '2') {
-            return { id: 2, accountName: '50K Apex Challenge Passed', startingBalance: 50000.0 };
-          }
-          if (String(id) === '3') {
-            return { id: 3, accountName: '10K MyForexFunds Failed', startingBalance: 10000.0 };
-          }
-          return { id, accountName: `Account ${id}`, startingBalance: 25000.0 };
-        });
-        setAccounts(guestAccs);
-      } else {
-        const data = await accountsApi.list();
-        setAccounts(data || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch accounts in analytics:', err);
-    }
-  }, [user, trades]);
-
+  // Fetch accounts list (only if not guest user)
   useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        if (!user?.isGuest) {
+          const data = await accountsApi.list();
+          setAccounts(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch accounts in analytics:', err);
+      }
+    };
     fetchTrades({ limit: 1000 });
-    fetchAnalytics();
-    fetchAnalyticsAccounts();
-  }, [fetchTrades, fetchAnalytics, fetchAnalyticsAccounts]);
+    if (fetchAnalytics) fetchAnalytics();
+    fetchAccounts();
+  }, [user, fetchTrades, fetchAnalytics]);
+
+  // Compute accounts list dynamically (combining live and guest mock accounts)
+  const accountsList = useMemo(() => {
+    if (user?.isGuest) {
+      const accIds = [...new Set((trades || []).map(t => t.accountId || t.account_id || 1))];
+      return accIds.map(id => {
+        if (String(id) === '1') {
+          return { id: 1, accountName: '25K Funded Futures Family', startingBalance: 25000.0 };
+        }
+        if (String(id) === '2') {
+          return { id: 2, accountName: '50K Apex Challenge Passed', startingBalance: 50000.0 };
+        }
+        if (String(id) === '3') {
+          return { id: 3, accountName: '10K MyForexFunds Failed', startingBalance: 10000.0 };
+        }
+        return { id, accountName: `Account ${id}`, startingBalance: 25000.0 };
+      });
+    }
+    return accounts;
+  }, [user, trades, accounts]);
 
   const startBalance = useMemo(() => {
     if (selectedAccount === 'All') {
-      if (accounts.length > 0) {
-        return accounts.reduce((acc, curr) => acc + (parseFloat(curr.startingBalance) || 0), 0);
+      if (accountsList.length > 0) {
+        return accountsList.reduce((acc, curr) => acc + (parseFloat(curr.startingBalance) || 0), 0);
       }
       return user?.accountSize ? parseFloat(user.accountSize) : 25000;
     } else {
-      const acc = accounts.find(a => String(a.id) === String(selectedAccount));
+      const acc = accountsList.find(a => String(a.id) === String(selectedAccount));
       return acc ? (parseFloat(acc.startingBalance) || 0) : (user?.accountSize ? parseFloat(user.accountSize) : 25000);
     }
-  }, [selectedAccount, accounts, user]);
+  }, [selectedAccount, accountsList, user]);
 
   const tradesList = useMemo(() => {
     return (trades || []).filter(t => !t.tags?.includes('Monday-Only'));
@@ -181,7 +185,7 @@ const Analytics = () => {
 
       // 6. Result
       if (selectedResult !== 'All') {
-        const acc = accounts.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
+        const acc = accountsList.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
         const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
         const threshold = startingBalance * 0.001;
 
@@ -197,7 +201,7 @@ const Analytics = () => {
 
       return true;
     });
-  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade, selectedAccount, accounts]);
+  }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade, selectedAccount, accountsList]);
 
   // Compute stats on filtered trades
   const stats = useMemo(() => {
@@ -227,7 +231,7 @@ const Analytics = () => {
     }
 
     const getResult = (t) => {
-      const acc = accounts.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
+      const acc = accountsList.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
       const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
       const threshold = startingBalance * 0.001;
       if (t.pnl > threshold) return 'Win';
@@ -343,7 +347,7 @@ const Analytics = () => {
         consistencyScore
       }
     };
-  }, [filteredTrades, accounts]);
+  }, [filteredTrades, accountsList]);
 
   // Equity growth curve dataset starting from dynamic balance
   const equityCurveData = useMemo(() => {
@@ -531,7 +535,7 @@ const Analytics = () => {
         
         <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
           <option value="All">Account: All accounts</option>
-          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.accountName}</option>)}
+          {accountsList.map(acc => <option key={acc.id} value={acc.id}>{acc.accountName}</option>)}
         </select>
 
         <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedPair} onChange={e => setSelectedPair(e.target.value)}>
