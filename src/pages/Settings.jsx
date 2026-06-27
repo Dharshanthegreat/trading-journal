@@ -10,8 +10,8 @@ import {
   Settings as SettingsIcon, User, Database,
   DollarSign, Shield, Download, Palette, Moon, Sun,
   Compass, Leaf, SunDim, Clock, RefreshCw, Trash2,
-  History, AlertCircle, FileJson, Check, Share2, Eye, EyeOff,
-  Zap, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square, Trophy
+  History, AlertCircle, FileJson, Check, Share2,
+  Zap, Sparkles, Paintbrush, Layers, Grid, Droplet, Square, Trophy
 } from 'lucide-react';
 
 const Settings = () => {
