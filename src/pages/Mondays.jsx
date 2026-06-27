@@ -298,10 +298,12 @@ const Mondays = () => {
   // Filter trades for Monday (incorporating selectedMonday)
   const mondayTrades = useMemo(() => {
     return (trades || []).filter(t => {
+      // Exclusively include demo trades created on the Monday's page
+      if (!t.tags?.includes('Monday-Only')) return false;
+
       const entryDate = t.entryTime || t.entry_time;
       if (!entryDate) return false;
-      const isMonday = formatInNewYork(entryDate, 'EEEE') === 'Monday';
-      if (!isMonday) return false;
+      
       if (selectedMonday !== 'All') {
         return formatInNewYork(entryDate, 'yyyy-MM-dd') === selectedMonday;
       }
@@ -517,14 +519,16 @@ const Mondays = () => {
             const isSelected = selectedMonday === dateStr;
             // Query original unfiltered trades to get correct P&L for this day
             const dayPnL = (trades || []).filter(t => {
-              const entryTime = t.entryTime || t.entry_time;
-              return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
-            }).reduce((acc, t) => acc + (parseFloat(t.pnl) || 0), 0);
-            
-            const hasTrades = (trades || []).some(t => {
-              const entryTime = t.entryTime || t.entry_time;
-              return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
-            });
+               if (!t.tags?.includes('Monday-Only')) return false;
+               const entryTime = t.entryTime || t.entry_time;
+               return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
+             }).reduce((acc, t) => acc + (parseFloat(t.pnl) || 0), 0);
+             
+             const hasTrades = (trades || []).some(t => {
+               if (!t.tags?.includes('Monday-Only')) return false;
+               const entryTime = t.entryTime || t.entry_time;
+               return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
+             });
 
             return (
               <button
