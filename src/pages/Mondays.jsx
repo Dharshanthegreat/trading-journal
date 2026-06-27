@@ -17,6 +17,8 @@ const EMOTION_COLORS = {
   Disciplined: '#60a5fa', Revenge: '#ef4444',
 };
 
+const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
+
 // Helper to generate the last 12 Mondays
 const getRecentMondays = () => {
   const dates = [];
@@ -100,7 +102,7 @@ const Mondays = () => {
   
   // Add Chart modal states
   const [showAddChart, setShowAddChart] = useState(false);
-  const [addMode, setAddMode] = useState('existing'); // 'existing' | 'new'
+  const [addMode, setAddMode] = useState('new'); // Set default to 'new' since we've removed 'existing'
   const [selectedTradeId, setSelectedTradeId] = useState('');
   const [chartFile, setChartFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -125,6 +127,9 @@ const Mondays = () => {
     entryTime: '',
     setup: '',
     notes: '',
+    emotionTags: [],
+    fomoLevel: 5,
+    confidenceLevel: 5,
   });
 
   // Reset entry time when modal is opened
@@ -240,9 +245,9 @@ const Mondays = () => {
         grade: 'B',
         notes: newTradeData.notes || '',
         tags: ['Monday-Only'],
-        emotionTags: [],
-        fomoLevel: 5,
-        confidenceLevel: 5,
+        emotionTags: newTradeData.emotionTags || [],
+        fomoLevel: parseInt(newTradeData.fomoLevel) || 5,
+        confidenceLevel: parseInt(newTradeData.confidenceLevel) || 5,
         accountId: null,
         notionLink: '',
       };
@@ -257,6 +262,9 @@ const Mondays = () => {
         entryTime: getDefaultMondayDatetime(),
         setup: '',
         notes: '',
+        emotionTags: [],
+        fomoLevel: 5,
+        confidenceLevel: 5,
       });
       setChartFile(null);
       setImagePreview(null);
@@ -1074,7 +1082,6 @@ const Mondays = () => {
         </div>
       )}
 
-      {/* Add Chart Modal */}
       {showAddChart && (
         <div className="modal-overlay" onClick={() => setShowAddChart(false)}>
           <div className="glass-deep modal-panel" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
@@ -1085,40 +1092,8 @@ const Mondays = () => {
               </div>
               <button className="modal-close" onClick={() => setShowAddChart(false)}><X size={18}/></button>
             </div>
-            
-            {/* Modal Tabs */}
-            <div className="glass" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', marginBottom: 'var(--s5)' }}>
-              {[
-                { id: 'existing', label: 'Attach to Existing Trade' },
-                { id: 'new', label: 'Create New Trade' }
-              ].map(mode => (
-                <button
-                  type="button"
-                  key={mode.id}
-                  onClick={() => {
-                    setAddMode(mode.id);
-                    setErrorMsg('');
-                  }}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    padding: '8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    color: addMode === mode.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    background: addMode === mode.id ? 'var(--bg-hover)' : 'transparent',
-                    border: 'none',
-                    borderRadius: 'var(--r-sm)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
 
-            <form onSubmit={addMode === 'existing' ? handleExistingSubmit : handleNewSubmit}>
+            <form onSubmit={handleNewSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
                 {errorMsg && (
                   <div style={{ color: 'var(--loss)', fontSize: '0.75rem', fontWeight: 600, padding: '8px 12px', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)', borderRadius: 'var(--r-md)' }}>
@@ -1126,108 +1101,137 @@ const Mondays = () => {
                   </div>
                 )}
 
-                {addMode === 'existing' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
                   <div className="form-field">
-                    <label className="form-label">Select Monday Trade *</label>
+                    <label className="form-label">Symbol *</label>
+                    <input
+                      required
+                      className="input"
+                      placeholder="EURUSD"
+                      value={newTradeData.symbol}
+                      onChange={e => setNewTradeData(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Direction *</label>
                     <select
                       className="input"
-                      value={selectedTradeId}
-                      onChange={e => setSelectedTradeId(e.target.value)}
-                      required
-                      style={{ width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                      value={newTradeData.type}
+                      onChange={e => setNewTradeData(prev => ({ ...prev, type: e.target.value }))}
                     >
-                      <option value="">— Choose a Trade —</option>
-                      {dropdownTrades.map(t => {
-                        const dateFormatted = t.entryTime ? formatInNewYork(t.entryTime, 'MMM d, yyyy') : '—';
-                        const chartStatus = t.imageUrl ? '🖼️ Has chart' : '❌ No chart';
-                        return (
-                          <option key={t.id} value={t.id}>
-                            {dateFormatted} · {t.symbol} ({t.type}) · {t.pnl >= 0 ? '+' : ''}${t.pnl} · {chartStatus}
-                          </option>
-                        );
-                      })}
+                      <option value="Long">Long ↑</option>
+                      <option value="Short">Short ↓</option>
                     </select>
-                    {dropdownTrades.length === 0 && (
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>
-                        No Monday trades found. You can log one in the Journal or use the 'Create New Trade' tab.
-                      </span>
-                    )}
                   </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                      <div className="form-field">
-                        <label className="form-label">Symbol *</label>
-                        <input
-                          required
-                          className="input"
-                          placeholder="EURUSD"
-                          value={newTradeData.symbol}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label className="form-label">Direction *</label>
-                        <select
-                          className="input"
-                          value={newTradeData.type}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, type: e.target.value }))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                  <div className="form-field">
+                    <label className="form-label">Net P&L ($) *</label>
+                    <input
+                      required
+                      className="input"
+                      type="number"
+                      step="any"
+                      placeholder="150.00"
+                      value={newTradeData.pnl}
+                      onChange={e => setNewTradeData(prev => ({ ...prev, pnl: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Entry Time *</label>
+                    <input
+                      required
+                      className="input"
+                      type="datetime-local"
+                      value={newTradeData.entryTime}
+                      onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Setup</label>
+                  <select
+                    className="input"
+                    value={newTradeData.setup}
+                    onChange={e => setNewTradeData(prev => ({ ...prev, setup: e.target.value }))}
+                  >
+                    <option value="">— Select Setup —</option>
+                    {SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="input"
+                    placeholder="Trade reflections or setup notes..."
+                    rows={2}
+                    value={newTradeData.notes}
+                    onChange={e => setNewTradeData(prev => ({ ...prev, notes: e.target.value }))}
+                  />
+                </div>
+
+                {/* Psychology options for Monday Chart */}
+                <div className="form-field full">
+                  <label className="form-label">Emotional State / Mood</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s2)' }}>
+                    {EMOTIONS.map(e => {
+                      const hasTag = newTradeData.emotionTags.includes(e);
+                      return (
+                        <button 
+                          key={e} 
+                          type="button" 
+                          onClick={() => {
+                            setNewTradeData(prev => ({
+                              ...prev,
+                              emotionTags: hasTag 
+                                ? prev.emotionTags.filter(x => x !== e)
+                                : [...prev.emotionTags, e]
+                            }));
+                          }}
+                          className={`btn btn-sm ${hasTag ? 'btn-primary' : 'btn-ghost'}`}
+                          style={{ fontSize: '0.68rem', padding: '3px 8px', height: '24px' }}
                         >
-                          <option value="Long">Long ↑</option>
-                          <option value="Short">Short ↓</option>
-                        </select>
-                      </div>
-                    </div>
+                          {e}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                      <div className="form-field">
-                        <label className="form-label">Net P&L ($) *</label>
-                        <input
-                          required
-                          className="input"
-                          type="number"
-                          step="any"
-                          placeholder="150.00"
-                          value={newTradeData.pnl}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, pnl: e.target.value }))}
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label className="form-label">Entry Time *</label>
-                        <input
-                          required
-                          className="input"
-                          type="datetime-local"
-                          value={newTradeData.entryTime}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
-                        />
-                      </div>
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                  <div className="form-field">
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem' }}>
+                      <span>FOMO Level</span>
+                      <strong style={{ color: 'var(--loss)' }}>{newTradeData.fomoLevel}/10</strong>
+                    </label>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="10" 
+                      value={newTradeData.fomoLevel} 
+                      onChange={e => setNewTradeData(prev => ({ ...prev, fomoLevel: parseInt(e.target.value) }))}
+                      style={{ width: '100%', accentColor: 'var(--accent)' }}
+                    />
+                  </div>
 
-                    <div className="form-field">
-                      <label className="form-label">Setup</label>
-                      <select
-                        className="input"
-                        value={newTradeData.setup}
-                        onChange={e => setNewTradeData(prev => ({ ...prev, setup: e.target.value }))}
-                      >
-                        <option value="">— Select Setup —</option>
-                        {SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="form-field">
-                      <label className="form-label">Notes</label>
-                      <textarea
-                        className="input"
-                        placeholder="Trade reflections or setup notes..."
-                        rows={2}
-                        value={newTradeData.notes}
-                        onChange={e => setNewTradeData(prev => ({ ...prev, notes: e.target.value }))}
-                      />
-                    </div>
-                  </>
-                )}
+                  <div className="form-field">
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem' }}>
+                      <span>Confidence Level</span>
+                      <strong style={{ color: 'var(--profit)' }}>{newTradeData.confidenceLevel}/10</strong>
+                    </label>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="10" 
+                      value={newTradeData.confidenceLevel} 
+                      onChange={e => setNewTradeData(prev => ({ ...prev, confidenceLevel: parseInt(e.target.value) }))}
+                      style={{ width: '100%', accentColor: 'var(--accent)' }}
+                    />
+                  </div>
+                </div>
 
                 <div className="form-field full">
                   <label className="form-label">Chart Screenshot *</label>
