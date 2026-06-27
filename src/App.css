@@ -429,10 +429,30 @@ body.theme-steep .calendar-cell.loss-day .calendar-trades {
   opacity: 1;
 }
 body.theme-minimal .chart-card {
-  border: 2px solid #000000;
+  border: 1px solid #000000;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+body.theme-minimal .chart-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border-color: #000000;
 }
 body.theme-minimal .chart-card-img-wrapper {
-  border-bottom: 2px solid #000000;
+  border: 1px solid #000000;
+  border-radius: 4px;
+}
+body.theme-minimal .chart-card-info {
+  padding: 10px 0 0 0;
+  background: transparent;
+}
+body.theme-minimal .chart-card-setup {
+  border: 1px solid #000000;
+  background: transparent;
+  color: #000000;
+  font-weight: 500;
 }
 .chart-card-info {
   padding: var(--s3) var(--s4);
