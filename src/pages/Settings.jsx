@@ -11,7 +11,8 @@ import {
   DollarSign, Shield, Download, Palette, Moon, Sun,
   Compass, Leaf, SunDim, Clock, RefreshCw, Trash2,
   History, AlertCircle, FileJson, Check, Share2,
-  Zap, Sparkles, Paintbrush, Layers, Grid, Droplet, Square, Trophy
+  Zap, Sparkles, Paintbrush, Layers, Grid, Droplet, Square, Trophy,
+  Eye, EyeOff, ExternalLink
 } from 'lucide-react';
 
 const Settings = () => {
@@ -65,6 +66,17 @@ const Settings = () => {
   const [sharingLoading, setSharingLoading] = useState(false);
   const [shareToken, setShareToken] = useState(user?.dashboardShareToken || null);
   const [copied, setCopied] = useState(false);
+
+  const [geminiKeyInput, setGeminiKeyInput] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [nvidiaKeyInput, setNvidiaKeyInput] = useState(localStorage.getItem('nvidia_api_key') || '');
+  const [keysSaved, setKeysSaved] = useState(false);
+
+  const handleSaveApiKeys = () => {
+    localStorage.setItem('gemini_api_key', geminiKeyInput.trim());
+    localStorage.setItem('nvidia_api_key', nvidiaKeyInput.trim());
+    setKeysSaved(true);
+    setTimeout(() => setKeysSaved(false), 2000);
+  };
 
   useEffect(() => {
     if (user) {
@@ -616,6 +628,55 @@ const Settings = () => {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* AI Configuration */}
+      {!user?.isGuest && (
+        <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
+          <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Sparkles size={12} style={{ opacity: 0.6 }}/> AI Configuration
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)', lineHeight: 1.6 }}>
+            Power your journal with state-of-the-art models. Add your Google Gemini API Key to enable instant, highly accurate trade metric extraction from chart screenshots. Add your Nvidia API Key to power the interactive AI Trading Coach.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+            <div className="form-field">
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Google Gemini API Key</span>
+                <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.65rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 3, textDecoration: 'none' }}>
+                  Get free key <ExternalLink size={10} />
+                </a>
+              </label>
+              <input
+                className="input"
+                type="password"
+                placeholder="AIzaSy..."
+                value={geminiKeyInput}
+                onChange={e => setGeminiKeyInput(e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>NVIDIA API Key</span>
+                <a href="https://build.nvidia.com/" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.65rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 3, textDecoration: 'none' }}>
+                  Get key <ExternalLink size={10} />
+                </a>
+              </label>
+              <input
+                className="input"
+                type="password"
+                placeholder="nvapi-..."
+                value={nvidiaKeyInput}
+                onChange={e => setNvidiaKeyInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: 'var(--s4)', display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn btn-primary" onClick={handleSaveApiKeys}>
+              {keysSaved ? 'Saved ✓' : 'Save AI Keys'}
+            </button>
+          </div>
         </div>
       )}
 

@@ -175,6 +175,18 @@ export const ai = {
       },
       body: JSON.stringify({ messages }),
     });
+  },
+  analyzeChart: (formData) => {
+    const geminiKey = localStorage.getItem('gemini_api_key') || '';
+    const nvidiaKey = localStorage.getItem('nvidia_api_key') || '';
+    return request('/ai/analyze-chart', {
+      method: 'POST',
+      headers: {
+        'x-gemini-api-key': geminiKey,
+        'x-nvidia-api-key': nvidiaKey
+      },
+      body: formData
+    });
   }
 };
 

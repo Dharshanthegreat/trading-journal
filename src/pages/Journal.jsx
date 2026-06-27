@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTrades } from '../contexts/TradeContext';
-import { accounts as accountsApi, rules as rulesApi } from '../services/api';
+import { accounts as accountsApi, rules as rulesApi, ai as aiApi } from '../services/api';
 import { format } from 'date-fns';
-import Tesseract from 'tesseract.js';
 import {
   Plus, X, Search, Trash2,
   ArrowUpRight, ArrowDownRight,
@@ -88,64 +87,6 @@ const Journal = () => {
     setAutoFeatures(false);
   };
 
-  const parseOcrText = (text) => {
-    const result = {
-      entryPrice: '',
-      exitPrice: '',
-      stopLoss: '',
-      takeProfit: '',
-      entryTime: '',
-      exitTime: '',
-      pnl: ''
-    };
-
-    const lines = text.split('\n').map(l => l.trim().toLowerCase()).filter(Boolean);
-    
-    for (const line of lines) {
-      const slMatch = line.match(/(sl|s\/l|stop\s*loss|stop)[:\s]*([0-9]+(?:\.[0-9]+)?)/);
-      if (slMatch) result.stopLoss = slMatch[2];
-
-      const tpMatch = line.match(/(tp|t\/p|take\s*profit|target)[:\s]*([0-9]+(?:\.[0-9]+)?)/);
-      if (tpMatch) result.takeProfit = tpMatch[2];
-
-      const pnlMatch = line.match(/(pnl|p&l|profit|loss|return)[:\s]*([+-]?\s*[$€£]?\s*[0-9]+(?:\.[0-9]+)?)/);
-      if (pnlMatch) result.pnl = pnlMatch[2].replace(/[$\s€£]/g, '');
-    }
-
-    const allNumbers = [];
-    const rawNumbersMatches = text.match(/[0-9]+(?:\.[0-9]+)?/g) || [];
-    rawNumbersMatches.forEach(numStr => {
-      const num = parseFloat(numStr);
-      if (num > 10 || (numStr.includes('.') && num > 0.0001)) {
-        allNumbers.push(numStr);
-      }
-    });
-
-    if (allNumbers.length >= 2) {
-      result.entryPrice = allNumbers[0];
-      result.exitPrice = allNumbers[1];
-      if (!result.stopLoss && allNumbers.length >= 3) result.stopLoss = allNumbers[2];
-      if (!result.takeProfit && allNumbers.length >= 4) result.takeProfit = allNumbers[3];
-    } else if (allNumbers.length === 1) {
-      result.entryPrice = allNumbers[0];
-    }
-
-    const dateRegex = /(\d{4})[./-]([01]?\d)[./-]([0-3]?\d)\s+([0-2]?\d):([0-5]\d)/;
-    const dateMatch = text.match(dateRegex);
-    if (dateMatch) {
-      const year = dateMatch[1];
-      const month = dateMatch[2].padStart(2, '0');
-      const day = dateMatch[3].padStart(2, '0');
-      const hour = dateMatch[4].padStart(2, '0');
-      const minute = dateMatch[5].padStart(2, '0');
-      result.entryTime = `${year}-${month}-${day}T${hour}:${minute}`;
-      const entryDate = parseNewYorkDatetimeToDate(`${year}-${month}-${day}T${hour}:${minute}`);
-      const exitDate = new Date(entryDate.getTime() + 30 * 60000);
-      result.exitTime = toNewYorkDatetimeString(exitDate);
-    }
-
-    return result;
-  };
 
   const populateFallbackValues = () => {
     const symbol = (formData.symbol || '').toUpperCase().trim();
@@ -198,56 +139,56 @@ const Journal = () => {
 
   const performOcrAndPopulate = async (file) => {
     setOcrLoading(true);
-    setOcrMessage('Analyzing image with OCR...');
+    setOcrMessage('Analyzing image with Gemini Vision AI...');
     try {
-      const result = await Tesseract.recognize(file, 'eng', {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            setOcrMessage(`Extracting: ${Math.round(m.progress * 100)}%`);
-          }
-        }
-      });
-      const text = result.data.text;
-      const parsedData = parseOcrText(text);
+      const formDataObj = new FormData();
+      formDataObj.append('chart', file);
+      
+      const parsedData = await aiApi.analyzeChart(formDataObj);
       
       setFormData(prev => {
         const nextData = { ...prev };
-        if (!manuallyEditedRef.current.entryPrice) {
-          nextData.entryPrice = parsedData.entryPrice || prev.entryPrice || '';
+        
+        if (parsedData.symbol && !manuallyEditedRef.current.symbol) {
+          nextData.symbol = parsedData.symbol.toUpperCase();
         }
-        if (!manuallyEditedRef.current.exitPrice) {
-          nextData.exitPrice = parsedData.exitPrice || prev.exitPrice || '';
+        if (parsedData.type && !manuallyEditedRef.current.type) {
+          const normalizedType = (parsedData.type.toLowerCase().includes('sell') || parsedData.type.toLowerCase().includes('short')) ? 'Short' : 'Long';
+          nextData.type = normalizedType;
         }
-        if (!manuallyEditedRef.current.stopLoss) {
-          nextData.stopLoss = parsedData.stopLoss || prev.stopLoss || '';
+        if (parsedData.lotSize !== undefined && parsedData.lotSize !== null && !manuallyEditedRef.current.lotSize) {
+          nextData.lotSize = String(parsedData.lotSize);
         }
-        if (!manuallyEditedRef.current.takeProfit) {
-          nextData.takeProfit = parsedData.takeProfit || prev.takeProfit || '';
+        if (parsedData.entryPrice !== undefined && parsedData.entryPrice !== null && !manuallyEditedRef.current.entryPrice) {
+          nextData.entryPrice = String(parsedData.entryPrice);
         }
-        if (!manuallyEditedRef.current.entryTime) {
-          nextData.entryTime = parsedData.entryTime || prev.entryTime || toNewYorkDatetimeString(new Date(Date.now() - 45 * 60000));
+        if (parsedData.exitPrice !== undefined && parsedData.exitPrice !== null && !manuallyEditedRef.current.exitPrice) {
+          nextData.exitPrice = String(parsedData.exitPrice);
         }
-        if (!manuallyEditedRef.current.exitTime) {
-          nextData.exitTime = parsedData.exitTime || prev.exitTime || toNewYorkDatetimeString(new Date());
+        if (parsedData.stopLoss !== undefined && parsedData.stopLoss !== null && !manuallyEditedRef.current.stopLoss) {
+          nextData.stopLoss = String(parsedData.stopLoss);
         }
-        if (!manuallyEditedRef.current.pnl) {
-          nextData.pnl = parsedData.pnl || prev.pnl || '';
+        if (parsedData.takeProfit !== undefined && parsedData.takeProfit !== null && !manuallyEditedRef.current.takeProfit) {
+          nextData.takeProfit = String(parsedData.takeProfit);
+        }
+        if (parsedData.entryTime && !manuallyEditedRef.current.entryTime) {
+          nextData.entryTime = parsedData.entryTime;
+        }
+        if (parsedData.exitTime && !manuallyEditedRef.current.exitTime) {
+          nextData.exitTime = parsedData.exitTime;
+        }
+        if (parsedData.pnl !== undefined && parsedData.pnl !== null && !manuallyEditedRef.current.pnl) {
+          nextData.pnl = String(parsedData.pnl);
         }
         return nextData;
       });
       setOcrMessage('Successfully extracted trade metrics!');
     } catch (err) {
-      console.error('OCR Extraction failed, using fallback:', err);
-      const hasAnyManualEdit = Object.values(manuallyEditedRef.current).some(Boolean);
-      if (!hasAnyManualEdit) {
-        populateFallbackValues();
-        setOcrMessage('Parsed trade metrics successfully (smart fallback)!');
-      } else {
-        setOcrMessage('OCR parsing failed, manual entries preserved.');
-      }
+      console.error('OCR Extraction failed:', err);
+      setOcrMessage(err.message || 'AI Auto-fill failed. Check API key settings.');
     } finally {
       setOcrLoading(false);
-      setTimeout(() => setOcrMessage(''), 4000);
+      setTimeout(() => setOcrMessage(''), 5000);
     }
   };
 

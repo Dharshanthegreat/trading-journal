@@ -443,6 +443,11 @@ const Mondays = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       {/* Page Header */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
@@ -462,8 +467,21 @@ const Mondays = () => {
             <div className="page-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>Monday's Dashboard</div>
             <div className="page-subtitle" style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
               <span>Dedicated planning, review, and psychology metrics.</span>
-              <span className="badge" style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', background: '#00e5ff', color: '#000000', fontWeight: 700, letterSpacing: '0.03em', border: 'none' }}>
-                I Do Not Trade On Mondays (Demo Only)
+              <span className="badge" style={{ 
+                fontSize: '0.65rem', 
+                padding: '3px 8px', 
+                borderRadius: 'var(--r-sm)', 
+                textTransform: 'uppercase', 
+                background: 'var(--loss-soft)', 
+                color: 'var(--loss)', 
+                fontWeight: 600, 
+                letterSpacing: '0.05em', 
+                border: '1px solid var(--loss-border)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <AlertTriangle size={10} /> Active Trading Restricted on Mondays
               </span>
             </div>
           </div>
@@ -506,7 +524,7 @@ const Mondays = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
           <Calendar size={13} style={{ color: 'var(--accent)' }} /> Select Monday Date
         </div>
-        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <button
             onClick={() => setSelectedMonday('All')}
             style={{
@@ -517,9 +535,9 @@ const Mondays = () => {
               justifyContent: 'center',
               padding: '6px 16px',
               borderRadius: 'var(--r-md)',
-              background: selectedMonday === 'All' ? 'var(--accent)' : 'rgba(255,255,255,0.02)',
-              border: selectedMonday === 'All' ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
-              color: selectedMonday === 'All' ? '#ffffff' : 'var(--text-secondary)',
+            background: selectedMonday === 'All' ? 'var(--accent)' : 'var(--bg-tertiary)',
+            border: selectedMonday === 'All' ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
+            color: selectedMonday === 'All' ? '#ffffff' : 'var(--text-secondary)',
               cursor: 'pointer',
               minWidth: '80px',
               transition: 'all 0.2s ease',
@@ -557,7 +575,7 @@ const Mondays = () => {
                   alignItems: 'center',
                   padding: '6px 14px',
                   borderRadius: 'var(--r-md)',
-                  background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.02)',
+                  background: isSelected ? 'var(--accent)' : 'var(--bg-tertiary)',
                   border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
                   color: isSelected ? '#ffffff' : 'var(--text-secondary)',
                   cursor: 'pointer',
@@ -739,7 +757,7 @@ const Mondays = () => {
                           </span>
                           <strong style={{ color: 'var(--text-primary)' }}>{stats.avgFomo} / 10</strong>
                         </div>
-                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(128,128,128,0.12)', borderRadius: 3, overflow: 'hidden' }}>
                           <div style={{ 
                             width: `${parseFloat(stats.avgFomo) * 10}%`, 
                             height: '100%', 
@@ -761,7 +779,7 @@ const Mondays = () => {
                           </span>
                           <strong style={{ color: 'var(--text-primary)' }}>{stats.avgConfidence} / 10</strong>
                         </div>
-                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(128,128,128,0.12)', borderRadius: 3, overflow: 'hidden' }}>
                           <div style={{ 
                             width: `${parseFloat(stats.avgConfidence) * 10}%`, 
                             height: '100%', 
@@ -831,7 +849,7 @@ const Mondays = () => {
                                 }}>
                                   {tag}
                                 </span>
-                                <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: 2, overflow: 'hidden' }}>
+                                <div style={{ flex: 1, height: '4px', background: 'rgba(128,128,128,0.12)', borderRadius: 2, overflow: 'hidden' }}>
                                   <div style={{ width: `${pct}%`, height: '100%', background: color }} />
                                 </div>
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', minWidth: '42px', textAlign: 'right' }}>
@@ -865,7 +883,7 @@ const Mondays = () => {
                         </thead>
                         <tbody>
                           {mondayTrades.slice(0, 5).map(trade => (
-                            <tr key={trade.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                            <tr key={trade.id} style={{ borderBottom: '1px solid var(--border)' }}>
                               <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>
                                 {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMM d, yyyy') : '—'}
                               </td>
@@ -998,7 +1016,7 @@ const Mondays = () => {
                         <span>Strictly Adhered to Risk & Setup Rules</span>
                       </label>
                       
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', lineHeight: 1.4, background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', lineHeight: 1.4, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <ShieldCheck size={14} style={{ color: 'var(--profit)', flexShrink: 0 }} />
                         <span>Logs are stored persistently on this browser to monitor emotional patterns on Mondays.</span>
                       </div>

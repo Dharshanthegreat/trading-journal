@@ -1,7 +1,14 @@
 import { Router } from 'express';
+import multer from 'multer';
 import db from '../db.js';
 import { computeMetrics } from '../utils/analytics.js';
 import '../utils/env.js';
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
 
 const router = Router();
 
@@ -114,6 +121,93 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
   } catch (err) {
     console.error('AI Chat error:', err);
     res.status(500).json({ error: 'Failed to generate AI response' });
+  }
+});
+
+// ─── Analyze Trading Chart Image via Gemini Vision ───────────────────
+router.post('/analyze-chart', upload.single('chart'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded.' });
+    }
+
+    const geminiKey = req.headers['x-gemini-api-key'] || process.env.GEMINI_API_KEY;
+    if (!geminiKey || geminiKey === 'your_api_key_here') {
+      return res.status(400).json({ 
+        error: 'Gemini API Key is missing. Please save your Gemini API Key in the settings page or set it in your .env file.' 
+      });
+    }
+
+    const base64Image = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
+
+    const payload = {
+      contents: [
+        {
+          parts: [
+            {
+              text: `Analyze this trading platform screenshot (e.g. MetaTrader MT4/MT5, TradingView, Tradovate, cTrader) and extract the following trade execution details as a JSON object:
+- symbol (string, e.g. "EURUSD", "GBPUSD", "NAS100", "US30", "XAUUSD", "BTCUSD")
+- type (string, strictly either "Long" or "Short". Map "Buy" to "Long" and "Sell" to "Short")
+- entryPrice (number or string, the price at which the trade was entered)
+- exitPrice (number or string, the close or current exit price if closed)
+- lotSize (number or string, the lot size or contract volume, e.g. 0.1, 1.0, 5)
+- stopLoss (number or string, the stop loss value if visible)
+- takeProfit (number or string, the take profit value if visible)
+- pnl (number or string, the net profit/loss amount, e.g. 250.00 or -150.00. Do not include currency symbols or commas)
+- entryTime (string, format: "YYYY-MM-DDTHH:MM", e.g. "2026-06-27T13:16", if visible)
+- exitTime (string, format: "YYYY-MM-DDTHH:MM", if visible)
+
+Return ONLY a raw JSON object. Do not wrap the JSON output in markdown formatting like \`\`\`json. Output strictly valid JSON. If a value is not visible or cannot be found, set it to null or leave it empty.`
+            },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Image
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    };
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini API returned error status ${response.status}: ${errText}`);
+    }
+
+    const apiResult = await response.json();
+    const responseText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!responseText) {
+      throw new Error('No content returned from Gemini API.');
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(responseText.trim());
+    } catch (parseErr) {
+      console.error('Failed to parse Gemini response as JSON. Raw response:', responseText);
+      // Clean up markdown block wraps if any
+      const cleaned = responseText.replace(/```json|```/g, '').trim();
+      parsedData = JSON.parse(cleaned);
+    }
+
+    res.json(parsedData);
+  } catch (err) {
+    console.error('Analyze chart error:', err);
+    res.status(500).json({ error: err.message || 'Failed to analyze chart image' });
   }
 });
 
