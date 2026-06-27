@@ -154,7 +154,7 @@ router.post('/analyze', async (req, res) => {
     }
 
     const { title, country, date, impact, forecast, previous } = event;
-    const apiKey = process.env.NVIDIA_API_KEY;
+    const apiKey = req.headers['x-nvidia-api-key'] || req.body.nvidiaApiKey || process.env.NVIDIA_API_KEY;
 
     const systemPrompt = `You are a professional macroeconomic analyst and Forex coach powered by NVIDIA Llama-3.1-Nemotron-70B-Instruct.
 You are analyzing the following news event:

@@ -41,7 +41,7 @@ router.post('/chat', async (req, res) => {
     const { tradeCount, winRate, totalPnL, profitFactor, avgWin, avgLoss, avgFomo, avgConfidence, highFomoCount, bestSetup, wins, losses, bestPnL } = metrics;
 
     // Check if NVIDIA API key exists
-    const apiKey = process.env.NVIDIA_API_KEY;
+    const apiKey = req.headers['x-nvidia-api-key'] || req.body.nvidiaApiKey || process.env.NVIDIA_API_KEY;
 
     if (apiKey) {
       const systemPrompt = `You are a professional trading coach powered by NVIDIA Llama-3.1-Nemotron-70B-Instruct.

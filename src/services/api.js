@@ -165,13 +165,17 @@ export const journal = {
     request(`/journal/${id}`, { method: 'DELETE' }),
 };
 
-// ─── AI ──────────────────────────────────────────────
 export const ai = {
-  chat: (messages) =>
-    request('/ai/chat', {
+  chat: (messages) => {
+    const key = localStorage.getItem('nvidia_api_key') || '';
+    return request('/ai/chat', {
       method: 'POST',
+      headers: {
+        'x-nvidia-api-key': key
+      },
       body: JSON.stringify({ messages }),
-    }),
+    });
+  }
 };
 
 // ─── News ────────────────────────────────────────────
@@ -180,11 +184,16 @@ export const news = {
     const qs = new URLSearchParams(params).toString();
     return request(`/news${qs ? `?${qs}` : ''}`);
   },
-  analyze: (event, messages) =>
-    request('/news/analyze', {
+  analyze: (event, messages) => {
+    const key = localStorage.getItem('nvidia_api_key') || '';
+    return request('/news/analyze', {
       method: 'POST',
+      headers: {
+        'x-nvidia-api-key': key
+      },
       body: JSON.stringify({ event, messages }),
-    }),
+    });
+  }
 };
 
 // ─── Notion Workspace ────────────────────────────────
