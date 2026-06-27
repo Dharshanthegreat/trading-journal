@@ -208,10 +208,10 @@ body.theme-minimal {
   --loss-border:     rgba(223, 46, 80, 0.2);
 
   /* Borders */
-  --border:          #000000;
-  --border-mid:      #000000;
-  --border-strong:   #000000;
-  --border-accent:   #000000;
+  --border:          rgba(0, 0, 0, 0.12);
+  --border-mid:      rgba(0, 0, 0, 0.22);
+  --border-strong:   rgba(0, 0, 0, 0.38);
+  --border-accent:   rgba(0, 0, 0, 0.28);
 }
 
 /* Override purple gradient to solid black in Minimalist theme */

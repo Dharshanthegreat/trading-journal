@@ -428,6 +428,12 @@ body.theme-steep .calendar-cell.loss-day .calendar-trades {
 .chart-card:hover .chart-card-hover-overlay {
   opacity: 1;
 }
+body.theme-minimal .chart-card {
+  border: 2px solid #000000;
+}
+body.theme-minimal .chart-card-img-wrapper {
+  border-bottom: 2px solid #000000;
+}
 .chart-card-info {
   padding: var(--s3) var(--s4);
   display: flex;
