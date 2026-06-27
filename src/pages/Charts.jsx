@@ -236,23 +236,26 @@ const Charts = () => {
       ) : (
         <div className="chart-gallery-grid">
           {chartTrades.map(trade => (
-            <div key={trade.id} className="glass chart-thumb" onClick={() => setLightbox(trade)}>
-              <img src={trade.imageUrl} alt={`${trade.symbol} chart`}/>
-              <div className="chart-thumb-overlay">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#fff', marginBottom: 2 }}>{trade.symbol}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.65)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={10}/>
-                      {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMM d, yyyy') : '—'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                    <span className={`badge ${trade.pnl >= 0 ? 'badge-profit' : 'badge-loss'}`}>
-                      {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
-                    </span>
-                    <ZoomIn size={14} style={{ color: 'rgba(255,255,255,0.7)' }}/>
-                  </div>
+            <div key={trade.id} className="glass chart-card" onClick={() => setLightbox(trade)}>
+              <div className="chart-card-img-wrapper">
+                <img src={trade.imageUrl} alt={`${trade.symbol} chart`}/>
+                <div className="chart-card-hover-overlay">
+                  <ZoomIn size={18}/>
+                </div>
+              </div>
+              <div className="chart-card-info">
+                <div className="chart-card-row">
+                  <span className="chart-card-symbol">{trade.symbol}</span>
+                  <span className={`badge ${trade.pnl >= 0 ? 'badge-profit' : 'badge-loss'}`}>
+                    {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
+                  </span>
+                </div>
+                <div className="chart-card-row">
+                  <span className="chart-card-date">
+                    <Calendar size={11} style={{ opacity: 0.7 }}/>
+                    {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMMM d, yyyy') : '—'}
+                  </span>
+                  {trade.setup && <span className="chart-card-setup">{trade.setup}</span>}
                 </div>
               </div>
             </div>
