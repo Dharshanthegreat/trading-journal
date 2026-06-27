@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { rules as rulesApi, accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  ListTodo, Plus, X, Trash2, Edit2, Check, CheckCircle, AlertTriangle, Shield, Play, Ban, RefreshCw
+  ListTodo, Plus, X, Trash2, Edit2, Check, CheckCircle, AlertTriangle, Shield, Play, Ban, RefreshCw, Percent
 } from 'lucide-react';
 
 const SUGGESTIONS = {
@@ -180,6 +180,7 @@ const TradingRules = () => {
   const totalCount = rules.length;
   const activeCount = rules.filter(r => r.isActive).length;
   const inactiveCount = totalCount - activeCount;
+  const complianceRate = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 100;
 
   // Selected account detail
   const currentAccount = accounts.find(a => String(a.id) === String(selectedAccountId));
@@ -223,7 +224,7 @@ const TradingRules = () => {
       </div>
 
       {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--s4)' }} className="rules-kpi-grid">
         <div className="glass stat-card">
           <div className="stat-label">
             <span style={{ color: 'var(--accent)' }}><ListTodo size={13} /></span> Total Rules
@@ -246,6 +247,16 @@ const TradingRules = () => {
           </div>
           <div className="stat-value" style={{ color: 'var(--text-tertiary)' }}>{inactiveCount}</div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Archived or disabled rules</div>
+        </div>
+
+        <div className="glass stat-card">
+          <div className="stat-label">
+            <span style={{ color: 'var(--accent)' }}><Percent size={13} /></span> Playbook Compliance
+          </div>
+          <div className="stat-value" style={{ color: complianceRate >= 80 ? 'var(--profit)' : (complianceRate >= 50 ? 'var(--warn)' : 'var(--loss)') }}>
+            {complianceRate}%
+          </div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rule adherence index</div>
         </div>
 
         <div className="glass stat-card">
