@@ -114,7 +114,9 @@ const Journal = () => {
     const rawNumbersMatches = text.match(/[0-9]+(?:\.[0-9]+)?/g) || [];
     rawNumbersMatches.forEach(numStr => {
       const num = parseFloat(numStr);
-      if (num > 10) allNumbers.push(numStr);
+      if (num > 10 || (numStr.includes('.') && num > 0.0001)) {
+        allNumbers.push(numStr);
+      }
     });
 
     if (allNumbers.length >= 2) {
@@ -144,27 +146,50 @@ const Journal = () => {
   };
 
   const populateFallbackValues = () => {
-    const mockPrices = [
-      { entry: '18910.50', exit: '18952.75', sl: '18880.00', tp: '18970.00', pnl: '1690.00' },
-      { entry: '5410.25', exit: '5402.75', sl: '5416.00', tp: '5395.00', pnl: '1875.00' },
-      { entry: '78.42', exit: '77.98', sl: '78.20', tp: '79.20', pnl: '-440.00' },
-      { entry: '2382.40', exit: '2394.10', sl: '2375.00', tp: '2400.00', pnl: '1170.00' }
-    ];
+    const symbol = (formData.symbol || '').toUpperCase().trim();
+    let mock = { entry: '18910.50', exit: '18952.75', sl: '18880.00', tp: '18970.00', pnl: '1690.00' }; // Default Index fallback
+
+    if (symbol.includes('XAU') || symbol.includes('GOLD')) {
+      mock = { entry: '2382.40', exit: '2394.10', sl: '2375.00', tp: '2400.00', pnl: '1170.00' };
+    } else if (symbol.includes('JPY')) {
+      mock = { entry: '158.42', exit: '159.28', sl: '157.80', tp: '160.20', pnl: '860.00' };
+    } else if (
+      symbol.includes('EUR') || symbol.includes('GBP') || symbol.includes('USD') || 
+      symbol.includes('AUD') || symbol.includes('CAD') || symbol.includes('CHF') || 
+      symbol.includes('NZD')
+    ) {
+      mock = { entry: '1.08520', exit: '1.08870', sl: '1.08220', tp: '1.09320', pnl: '250.00' };
+    } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
+      mock = { entry: '64250.00', exit: '65120.00', sl: '63800.00', tp: '66500.00', pnl: '870.00' };
+    }
     
-    const mock = mockPrices[Math.floor(Math.random() * mockPrices.length)];
     const now = new Date();
     const entryStr = toNewYorkDatetimeString(new Date(now.getTime() - 45 * 60000));
     const exitStr = toNewYorkDatetimeString(now);
     
     setFormData(prev => {
       const nextData = { ...prev };
-      if (!manuallyEditedRef.current.entryPrice) nextData.entryPrice = mock.entry;
-      if (!manuallyEditedRef.current.exitPrice) nextData.exitPrice = mock.exit;
-      if (!manuallyEditedRef.current.stopLoss) nextData.stopLoss = mock.sl;
-      if (!manuallyEditedRef.current.takeProfit) nextData.takeProfit = mock.tp;
-      if (!manuallyEditedRef.current.entryTime) nextData.entryTime = entryStr;
-      if (!manuallyEditedRef.current.exitTime) nextData.exitTime = exitStr;
-      if (!manuallyEditedRef.current.pnl) nextData.pnl = mock.pnl;
+      if (!manuallyEditedRef.current.entryPrice && (!prev.entryPrice || parseFloat(prev.entryPrice) === 0)) {
+        nextData.entryPrice = mock.entry;
+      }
+      if (!manuallyEditedRef.current.exitPrice && (!prev.exitPrice || parseFloat(prev.exitPrice) === 0)) {
+        nextData.exitPrice = mock.exit;
+      }
+      if (!manuallyEditedRef.current.stopLoss && (!prev.stopLoss || parseFloat(prev.stopLoss) === 0)) {
+        nextData.stopLoss = mock.sl;
+      }
+      if (!manuallyEditedRef.current.takeProfit && (!prev.takeProfit || parseFloat(prev.takeProfit) === 0)) {
+        nextData.takeProfit = mock.tp;
+      }
+      if (!manuallyEditedRef.current.entryTime && !prev.entryTime) {
+        nextData.entryTime = entryStr;
+      }
+      if (!manuallyEditedRef.current.exitTime && !prev.exitTime) {
+        nextData.exitTime = exitStr;
+      }
+      if (!manuallyEditedRef.current.pnl && (!prev.pnl || parseFloat(prev.pnl) === 0)) {
+        nextData.pnl = mock.pnl;
+      }
       return nextData;
     });
   };
@@ -186,16 +211,16 @@ const Journal = () => {
       setFormData(prev => {
         const nextData = { ...prev };
         if (!manuallyEditedRef.current.entryPrice) {
-          nextData.entryPrice = parsedData.entryPrice || prev.entryPrice || '18910.50';
+          nextData.entryPrice = parsedData.entryPrice || prev.entryPrice || '';
         }
         if (!manuallyEditedRef.current.exitPrice) {
-          nextData.exitPrice = parsedData.exitPrice || prev.exitPrice || '18952.75';
+          nextData.exitPrice = parsedData.exitPrice || prev.exitPrice || '';
         }
         if (!manuallyEditedRef.current.stopLoss) {
-          nextData.stopLoss = parsedData.stopLoss || prev.stopLoss || '18880.00';
+          nextData.stopLoss = parsedData.stopLoss || prev.stopLoss || '';
         }
         if (!manuallyEditedRef.current.takeProfit) {
-          nextData.takeProfit = parsedData.takeProfit || prev.takeProfit || '18970.00';
+          nextData.takeProfit = parsedData.takeProfit || prev.takeProfit || '';
         }
         if (!manuallyEditedRef.current.entryTime) {
           nextData.entryTime = parsedData.entryTime || prev.entryTime || toNewYorkDatetimeString(new Date(Date.now() - 45 * 60000));
@@ -204,7 +229,7 @@ const Journal = () => {
           nextData.exitTime = parsedData.exitTime || prev.exitTime || toNewYorkDatetimeString(new Date());
         }
         if (!manuallyEditedRef.current.pnl) {
-          nextData.pnl = parsedData.pnl || prev.pnl || '1690.00';
+          nextData.pnl = parsedData.pnl || prev.pnl || '';
         }
         return nextData;
       });
