@@ -515,12 +515,11 @@ const Mondays = () => {
             const dateStr = formatInNewYork(date.toISOString(), 'yyyy-MM-dd');
             const displayDay = formatInNewYork(date.toISOString(), 'MMM d');
             const isSelected = selectedMonday === dateStr;
-            
             // Query original unfiltered trades to get correct P&L for this day
             const dayPnL = (trades || []).filter(t => {
               const entryTime = t.entryTime || t.entry_time;
               return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
-            }).reduce((acc, t) => acc + (t.pnl || 0), 0);
+            }).reduce((acc, t) => acc + (parseFloat(t.pnl) || 0), 0);
             
             const hasTrades = (trades || []).some(t => {
               const entryTime = t.entryTime || t.entry_time;
@@ -632,8 +631,8 @@ const Mondays = () => {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                        <span className={`badge ${trade.pnl >= 0 ? 'badge-profit' : 'badge-loss'}`}>
-                          {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
+                        <span className={`badge ${parseFloat(trade.pnl) >= 0 ? 'badge-profit' : 'badge-loss'}`}>
+                          {parseFloat(trade.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(trade.pnl)).toFixed(2)}
                         </span>
                         <ZoomIn size={14} style={{ color: 'rgba(255,255,255,0.7)' }}/>
                       </div>
@@ -863,8 +862,8 @@ const Mondays = () => {
                               <td style={{ padding: '10px 4px', color: (trade.confidenceLevel || 5) >= 7 ? 'var(--profit)' : 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>
                                 {trade.confidenceLevel || 5}/10
                               </td>
-                              <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, fontFamily: 'JetBrains Mono', color: trade.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                                {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
+                              <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, fontFamily: 'JetBrains Mono', color: parseFloat(trade.pnl) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                                {parseFloat(trade.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(trade.pnl)).toFixed(2)}
                               </td>
                             </tr>
                           ))}
@@ -1067,8 +1066,8 @@ const Mondays = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
                   <span className={`badge ${lightbox.type === 'Long' ? 'badge-profit' : 'badge-loss'}`}>{lightbox.type}</span>
-                  <span style={{ fontWeight: 700, fontSize: '1.1rem', fontFamily: 'JetBrains Mono', color: lightbox.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                    {lightbox.pnl >= 0 ? '+' : ''}${Math.abs(lightbox.pnl).toFixed(2)}
+                  <span style={{ fontWeight: 700, fontSize: '1.1rem', fontFamily: 'JetBrains Mono', color: parseFloat(lightbox.pnl) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                    {parseFloat(lightbox.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(lightbox.pnl)).toFixed(2)}
                   </span>
                 </div>
               </div>
