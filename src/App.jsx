@@ -7,7 +7,8 @@ import {
   Zap, CalendarDays, NotebookPen, Sun, Moon,
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
-  Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square
+  Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square,
+  ListTodo
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -33,7 +34,8 @@ import TradovateConnect from './pages/TradovateConnect';
 import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
 import Mondays from './pages/Mondays';
-import { ai as aiApi, publicApi, accounts as accountsApi } from './services/api';
+import TradingRules from './pages/TradingRules';
+import { ai as aiApi, publicApi, accounts as accountsApi, rules as rulesApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -1324,6 +1326,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
   const nav = [
     { path: '/dashboard',     icon: <LayoutDashboard size={16}/>, label: 'Dashboard' },
     { path: '/accounts',      icon: <Wallet size={16}/>,          label: 'Accounts' },
+    { path: '/rules',         icon: <ListTodo size={16}/>,        label: 'Trading Rules' },
     { path: '/journal',       icon: <BookOpen size={16}/>,        label: 'Journal' },
     { path: '/calendar',      icon: <CalendarDays size={16}/>,    label: 'Calendar' },
     { path: '/mondays',       icon: <CalendarDays size={16}/>,    label: "Monday's" },
@@ -1462,6 +1465,7 @@ const Header = ({ onMenuToggle }) => {
     '/tradovate': 'Tradovate Connect',
     '/accounts': 'Trading Accounts',
     '/achievements': 'Achievements Wall',
+    '/rules': 'Trading Rules Playbook',
   };
 
   const themeList = [
@@ -1760,6 +1764,7 @@ function AppContent() {
             <Route path="/tradovate" element={<TradovateConnect />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/achievements" element={<Achievements />} />
+            <Route path="/rules" element={<TradingRules />} />
             <Route path="/daily-journal" element={<DailyJournal />} />
             <Route path="/charts" element={<Charts />} />
             <Route path="/mondays" element={<Mondays />} />

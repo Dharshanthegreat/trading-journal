@@ -1371,6 +1371,14 @@ const handleAccounts = async (url, method, body) => {
     if (accountsList.length === beforeLength) throw { status: 404, message: 'Account not found' };
 
     setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    
+    // Cascade delete associated rules locally too
+    try {
+      let rulesList = getStorageItem(`rules_${activeUser.id}`, []);
+      rulesList = rulesList.filter(r => r.accountId !== id);
+      setStorageItem(`rules_${activeUser.id}`, rulesList);
+    } catch (e) {}
+
     return { success: true, message: 'Account deleted successfully' };
   }
 
@@ -1514,6 +1522,85 @@ const handleAchievements = async (url, method, body) => {
     achievements = achievements.filter(a => a.id !== id);
     setStorageItem(`achievements_${activeUser.id}`, achievements);
     return { success: true, message: 'Achievement deleted' };
+  }
+
+  throw { status: 404, message: 'Not Found' };
+};
+
+// 7.5. Trading Rules Handler
+const handleRules = async (url, method, body, queryParams = {}) => {
+  const activeUser = getActiveUser();
+  let rulesList = getStorageItem(`rules_${activeUser.id}`, []);
+
+  // Sync / Seed check
+  const rulesSeeded = localStorage.getItem(`demo_rules_seeded_${activeUser.id}`);
+  if (!rulesSeeded) {
+    const defaultRules = [
+      { id: 1, accountId: 1, ruleText: 'Max daily loss: $500', isActive: true, createdAt: new Date().toISOString() },
+      { id: 2, accountId: 1, ruleText: 'No trading within 10 minutes of high-impact economic news', isActive: true, createdAt: new Date().toISOString() },
+      { id: 3, accountId: 1, ruleText: 'Maximum 3 trades per day', isActive: true, createdAt: new Date().toISOString() },
+      { id: 4, accountId: 2, ruleText: 'Stick to pre-market playbook setups only', isActive: true, createdAt: new Date().toISOString() },
+      { id: 5, accountId: 2, ruleText: 'Scale out 50% of position at 2R target', isActive: true, createdAt: new Date().toISOString() },
+      { id: 6, accountId: 3, ruleText: 'Walk away after 2 consecutive losses', isActive: true, createdAt: new Date().toISOString() },
+      { id: 7, accountId: 3, ruleText: 'Never revenge trade or increase risk size to recover losses', isActive: true, createdAt: new Date().toISOString() }
+    ];
+    rulesList = [...defaultRules, ...rulesList];
+    setStorageItem(`rules_${activeUser.id}`, rulesList);
+    localStorage.setItem(`demo_rules_seeded_${activeUser.id}`, 'true');
+  }
+
+  if (url === '' && method === 'GET') {
+    const { accountId } = queryParams;
+    let filtered = [...rulesList];
+    if (accountId) {
+      filtered = filtered.filter(r => String(r.accountId) === String(accountId));
+    }
+    return filtered;
+  }
+
+  if (url === '' && method === 'POST') {
+    const { ruleText, accountId, isActive } = body;
+    if (!ruleText || !ruleText.trim()) {
+      throw { status: 400, message: 'Rule text is required' };
+    }
+    const newRule = {
+      id: Date.now(),
+      accountId: accountId ? parseInt(accountId) : null,
+      ruleText: ruleText.trim(),
+      isActive: isActive !== undefined ? isActive : true,
+      createdAt: new Date().toISOString()
+    };
+    rulesList = [newRule, ...rulesList];
+    setStorageItem(`rules_${activeUser.id}`, rulesList);
+    return newRule;
+  }
+
+  if (url.startsWith('/') && method === 'PUT') {
+    const id = parseInt(url.slice(1));
+    const { ruleText, isActive, accountId } = body;
+    const idx = rulesList.findIndex(r => r.id === id);
+    if (idx === -1) throw { status: 404, message: 'Rule not found' };
+
+    const updatedRule = {
+      ...rulesList[idx],
+      ruleText: ruleText !== undefined ? ruleText.trim() : rulesList[idx].ruleText,
+      isActive: isActive !== undefined ? isActive : rulesList[idx].isActive,
+      accountId: accountId !== undefined ? (accountId ? parseInt(accountId) : null) : rulesList[idx].accountId
+    };
+
+    rulesList[idx] = updatedRule;
+    setStorageItem(`rules_${activeUser.id}`, rulesList);
+    return updatedRule;
+  }
+
+  if (url.startsWith('/') && method === 'DELETE') {
+    const id = parseInt(url.slice(1));
+    const beforeLength = rulesList.length;
+    rulesList = rulesList.filter(r => r.id !== id);
+    if (rulesList.length === beforeLength) throw { status: 404, message: 'Rule not found' };
+
+    setStorageItem(`rules_${activeUser.id}`, rulesList);
+    return { success: true, message: 'Rule deleted successfully' };
   }
 
   throw { status: 404, message: 'Not Found' };
@@ -2136,6 +2223,10 @@ export const handleRequest = async (fullUrl, options = {}) => {
     if (urlPath.startsWith('/achievements')) {
       const subUrl = urlPath.slice('/achievements'.length);
       return await handleAchievements(subUrl, method, body);
+    }
+    if (urlPath.startsWith('/rules')) {
+      const subUrl = urlPath.slice('/rules'.length);
+      return await handleRules(subUrl, method, body, queryParams);
     }
     if (urlPath.startsWith('/notion')) {
       const subUrl = urlPath.slice('/notion'.length);

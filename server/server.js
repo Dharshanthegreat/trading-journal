@@ -19,6 +19,7 @@ import stoicRoutes from './routes/stoic.js';
 import tradovateRoutes from './routes/tradovate.js';
 import accountsRoutes from './routes/accounts.js';
 import achievementsRoutes from './routes/achievements.js';
+import rulesRoutes from './routes/rules.js';
 import { startNewsAgent } from './utils/news_agent.js';
 import { authenticateToken } from './middleware/auth.js';
 
@@ -128,6 +129,7 @@ app.use('/api/stoic', authenticateToken, stoicRoutes);
 app.use('/api/tradovate', authenticateToken, tradovateRoutes);
 app.use('/api/accounts', authenticateToken, accountsRoutes);
 app.use('/api/achievements', authenticateToken, achievementsRoutes);
+app.use('/api/rules', authenticateToken, rulesRoutes);
 
 // Serve static client assets in production (unified full-stack deployment)
 const distDir = path.resolve(__dirname, '../dist');

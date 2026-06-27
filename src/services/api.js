@@ -333,6 +333,26 @@ export const achievements = {
     request(`/achievements/${id}`, { method: 'DELETE' }),
 };
 
+// ─── Trading Rules ───────────────────────────────────
+export const rules = {
+  list: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/rules${qs ? `?${qs}` : ''}`);
+  },
+  create: (data) =>
+    request('/rules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id, data) =>
+    request(`/rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id) =>
+    request(`/rules/${id}`, { method: 'DELETE' }),
+};
+
 // ─── Showcase Public Api ─────────────────────────────
 export const publicApi = {
   getDashboard: (token) => request(`/public/dashboard/${token}`),

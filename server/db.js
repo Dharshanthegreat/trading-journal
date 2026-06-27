@@ -145,6 +145,15 @@ async function initDB() {
         notes TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS trading_rules (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
+        rule_text TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
     `);
 
     // Create indexes
@@ -159,6 +168,7 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_economic_news_date ON economic_news(date);
       CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id);
       CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id);
+      CREATE INDEX IF NOT EXISTS idx_trading_rules_user_account ON trading_rules(user_id, account_id);
       CREATE INDEX IF NOT EXISTS idx_users_dashboard_share_token ON users(dashboard_share_token);
     `);
 
