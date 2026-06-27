@@ -1085,8 +1085,34 @@ const Mondays = () => {
         <div className="modal-overlay" style={{ padding: 'var(--s8)' }} onClick={() => setLightbox(null)}>
           <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }} onClick={e => e.stopPropagation()}>
             <button className="modal-close glass" onClick={() => handleDeleteTrade(lightbox.id)}
-              style={{ position: 'absolute', top: -40, left: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)', background: 'var(--loss-soft)', borderColor: 'var(--loss-border)', color: 'var(--loss)' }}>
-              <Trash2 size={14}/> <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Delete Chart</span>
+              style={{ 
+                position: 'absolute', 
+                top: -40, 
+                left: 0, 
+                padding: 'var(--s2) var(--s3)', 
+                borderRadius: 'var(--r-md)', 
+                background: '#000000', 
+                border: '1px solid rgba(255,255,255,0.15)', 
+                color: '#ffffff', 
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#111111';
+                e.currentTarget.style.color = '#f87171';
+                e.currentTarget.style.borderColor = 'rgba(248,113,113,0.4)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#000000';
+                e.currentTarget.style.color = '#ffffff';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+              }}
+            >
+              <Trash2 size={13}/>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Delete Chart</span>
             </button>
             <button className="modal-close glass" onClick={() => setLightbox(null)}
               style={{ position: 'absolute', top: -40, right: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)' }}>
