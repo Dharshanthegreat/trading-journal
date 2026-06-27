@@ -1114,7 +1114,7 @@ const Journal = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
                     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: '#0e1017', border: '1px solid var(--border)', aspectRatio: '16/10' }}>
                       <img src={currentSelectedTrade.imageUrls[activeImageIdx]} alt="Trade Chart" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button onClick={() => setZoomImage(currentSelectedTrade.imageUrls[activeImageIdx])} className="btn btn-sm btn-ghost" style={{ position: 'absolute', right: 8, bottom: 8, background: 'var(--surface-glass)', padding: '4px 8px', fontSize: '0.68rem', gap: '4px', color: 'navy' }}>
+                      <button onClick={() => setZoomImage(currentSelectedTrade.imageUrls[activeImageIdx])} className="btn btn-sm" style={{ position: 'absolute', right: 8, bottom: 8, background: '#ffffff', padding: '4px 8px', fontSize: '0.68rem', gap: '4px', color: '#000000', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>
                         <ZoomIn size={12}/> View Chart
                       </button>
                     </div>
