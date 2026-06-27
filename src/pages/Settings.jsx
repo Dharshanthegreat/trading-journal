@@ -640,6 +640,8 @@ const Settings = () => {
             { id: 'sand-pine', name: 'Sand Pine', desc: 'Warm Ivory & Cyprus', icon: <Leaf size={14} />, bg: '#F0EDE4', accent: '#004741' },
             { id: 'mantis-green', name: 'Mantis Green', desc: 'Mantis & Milk', icon: <Leaf size={14} />, bg: '#59C749', accent: '#FFFDF1' },
             { id: 'milky-mantis', name: 'Milky Mantis', desc: 'Milk & Mantis', icon: <SunDim size={14} />, bg: '#FFFDF1', accent: '#59C749' },
+            { id: 'bridal-burgundy', name: 'Bridal Burgundy', desc: 'Wine Red & Peach', icon: <Trophy size={14} />, bg: '#741A2F', accent: '#FFC6A8' },
+            { id: 'skin-tone', name: 'Skin Tone', desc: 'Peach & Wine Red', icon: <Palette size={14} />, bg: '#FFC6A8', accent: '#741A2F' },
           ].map(t => (
             <div
               key={t.id}

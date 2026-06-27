@@ -1180,6 +1180,7 @@ const handleAccounts = async (url, method, body) => {
 
       return {
         ...acc,
+        notes: acc.notes || '',
         currentBalance,
         totalPnL,
         tradesCount
@@ -1189,7 +1190,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, balance, currency, status, notionLink } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const newAccount = {
@@ -1203,6 +1204,7 @@ const handleAccounts = async (url, method, body) => {
       currency: currency || 'USD',
       status: status || 'Active',
       notionLink: notionLink || '',
+      notes: notes || '',
       createdAt: new Date().toISOString()
     };
     
@@ -1213,7 +1215,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, balance, currency, status, notionLink } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1224,7 +1226,8 @@ const handleAccounts = async (url, method, body) => {
       startingBalance: balance !== undefined ? parseFloat(balance) : accountsList[idx].startingBalance,
       currency: currency !== undefined ? currency : accountsList[idx].currency,
       status: status !== undefined ? status : accountsList[idx].status,
-      notionLink: notionLink !== undefined ? notionLink : accountsList[idx].notionLink
+      notionLink: notionLink !== undefined ? notionLink : accountsList[idx].notionLink,
+      notes: notes !== undefined ? notes : accountsList[idx].notes
     };
 
     accountsList[idx] = updatedAccount;

@@ -170,6 +170,7 @@ async function initDB() {
       ALTER TABLE achievements ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS account_id INTEGER;
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS notion_link TEXT DEFAULT '';
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
     `);
 
     await client.query('COMMIT');

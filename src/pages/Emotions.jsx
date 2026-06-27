@@ -41,6 +41,7 @@ const Emotions = () => {
   const { trades, fetchTrades, loading } = useTrades();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [hoveredPoint, setHoveredPoint] = useState(null);
 
   // Filters State
   const [startDate, setStartDate] = useState('');
@@ -658,74 +659,43 @@ const Emotions = () => {
               pointerEvents: 'none', zIndex: 0
             }} />
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s3)', position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s4)', position: 'relative', zIndex: 1 }}>
               <div>
-                <h3 style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: eqCurveColor, boxShadow: `0 0 8px ${eqCurveColor}`, animation: 'pulse 2s infinite' }} />
-                  Performance Over Time
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  ACCOUNT EQUITY
                 </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.68rem', opacity: 0.7 }}>Equity growth from ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting balance</p>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>
-                  ${(startBalance + netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                <p style={{ color: 'var(--text-tertiary)', fontSize: '0.68rem' }}>
+                  Balance growth from a ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting point (filtered trades)
+                </p>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px', lineHeight: 1 }}>
+                  ${(hoveredPoint !== null ? hoveredPoint : (startBalance + netPnL)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </div>
-                <div style={{
-                  fontSize: '0.75rem', fontWeight: 700, fontFamily: 'JetBrains Mono',
-                  color: eqCurveColor,
-                  display: 'flex', alignItems: 'center', gap: '4px'
-                }}>
-                  {netPnL >= 0 ? '▲' : '▼'} {netPnL >= 0 ? '+' : ''}${netPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                    ({startBalance > 0 ? ((netPnL / startBalance) * 100).toFixed(1) : '0.0'}%)
-                  </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', lineHeight: 1 }}>
+                  ${(startBalance + netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </div>
               </div>
             </div>
-
-            {/* High / Low / Drawdown Badges */}
-            {filteredTrades.length > 0 && (
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', fontSize: '0.65rem' }}>
-                  <TrendingUp size={11} style={{ color: '#34d399' }} />
-                  <span style={{ color: 'var(--text-muted)' }}>Peak:</span>
-                  <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#34d399' }}>${equityExtremes.high.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span style={{ color: 'var(--text-muted)', opacity: 0.6 }}>{equityExtremes.highDate}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'rgba(248, 113, 113, 0.08)', border: '1px solid rgba(248, 113, 113, 0.2)', fontSize: '0.65rem' }}>
-                  <TrendingDown size={11} style={{ color: '#f87171' }} />
-                  <span style={{ color: 'var(--text-muted)' }}>Trough:</span>
-                  <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#f87171' }}>${equityExtremes.low.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span style={{ color: 'var(--text-muted)', opacity: 0.6 }}>{equityExtremes.lowDate}</span>
-                </div>
-                {maxDrawdown > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'rgba(251, 191, 36, 0.08)', border: '1px solid rgba(251, 191, 36, 0.2)', fontSize: '0.65rem' }}>
-                    <Target size={11} style={{ color: '#fbbf24' }} />
-                    <span style={{ color: 'var(--text-muted)' }}>Max DD:</span>
-                    <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#fbbf24' }}>-${maxDrawdown.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  </div>
-                )}
-              </div>
-            )}
             
             <div style={{ width: '100%', height: 260, position: 'relative', zIndex: 1 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={equityCurveData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <AreaChart 
+                  data={equityCurveData} 
+                  margin={{ top: 10, right: 10, bottom: 0, left: -20 }}
+                  onMouseMove={(state) => {
+                    if (state && state.activePayload && state.activePayload.length > 0) {
+                      setHoveredPoint(state.activePayload[0].payload.equity);
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
                   <defs>
                     <linearGradient id="eqGradientPsych" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={eqCurveColor} stopOpacity={0.30}/>
                       <stop offset="35%" stopColor={eqCurveColor} stopOpacity={0.10}/>
                       <stop offset="100%" stopColor={eqCurveColor} stopOpacity={0.0}/>
                     </linearGradient>
-                    <linearGradient id="eqStrokeGradPsych" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor={eqCurveColorDim}/>
-                      <stop offset="50%" stopColor={eqCurveColor}/>
-                      <stop offset="100%" stopColor={eqCurveColor}/>
-                    </linearGradient>
-                    <filter id="eqGlowPsych">
-                      <feGaussianBlur stdDeviation="4" result="blur"/>
-                      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-                    </filter>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
                   <XAxis dataKey="date" {...axisProps} tick={{ fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' }} />
@@ -735,40 +705,23 @@ const Emotions = () => {
                     tickFormatter={(val) => `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                     tick={{ fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' }}
                   />
-                  <ReferenceLine y={startBalance} stroke="var(--border-strong)" strokeDasharray="4 4" strokeOpacity={0.6} label={{ value: 'Start', position: 'right', fill: 'var(--text-muted)', fontSize: 8 }} />
+                  <ReferenceLine 
+                    y={startBalance} 
+                    stroke="var(--border-strong)" 
+                    strokeDasharray="4 4" 
+                    strokeOpacity={0.6} 
+                    label={{ value: 'Start', position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 9, offset: 10, style: { transform: 'translateY(-10px)' } }} 
+                  />
                   <Tooltip content={<EquityTooltip />} />
-                  {/* Baseline fill — subtle grey area to show start level */}
-                  <Area 
-                    type="monotone" 
-                    dataKey="baseline" 
-                    stroke="none"
-                    fill="var(--border)" 
-                    fillOpacity={0.08}
-                    dot={false}
-                    activeDot={false}
-                    isAnimationActive={false}
-                  />
-                  {/* Glow layer — rendered behind the main line */}
-                  <Area 
-                    type="monotone" 
-                    dataKey="equity" 
-                    stroke={eqCurveColor}
-                    strokeWidth={7} 
-                    strokeOpacity={0.12}
-                    fill="none" 
-                    dot={false}
-                    activeDot={false}
-                    isAnimationActive={false}
-                  />
                   {/* Main equity line with gradient fill */}
                   <Area 
                     type="monotone" 
                     dataKey="equity" 
-                    stroke="url(#eqStrokeGradPsych)" 
-                    strokeWidth={2.5} 
+                    stroke={eqCurveColor} 
+                    strokeWidth={2} 
                     fill="url(#eqGradientPsych)" 
                     dot={false}
-                    activeDot={{ r: 5, fill: eqCurveColor, stroke: '#0a0b0f', strokeWidth: 2 }}
+                    activeDot={{ r: 5, fill: eqCurveColor, stroke: 'var(--bg-primary)', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

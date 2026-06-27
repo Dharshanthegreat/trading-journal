@@ -1476,6 +1476,8 @@ const Header = ({ onMenuToggle }) => {
     { id: 'sand-pine', name: 'Sand Pine', icon: <Leaf size={13} />, bg: '#F0EDE4', accent: '#004741' },
     { id: 'mantis-green', name: 'Mantis Green', icon: <Leaf size={13} />, bg: '#59C749', accent: '#FFFDF1' },
     { id: 'milky-mantis', name: 'Milky Mantis', icon: <SunDim size={13} />, bg: '#FFFDF1', accent: '#59C749' },
+    { id: 'bridal-burgundy', name: 'Bridal Burgundy', icon: <Trophy size={13} />, bg: '#741A2F', accent: '#FFC6A8' },
+    { id: 'skin-tone', name: 'Skin Tone', icon: <Palette size={13} />, bg: '#FFC6A8', accent: '#741A2F' },
   ];
 
   const currentThemeObj = themeList.find(t => t.id === theme) || themeList[0];

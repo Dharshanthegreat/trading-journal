@@ -19,10 +19,13 @@ const Accounts = () => {
     balance: '10000',
     currency: 'USD',
     status: 'Active',
-    notionLink: ''
+    notionLink: '',
+    notes: ''
   });
   const [editingLinkId, setEditingLinkId] = useState(null);
   const [tempLink, setTempLink] = useState('');
+  const [editingNotesId, setEditingNotesId] = useState(null);
+  const [tempNotes, setTempNotes] = useState('');
   const [activePlaybook, setActivePlaybook] = useState(null);
   const [loadingPlaybook, setLoadingPlaybook] = useState(false);
   const [playbookError, setPlaybookError] = useState('');
@@ -54,7 +57,8 @@ const Accounts = () => {
       balance: '10000',
       currency: 'USD',
       status: 'Active',
-      notionLink: ''
+      notionLink: '',
+      notes: ''
     });
     setError('');
   };
@@ -67,7 +71,8 @@ const Accounts = () => {
       balance: String(acc.startingBalance),
       currency: acc.currency,
       status: acc.status,
-      notionLink: acc.notionLink || ''
+      notionLink: acc.notionLink || '',
+      notes: acc.notes || ''
     });
     setShowForm(true);
   };
@@ -89,7 +94,8 @@ const Accounts = () => {
           balance: parseFloat(formData.balance) || 0,
           currency: formData.currency,
           status: formData.status,
-          notionLink: formData.notionLink
+          notionLink: formData.notionLink,
+          notes: formData.notes
         });
       } else {
         await accountsApi.create({
@@ -98,7 +104,8 @@ const Accounts = () => {
           balance: parseFloat(formData.balance) || 0,
           currency: formData.currency,
           status: formData.status,
-          notionLink: formData.notionLink
+          notionLink: formData.notionLink,
+          notes: formData.notes
         });
       }
       handleCloseForm();
@@ -125,13 +132,40 @@ const Accounts = () => {
         balance: account.startingBalance,
         currency: account.currency,
         status: account.status,
-        notionLink: tempLink.trim()
+        notionLink: tempLink.trim(),
+        notes: account.notes
       });
       setEditingLinkId(null);
       fetchAccounts();
     } catch (err) {
       console.error('Failed to update account link:', err);
       setError(err.message || 'Failed to update Notion Link');
+    }
+  };
+
+  const startEditNotes = (acc) => {
+    setEditingNotesId(acc.id);
+    setTempNotes(acc.notes || '');
+  };
+
+  const saveNotes = async (id) => {
+    try {
+      const account = accounts.find(a => a.id === id);
+      if (!account) return;
+      await accountsApi.update(id, {
+        accountName: account.accountName,
+        accountType: account.accountType,
+        balance: account.startingBalance,
+        currency: account.currency,
+        status: account.status,
+        notionLink: account.notionLink,
+        notes: tempNotes.trim()
+      });
+      setEditingNotesId(null);
+      fetchAccounts();
+    } catch (err) {
+      console.error('Failed to update account notes:', err);
+      setError(err.message || 'Failed to update Account Notes');
     }
   };
 
@@ -499,6 +533,53 @@ const Accounts = () => {
                   )}
                 </div>
 
+                {/* Account Notes Integration */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '2px' }}>
+                  {editingNotesId === acc.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <textarea
+                        className="input"
+                        style={{ fontSize: '0.65rem', padding: '6px', minHeight: '52px', resize: 'vertical', fontFamily: 'inherit', background: 'var(--bg-tertiary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-md)', width: '100%' }}
+                        placeholder="Add account rules, notes, strategy..."
+                        value={tempNotes}
+                        onChange={e => setTempNotes(e.target.value)}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
+                        <button onClick={() => saveNotes(acc.id)} className="btn btn-primary" style={{ padding: '2px 8px', fontSize: '0.6rem', height: '22px' }}>
+                          Save
+                        </button>
+                        <button onClick={() => setEditingNotesId(null)} className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: '0.6rem', height: '22px' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : acc.notes ? (
+                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--r-md)', padding: '6px 8px', border: '1px solid var(--border-mid)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Account Notes</span>
+                        <button 
+                          onClick={() => startEditNotes(acc)} 
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.7, padding: 0, fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center' }} 
+                          title="Edit Notes"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                      <p style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                        {acc.notes}
+                      </p>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => startEditNotes(acc)} 
+                      className="btn btn-sm btn-ghost" 
+                      style={{ width: '100%', padding: '4px', fontSize: '0.62rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-md)' }}
+                    >
+                      + Add Account Notes
+                    </button>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', paddingTop: '4px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Coins size={11} /> {acc.currency}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CalendarDays size={11} /> Since {acc.createdAt ? acc.createdAt.split(' ')[0] : '—'}</span>
@@ -563,6 +644,17 @@ const Accounts = () => {
                     placeholder="e.g. https://notion.so/my-playbook"
                     value={formData.notionLink}
                     onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Notes (Optional)</label>
+                  <textarea
+                    className="input"
+                    style={{ minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.78rem' }}
+                    placeholder="e.g. Trading plan, rules, daily limits..."
+                    value={formData.notes}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
 

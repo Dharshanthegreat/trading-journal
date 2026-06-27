@@ -27,6 +27,7 @@ router.get('/', async (req, res) => {
         currency: acc.currency || 'USD',
         status: acc.status || 'Active',
         notionLink: acc.notion_link || '',
+        notes: acc.notes || '',
         createdAt: acc.created_at,
       };
     }));
@@ -41,7 +42,7 @@ router.get('/', async (req, res) => {
 // ─── Create Account ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status, notionLink } = req.body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes } = req.body;
     const userId = req.user.id;
 
     if (!accountName) {
@@ -54,10 +55,10 @@ router.post('/', async (req, res) => {
     const accStatus = status || 'Active';
 
     const result = await db.query(`
-      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '']);
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '']);
 
     const newAccount = result.rows[0];
     res.status(201).json({
@@ -71,6 +72,7 @@ router.post('/', async (req, res) => {
       currency: newAccount.currency,
       status: newAccount.status,
       notionLink: newAccount.notion_link || '',
+      notes: newAccount.notes || '',
       createdAt: newAccount.created_at,
     });
   } catch (err) {
@@ -82,7 +84,7 @@ router.post('/', async (req, res) => {
 // ─── Update Account ────────────────────────────────────
 router.put('/:id', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status, notionLink } = req.body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes } = req.body;
     const accountId = req.params.id;
     const userId = req.user.id;
 
@@ -98,10 +100,11 @@ router.put('/:id', async (req, res) => {
           balance = COALESCE($3, balance),
           currency = COALESCE($4, currency),
           status = COALESCE($5, status),
-          notion_link = COALESCE($6, notion_link)
-      WHERE id = $7 AND user_id = $8
+          notion_link = COALESCE($6, notion_link),
+          notes = COALESCE($7, notes)
+      WHERE id = $8 AND user_id = $9
       RETURNING *
-    `, [accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, accountId, userId]);
+    `, [accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, notes, accountId, userId]);
 
     const updatedAccount = result.rows[0];
     res.json({
@@ -112,6 +115,7 @@ router.put('/:id', async (req, res) => {
       currency: updatedAccount.currency,
       status: updatedAccount.status,
       notionLink: updatedAccount.notion_link || '',
+      notes: updatedAccount.notes || '',
       createdAt: updatedAccount.created_at,
     });
   } catch (err) {

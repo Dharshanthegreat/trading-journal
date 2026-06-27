@@ -1407,4 +1407,152 @@ body.theme-milky-mantis div[style*="linear-gradient(90deg, var(--accent), #a78bf
 }
 
 
+/* ═══ BRIDAL BURGUNDY (VIBRANT BURGUNDY DARK) THEME OVERRIDES ═══ */
+body.theme-bridal-burgundy {
+  --bg-primary:      #500b1a;
+  --bg-secondary:    #741A2F;
+  --bg-tertiary:     #38040f;
+  --bg-elevated:     #611223;
+  --bg-hover:        #852239;
+  --bg-active:       #962c44;
+
+  /* Surfaces */
+  --surface:         rgba(255, 255, 255, 0.15);
+  --surface-hover:   rgba(255, 255, 255, 0.35);
+  --surface-glass:   rgba(255, 198, 168, 0.04);
+  --surface-glass-h: rgba(255, 198, 168, 0.08);
+
+  /* Text */
+  --text-primary:    #FFC6A8;
+  --text-secondary:  rgba(255, 198, 168, 0.85);
+  --text-tertiary:   rgba(255, 198, 168, 0.65);
+  --text-muted:      rgba(255, 198, 168, 0.45);
+
+  /* Accent */
+  --accent:          #FFC6A8;
+  --accent-hover:    #ffffff;
+  --accent-soft:     rgba(255, 198, 168, 0.08);
+  --accent-glow:     rgba(255, 198, 168, 0.25);
+
+  /* Status */
+  --profit:          #34d399;
+  --profit-soft:     rgba(52, 211, 153, 0.12);
+  --profit-border:   rgba(52, 211, 153, 0.25);
+  --loss:            #fca5a5;
+  --loss-soft:       rgba(252, 165, 165, 0.12);
+  --loss-border:     rgba(252, 165, 165, 0.25);
+
+  /* Borders */
+  --border:          rgba(255, 198, 168, 0.08);
+  --border-mid:      rgba(255, 198, 168, 0.15);
+  --border-strong:   rgba(255, 198, 168, 0.25);
+  --border-accent:   rgba(255, 198, 168, 0.25);
+
+  /* Shadows */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg:  0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-xl:  0 16px 48px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 24px rgba(255, 198, 168, 0.1);
+}
+
+body.theme-bridal-burgundy .btn-primary {
+  background: #FFC6A8 !important;
+  color: #741A2F !important;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+body.theme-bridal-burgundy .btn-primary:hover {
+  background: #ffffff !important;
+  color: #611223 !important;
+}
+body.theme-bridal-burgundy .badge-accent {
+  color: #FFC6A8 !important;
+}
+
+body.theme-bridal-burgundy .logo-icon,
+body.theme-bridal-burgundy .sidebar-avatar,
+body.theme-bridal-burgundy .header-avatar,
+body.theme-bridal-burgundy .progress-fill,
+body.theme-bridal-burgundy div[style*="linear-gradient(135deg, var(--accent), #a78bfa)"],
+body.theme-bridal-burgundy div[style*="linear-gradient(90deg, var(--accent), #a78bfa)"] {
+  background: linear-gradient(135deg, var(--accent), #741A2F) !important;
+}
+
+
+/* ═══ SKIN TONE (WARM PEACH LIGHT) THEME OVERRIDES ═══ */
+body.theme-skin-tone {
+  --bg-primary:      #FFC6A8;
+  --bg-secondary:    #ebb496;
+  --bg-tertiary:     #dda384;
+  --bg-elevated:     #ffffff;
+  --bg-hover:        #cca18a;
+  --bg-active:       #be947e;
+
+  /* Surfaces */
+  --surface:         rgba(255, 255, 255, 0.7);
+  --surface-hover:   rgba(255, 255, 255, 0.9);
+  --surface-glass:   rgba(116, 26, 47, 0.03);
+  --surface-glass-h: rgba(116, 26, 47, 0.06);
+
+  /* Text */
+  --text-primary:    #741A2F;
+  --text-secondary:  rgba(116, 26, 47, 0.82);
+  --text-tertiary:   rgba(116, 26, 47, 0.6);
+  --text-muted:      rgba(116, 26, 47, 0.4);
+
+  /* Accent */
+  --accent:          #741A2F;
+  --accent-hover:    #611223;
+  --accent-soft:     rgba(116, 26, 47, 0.08);
+  --accent-glow:     rgba(116, 26, 47, 0.15);
+
+  /* Status */
+  --profit:          #085b3f;
+  --profit-soft:     rgba(8, 91, 63, 0.1);
+  --profit-border:   rgba(8, 91, 63, 0.2);
+  --loss:            #b91c1c;
+  --loss-soft:       rgba(185, 28, 28, 0.1);
+  --loss-border:     rgba(185, 28, 28, 0.2);
+
+  /* Borders */
+  --border:          rgba(116, 26, 47, 0.08);
+  --border-mid:      rgba(116, 26, 47, 0.15);
+  --border-strong:   rgba(116, 26, 47, 0.25);
+  --border-accent:   rgba(116, 26, 47, 0.18);
+
+  /* Shadows */
+  --shadow-xs:  0 1px 2px rgba(116, 26, 47, 0.1);
+  --shadow-sm:  0 2px 8px rgba(116, 26, 47, 0.08);
+  --shadow-md:  0 4px 16px rgba(116, 26, 47, 0.12);
+  --shadow-lg:  0 8px 32px rgba(116, 26, 47, 0.15);
+  --shadow-xl:  0 16px 48px rgba(116, 26, 47, 0.2);
+  --shadow-glow: 0 0 24px rgba(116, 26, 47, 0.05);
+}
+
+body.theme-skin-tone .btn-primary {
+  background: #741A2F !important;
+  color: #FFC6A8 !important;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+body.theme-skin-tone .btn-primary:hover {
+  background: #611223 !important;
+  color: #FFC6A8 !important;
+}
+body.theme-skin-tone .badge-accent {
+  color: #741A2F !important;
+}
+
+body.theme-skin-tone .logo-icon,
+body.theme-skin-tone .sidebar-avatar,
+body.theme-skin-tone .header-avatar,
+body.theme-skin-tone .progress-fill,
+body.theme-skin-tone div[style*="linear-gradient(135deg, var(--accent), #a78bfa)"],
+body.theme-skin-tone div[style*="linear-gradient(90deg, var(--accent), #a78bfa)"] {
+  background: linear-gradient(135deg, var(--accent), #ebb496) !important;
+}
+
+
 
