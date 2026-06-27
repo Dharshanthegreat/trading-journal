@@ -79,6 +79,7 @@ const AiCoach = () => {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasApiKey] = useState(() => !!localStorage.getItem('nvidia_api_key'));
   const chatBottomRef = useRef(null);
 
   // Sync initial stats
@@ -339,11 +340,12 @@ How is your trading session going today? Feel free to ask me questions like:
           </div>
           <span style={{
             fontSize: '0.62rem',
-            color: 'var(--text-muted)',
+            color: hasApiKey ? 'var(--accent)' : 'var(--text-muted)',
             textTransform: 'uppercase',
-            letterSpacing: '0.04em'
+            letterSpacing: '0.04em',
+            fontWeight: hasApiKey ? 600 : 400
           }}>
-            Offline Analytics Model
+            {hasApiKey ? 'NVIDIA Llama-3.1-Nemotron-70B (Online)' : 'Offline Analytics Model'}
           </span>
         </div>
 

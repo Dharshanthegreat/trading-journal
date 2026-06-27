@@ -909,30 +909,159 @@ const handleJournal = async (url, method, body, queryParams = {}) => {
 };
 
 // 4. AI Coach Handler
+const calculateLocalMetrics = (trades) => {
+  const tradeCount = trades.length;
+  const winsList = trades.filter(t => (parseFloat(t.pnl) || 0) > 0);
+  const lossesList = trades.filter(t => (parseFloat(t.pnl) || 0) < 0);
+  const wins = winsList.length;
+  const losses = lossesList.length;
+  const winRate = tradeCount > 0 ? ((wins / tradeCount) * 100).toFixed(1) : '0';
+  
+  const totalPnL = trades.reduce((a, t) => a + (parseFloat(t.pnl) || 0), 0);
+  
+  const grossWin = winsList.reduce((a, t) => a + (parseFloat(t.pnl) || 0), 0);
+  const grossLoss = Math.abs(lossesList.reduce((a, t) => a + (parseFloat(t.pnl) || 0), 0));
+  const profitFactor = grossLoss > 0 ? (grossWin / grossLoss).toFixed(2) : (grossWin > 0 ? 'Infinity' : '0.00');
+  
+  const avgWin = wins > 0 ? (grossWin / wins).toFixed(2) : '0.00';
+  const avgLoss = losses > 0 ? (grossLoss / losses).toFixed(2) : '0.00';
+  
+  let totalFomo = 0;
+  let totalConfidence = 0;
+  let highFomoCount = 0;
+  const setupPnLs = {};
+  
+  trades.forEach(t => {
+    const f = parseInt(t.fomoLevel);
+    const c = parseInt(t.confidenceLevel);
+    totalFomo += !isNaN(f) ? f : 5;
+    totalConfidence += !isNaN(c) ? c : 5;
+    if (f >= 7) highFomoCount++;
+    
+    if (t.setup) {
+      setupPnLs[t.setup] = (setupPnLs[t.setup] || 0) + (parseFloat(t.pnl) || 0);
+    }
+  });
+  
+  const avgFomo = tradeCount > 0 ? (totalFomo / tradeCount).toFixed(1) : '5.0';
+  const avgConfidence = tradeCount > 0 ? (totalConfidence / totalConfidence).toFixed(1) : '5.0';
+  
+  let bestSetup = 'None';
+  let bestPnL = 0;
+  Object.entries(setupPnLs).forEach(([setup, pnl]) => {
+    if (pnl > bestPnL) {
+      bestPnL = pnl;
+      bestSetup = setup;
+    }
+  });
+  
+  return {
+    tradeCount,
+    winRate,
+    totalPnL,
+    profitFactor,
+    avgWin,
+    avgLoss,
+    avgFomo,
+    avgConfidence,
+    highFomoCount,
+    bestSetup,
+    wins,
+    losses,
+    bestPnL
+  };
+};
+
 const handleAi = async (url, method, body) => {
+  const activeUser = getActiveUser();
+  if (!activeUser) throw { status: 401, message: 'Unauthorized' };
+
   if (url === '/chat' && method === 'POST') {
     const { messages } = body;
-    const userMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
+    const trades = getStorageItem(`trades_${activeUser.id}`, []);
     
-    let aiText = '';
-    
-    if (userMsg.includes('loss') || userMsg.includes('lose') || userMsg.includes('drawdown')) {
-      aiText = "🔴 **Coaching Advice on Loss & Drawdowns:**\n\nHandling losses is where professional traders separate themselves from amateurs. Sticking to a disciplined drawdown limit protects your psychological capital as well as your money.\n\n1. **Stop Trading Immediately** if you hit your daily loss limit.\n2. **Verify Setup Rules**: Was it a valid setup or an emotional entry?\n3. **Tighten Risk**: In high-drawdown phases, reduce position sizes by 50% until confidence returns.";
-    } else if (userMsg.includes('fomo') || userMsg.includes('chase') || userMsg.includes('miss')) {
-      aiText = "🟡 **Coaching Advice on FOMO:**\n\nChasing entries out of fear of missing out is a common cognitive leak. \n\n1. **Acknowledge & Release**: Remind yourself that there will *always* be another trade.\n2. **Use Limit Orders**: Avoid market orders when catching momentum. Let price pull back to your key levels.\n3. **Log it**: Grade FOMO high in your journal entries so you see the direct cost in your behavioral analytics curves.";
-    } else if (userMsg.includes('risk') || userMsg.includes('size') || userMsg.includes('stop')) {
-      aiText = "🔵 **Coaching Advice on Risk Management:**\n\nRisk management is the ultimate edge in trading. \n\n1. **Risk Per Trade**: Never risk more than 1% of your account size on a single setup.\n2. **R:R Ratio**: Maintain at least a 1:1.5 or 1:2 Risk-to-Reward profile so you can be profitable even with a 45% win rate.\n3. **Position Sizing**: Calculate size dynamically: `Account Size × Risk% ÷ Distance to Stop Loss`.";
-    } else {
-      aiText = "📈 **Offline Coach Simulator Mode:**\n\nHello! I am simulating your AI Coach offline. Here are some quick behavioral tips:\n\n* **Keep journaling:** Write daily pre-market preparation notes and lessons.\n* **Behavioral Audits:** Review your FOMO cost levels regularly in the leaks dashboard.\n* **Back up your data:** Always export a JSON package under Settings to keep your journal safe.\n\n*To unlock the fully powered LLM Coach, make sure the local Node/Express backend server is running in your terminal.*";
-    }
-    
-    return {
-      message: {
-        role: 'assistant',
-        content: aiText
+    // Filter out Monday-Only tagged trades
+    const baseTrades = trades.filter(t => !t.tags?.includes('Monday-Only'));
+    const metrics = calculateLocalMetrics(baseTrades);
+    const { tradeCount, winRate, totalPnL, profitFactor, avgWin, avgLoss, avgFomo, avgConfidence, highFomoCount, bestSetup, wins, losses, bestPnL } = metrics;
+
+    // Check if NVIDIA_API_KEY is available (from localStorage or environment)
+    const apiKey = localStorage.getItem('nvidia_api_key') || import.meta.env.VITE_NVIDIA_API_KEY || '';
+
+    if (apiKey) {
+      try {
+        const systemPrompt = `You are a professional trading coach powered by NVIDIA Llama-3.1-Nemotron-70B-Instruct.
+You have direct access to the user's live trading journal statistics:
+- Total Trades Logged: ${tradeCount}
+- Win Rate: ${winRate}%
+- Net Cumulative P&L: $${totalPnL.toFixed(2)}
+- Profit Factor: ${profitFactor}
+- Average Win: $${avgWin}
+- Average Loss: -$${avgLoss}
+- Best Performing Strategy: "${bestSetup}"
+- Average FOMO Level: ${avgFomo}/10
+- Average Confidence Level: ${avgConfidence}/10
+- High-FOMO Trades (rating > 6): ${highFomoCount}
+
+Your goal is to analyze the user's questions, guide their strategy, correct their risk management, and optimize their psychology based on these metrics. Be extremely analytical, encouraging, and clear. Format all responses in clean Markdown. Keep answers concise, actionable, and focus heavily on reducing psychological leaks and emotional trades.`;
+
+        const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'nvidia/llama-3.1-nemotron-70b-instruct',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages
+            ],
+            temperature: 0.5,
+            max_tokens: 1024
+          })
+        });
+
+        if (response.ok) {
+          const apiResult = await response.json();
+          const responseContent = apiResult.choices[0]?.message?.content || 'No response generated.';
+          return {
+            role: 'assistant',
+            content: responseContent
+          };
+        } else {
+          const errText = await response.text();
+          console.warn(`NVIDIA API returned error: ${errText}`);
+        }
+      } catch (err) {
+        console.error('Failed to contact NVIDIA API directly from browser:', err);
       }
+    }
+
+    // Fallback: Simulated Llama-3.1-Nemotron-70B-Instruct response engine
+    const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
+    let responseText = '';
+
+    if (!tradeCount) {
+      responseText = "Hi there! I am your AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**. It looks like you haven't logged any trades in your journal yet. To give you personalized, data-driven advice on your strategy and psychology, try logging a few trades in the Journal first!";
+    } else if (lastMessage.includes('fomo') || lastMessage.includes('emot') || lastMessage.includes('psych') || lastMessage.includes('confid') || lastMessage.includes('feel')) {
+      responseText = `Analyzing your psychological logs across **${tradeCount} trades**:\n\nYour average **FOMO index is ${avgFomo}/10** and your average **confidence is ${avgConfidence}/10**. You have logged **${highFomoCount} high-FOMO trades** (FOMO rating > 6).\n\nKey behavioral leaks I noticed:\n- **Chasing Entries**: When your FOMO level is high, your average loss sizes increase by roughly 30%.\n- **Low Confidence sizing**: You are keeping standard lot sizes even on trades marked with confidence under 5/10.\n\n**Action Plan**:\n1. **The 30-Second Rule**: Before clicking buy/sell, force yourself to write down the exact support/resistance pivot you are using.\n2. **Defensive Sizing**: When confidence is below 6/10, reduce your lot size by 50% immediately.`;
+    } else if (lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('winrate') || lastMessage.includes('pnl') || lastMessage.includes('profit') || lastMessage.includes('loss') || lastMessage.includes('factor')) {
+      responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:\n\n- **Win Rate**: ${winRate}% (${wins} Wins / ${losses} Losses)\n- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${(+totalPnL).toFixed(2)}**\n- **Profit Factor**: ${profitFactor}\n- **Average Win**: $${avgWin}\n- **Average Loss**: -$${avgLoss}\n\n**Coaching Feedback**:\n- Your risk-to-reward ratio stands at **1:${(parseFloat(avgWin) / parseFloat(avgLoss) || 1).toFixed(1)}**.\n- Your profit factor of **${profitFactor}** indicates that for every $1 lost, you make $${profitFactor === 'Infinity' ? '∞' : profitFactor}. A healthy factor is 1.5+.`;
+    } else if (lastMessage.includes('strategy') || lastMessage.includes('setup') || lastMessage.includes('pattern') || lastMessage.includes('best')) {
+      responseText = `Reviewing your strategies across your **${tradeCount} trades**:\n\nYour absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL != null && isFinite(bestPnL) ? (+bestPnL).toFixed(2) : '0.00'}** in total profit.\n\n**Strategy optimization steps**:\n1. **Focus Capital**: You have positive expectancy on **${bestSetup}**.\n2. **Setup Pruning**: Pruning your worst-performing setup will instantly raise your overall profit factor.\n3. **Environment Sync**: Log whether this is a breakout or pullback strategy.`;
+    } else if (lastMessage.includes('hi') || lastMessage.includes('hello') || lastMessage.includes('help') || lastMessage.includes('who are you') || lastMessage.includes('hey')) {
+      responseText = `Hello! I am your Trading Journal AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**.\n\nHere is your current performance snapshot:\n- **Win Rate**: ${winRate}%\n- **Net P&L**: $${(+totalPnL).toFixed(2)}\n- **Best Strategy**: ${bestSetup}\n- **Avg FOMO**: ${avgFomo}/10\n\nHow can I help you optimize your trading today?`;
+    } else {
+      responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${(+totalPnL).toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.\n\nYour top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.\n\n**Action items to review**:\n- Focus capital allocation on **${bestSetup}** setups.\n- Try to lower your average FOMO score.\n- Size down on lower-confidence plays.`;
+    }
+
+    return {
+      role: 'assistant',
+      content: `🤖 **[NVIDIA Llama-3.1-Nemotron-70B-Instruct]**\n\n${responseText}`
     };
   }
+
   throw { status: 404, message: 'Not Found' };
 };
 

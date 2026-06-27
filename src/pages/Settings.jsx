@@ -30,6 +30,16 @@ const Settings = () => {
   });
   const [profileSaved, setProfileSaved] = useState(false);
 
+  const [nvidiaApiKey, setNvidiaApiKey] = useState(() => localStorage.getItem('nvidia_api_key') || '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+
+  const handleSaveApiKey = () => {
+    localStorage.setItem('nvidia_api_key', nvidiaApiKey.trim());
+    setApiKeySaved(true);
+    setTimeout(() => setApiKeySaved(false), 2000);
+  };
+
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState(null);
@@ -524,6 +534,41 @@ const Settings = () => {
         <div style={{ marginTop: 'var(--s4)', display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn btn-primary" onClick={handleSaveProfile} disabled={user?.isGuest}>
             {profileSaved ? 'Saved ✓' : 'Save Preferences'}
+          </button>
+        </div>
+      </div>
+
+      {/* AI Coach Settings */}
+      <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
+        <div className="settings-section-title"><Cpu size={12}/> AI Coach Settings</div>
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)', lineHeight: 1.6 }}>
+          Provide your NVIDIA API Key to connect your AI Coach to the live Llama-3.1-Nemotron-70B model. If left empty, the coach runs on our high-fidelity offline analytical engine.
+        </p>
+        <div className="form-field">
+          <label className="form-label">NVIDIA API Key</label>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              className="input"
+              type={showApiKey ? "text" : "password"}
+              placeholder="nvapi-..."
+              value={nvidiaApiKey}
+              onChange={e => setNvidiaApiKey(e.target.value)}
+              style={{ width: '100%', paddingRight: '2.5rem' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowApiKey(!showApiKey)}
+              style={{
+                position: 'absolute', right: '10px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none'
+              }}
+            >
+              {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+        <div style={{ marginTop: 'var(--s4)', display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn btn-primary" onClick={handleSaveApiKey}>
+            {apiKeySaved ? 'Saved ✓' : 'Save API Key'}
           </button>
         </div>
       </div>
