@@ -1468,17 +1468,8 @@ const Header = ({ onMenuToggle }) => {
     { id: 'dark', name: 'Dark Theme', icon: <Moon size={13} />, bg: '#0a0b0f', accent: '#818cf8' },
     { id: 'minimal', name: 'Minimalist', icon: <Palette size={13} />, bg: '#ffffff', accent: '#000000' },
     { id: 'claymorphism', name: 'Claymorphism', icon: <Paintbrush size={13} />, bg: '#edf2f7', accent: '#6366f1' },
-    { id: 'tiffany-dark', name: 'Tiffany Dark', icon: <Moon size={13} />, bg: '#171717', accent: '#21F1A8' },
     { id: 'emerald-dark', name: 'Emerald Dark', icon: <Moon size={13} />, bg: '#0c0d10', accent: '#10B981' },
-    { id: 'tiffany-light', name: 'Tiffany Green', icon: <SunDim size={13} />, bg: '#21F1A8', accent: '#171717' },
-    { id: 'true-pink', name: 'True Pink', icon: <Sparkles size={13} />, bg: '#FD1843', accent: '#FFF9FA' },
     { id: 'chill-white', name: 'Chill White', icon: <SunDim size={13} />, bg: '#FFF9FA', accent: '#FD1843' },
-    { id: 'cyprus-green', name: 'Cyprus Green', icon: <Compass size={13} />, bg: '#004741', accent: '#F0EDE4' },
-    { id: 'sand-pine', name: 'Sand Pine', icon: <Leaf size={13} />, bg: '#F0EDE4', accent: '#004741' },
-    { id: 'mantis-green', name: 'Mantis Green', icon: <Leaf size={13} />, bg: '#59C749', accent: '#FFFDF1' },
-    { id: 'milky-mantis', name: 'Milky Mantis', icon: <SunDim size={13} />, bg: '#FFFDF1', accent: '#59C749' },
-    { id: 'bridal-burgundy', name: 'Bridal Burgundy', icon: <Trophy size={13} />, bg: '#741A2F', accent: '#FFC6A8' },
-    { id: 'skin-tone', name: 'Skin Tone', icon: <Palette size={13} />, bg: '#FFC6A8', accent: '#741A2F' },
   ];
 
   const currentThemeObj = themeList.find(t => t.id === theme) || themeList[0];

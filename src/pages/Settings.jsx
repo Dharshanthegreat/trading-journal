@@ -673,21 +673,8 @@ const Settings = () => {
             { id: 'dark', name: 'Dark Slate', desc: 'Obsidian & Indigo', icon: <Moon size={14} />, bg: '#0a0b0f', accent: '#818cf8' },
             { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
             { id: 'claymorphism', name: 'Claymorphism', desc: 'Soft Clay UI', icon: <Paintbrush size={14} />, bg: '#edf2f7', accent: '#6366f1' },
-            { id: 'refero', name: 'Refero (Linear)', desc: 'Midnight & Lime', icon: <Zap size={14} />, bg: '#08090a', accent: '#e4f222' },
-            { id: 'slash', name: 'Slash (Gold)', desc: 'Obsidian & Gold', icon: <Sparkles size={14} />, bg: '#09090b', accent: '#f59e0b' },
-            { id: 'steep', name: 'Steep (Blue)', desc: 'Ice Blue & Royal', icon: <Compass size={14} />, bg: '#f4f6f9', accent: '#2563eb' },
-            { id: 'ventriloc', name: 'Ventriloc (Zinc)', desc: 'Warm Parchment', icon: <Layers size={14} />, bg: '#f7f4eb', accent: '#3f3f46' },
-            { id: 'tiffany-dark', name: 'Tiffany Dark', desc: 'Dark Gray & Tiffany', icon: <Moon size={14} />, bg: '#171717', accent: '#21F1A8' },
             { id: 'emerald-dark', name: 'Emerald Dark', desc: 'Charcoal & Emerald', icon: <Moon size={14} />, bg: '#0c0d10', accent: '#10B981' },
-            { id: 'tiffany-light', name: 'Tiffany Green', desc: 'Teal & Charcoal', icon: <SunDim size={14} />, bg: '#21F1A8', accent: '#171717' },
-            { id: 'true-pink', name: 'True Pink', desc: 'Hot Pink & White', icon: <Sparkles size={14} />, bg: '#FD1843', accent: '#FFF9FA' },
             { id: 'chill-white', name: 'Chill White', desc: 'Soft White & Pink', icon: <SunDim size={14} />, bg: '#FFF9FA', accent: '#FD1843' },
-            { id: 'cyprus-green', name: 'Cyprus Green', desc: 'Forest & Sand', icon: <Compass size={14} />, bg: '#004741', accent: '#F0EDE4' },
-            { id: 'sand-pine', name: 'Sand Pine', desc: 'Warm Ivory & Cyprus', icon: <Leaf size={14} />, bg: '#F0EDE4', accent: '#004741' },
-            { id: 'mantis-green', name: 'Mantis Green', desc: 'Mantis & Milk', icon: <Leaf size={14} />, bg: '#59C749', accent: '#FFFDF1' },
-            { id: 'milky-mantis', name: 'Milky Mantis', desc: 'Milk & Mantis', icon: <SunDim size={14} />, bg: '#FFFDF1', accent: '#59C749' },
-            { id: 'bridal-burgundy', name: 'Bridal Burgundy', desc: 'Wine Red & Peach', icon: <Trophy size={14} />, bg: '#741A2F', accent: '#FFC6A8' },
-            { id: 'skin-tone', name: 'Skin Tone', desc: 'Peach & Wine Red', icon: <Palette size={14} />, bg: '#FFC6A8', accent: '#741A2F' },
           ].map(t => (
             <div
               key={t.id}
