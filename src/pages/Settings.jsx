@@ -633,6 +633,7 @@ const Settings = () => {
             { id: 'steep', name: 'Steep (Blue)', desc: 'Ice Blue & Royal', icon: <Compass size={14} />, bg: '#f4f6f9', accent: '#2563eb' },
             { id: 'ventriloc', name: 'Ventriloc (Zinc)', desc: 'Warm Parchment', icon: <Layers size={14} />, bg: '#f7f4eb', accent: '#3f3f46' },
             { id: 'tiffany-dark', name: 'Tiffany Dark', desc: 'Dark Gray & Tiffany', icon: <Moon size={14} />, bg: '#171717', accent: '#21F1A8' },
+            { id: 'emerald-dark', name: 'Emerald Dark', desc: 'Charcoal & Emerald', icon: <Moon size={14} />, bg: '#0c0d10', accent: '#10B981' },
             { id: 'tiffany-light', name: 'Tiffany Green', desc: 'Teal & Charcoal', icon: <SunDim size={14} />, bg: '#21F1A8', accent: '#171717' },
             { id: 'true-pink', name: 'True Pink', desc: 'Hot Pink & White', icon: <Sparkles size={14} />, bg: '#FD1843', accent: '#FFF9FA' },
             { id: 'chill-white', name: 'Chill White', desc: 'Soft White & Pink', icon: <SunDim size={14} />, bg: '#FFF9FA', accent: '#FD1843' },
