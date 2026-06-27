@@ -173,7 +173,7 @@ const CalendarPage = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selectedDate ? '1fr 300px' : '1fr', gap: 'var(--s4)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
         {/* Calendar */}
         <div className="glass anim-fade-up delay-1" style={{ padding: 'var(--s4)' }}>
           {/* Compact Inline Stats */}
@@ -275,17 +275,17 @@ const CalendarPage = () => {
 
         {/* Day Detail Panel */}
         {selectedDate && (
-          <div className="glass anim-slide-r" style={{ padding: 'var(--s4)', alignSelf: 'start', position: 'sticky', top: 80 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                {format(selectedDate, 'EEE, MMM d, yyyy')}
+          <div className="glass anim-fade-up" style={{ padding: 'var(--s5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                Trades for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
               </div>
               <button 
                 className="btn btn-ghost" 
-                style={{ padding: 4, minHeight: 'auto', height: '20px', width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                style={{ padding: 4, minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
                 onClick={() => setSelectedDate(null)}
               >
-                <span style={{ fontSize: '0.72rem', opacity: 0.6 }}>✕</span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>✕</span>
               </button>
             </div>
             {(() => {
@@ -296,43 +296,43 @@ const CalendarPage = () => {
               }
               return (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s2)', marginBottom: 'var(--s3)' }}>
-                    <div style={{ padding: '6px var(--s3)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>P&L</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: dayData.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '360px' }}>
+                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Total P&L</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayData.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
                         {dayData.pnl >= 0 ? '+' : ''}${dayData.pnl.toFixed(2)}
                       </div>
                     </div>
-                    <div style={{ padding: '6px var(--s3)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Trades</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Trades Count</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
                         {dayData.count}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s2)' }}>
-                    Trades
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)' }}>
+                    Trade Details
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s3)' }}>
                     {selectedDateTrades.map((t, i) => (
                       <div key={t.id || i} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '6px var(--s3)', background: 'var(--surface-glass)',
+                        padding: '10px var(--s4)', background: 'var(--surface-glass)',
                         borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
-                        fontSize: '0.75rem',
+                        fontSize: '0.78rem',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                          <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.55rem', padding: '1px 4px' }}>{t.type}</span>
-                          <span style={{ fontWeight: 600 }}>{t.symbol}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+                          <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.58rem', padding: '2px 6px' }}>{t.type}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.symbol}</span>
                         </div>
-                        <span style={{ fontWeight: 700, color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                        <span style={{ fontWeight: 700, color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.82rem' }}>
                           {t.pnl >= 0 ? '+' : ''}${Math.abs(t.pnl).toFixed(2)}
                         </span>
                       </div>
                     ))}
                     {selectedDateTrades.length === 0 && (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Trade details loading...</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Trade details loading...</div>
                     )}
                   </div>
                 </>
