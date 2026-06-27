@@ -5,7 +5,7 @@ import {
   CalendarDays, Image as ImageIcon, Brain, NotebookPen, 
   X, ZoomIn, Calendar, TrendingUp, TrendingDown, 
   Award, Zap, AlertTriangle, CheckCircle, Save,
-  Plus, Upload, ShieldCheck
+  Plus, Upload, ShieldCheck, Trash2
 } from 'lucide-react';
 import { formatInNewYork, toNewYorkDatetimeString, parseNewYorkDatetimeToDate } from '../utils/timezone';
 
@@ -40,8 +40,21 @@ const getRecentMondays = () => {
 };
 
 const Mondays = () => {
-  const { trades, fetchTrades, addTrade, updateTrade } = useTrades();
+  const { trades, fetchTrades, addTrade, updateTrade, deleteTrade } = useTrades();
   const { user } = useAuth();
+
+  const handleDeleteTrade = async (id) => {
+    if (window.confirm('Are you sure you want to delete this Monday trade?')) {
+      try {
+        await deleteTrade(id);
+        if (lightbox && lightbox.id === id) {
+          setLightbox(null);
+        }
+      } catch (err) {
+        alert(err.message || 'Failed to delete trade.');
+      }
+    }
+  };
   
   const [activeTab, setActiveTab] = useState('charts');
   const [lightbox, setLightbox] = useState(null);
@@ -844,6 +857,7 @@ const Mondays = () => {
                             <th style={{ padding: '8px 4px', fontWeight: 600 }}>FOMO</th>
                             <th style={{ padding: '8px 4px', fontWeight: 600 }}>Confidence</th>
                             <th style={{ padding: '8px 4px', fontWeight: 600, textAlign: 'right' }}>P&L</th>
+                            <th style={{ padding: '8px 4px', fontWeight: 600, textAlign: 'right' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -868,6 +882,23 @@ const Mondays = () => {
                               </td>
                               <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, fontFamily: 'JetBrains Mono', color: parseFloat(trade.pnl) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
                                 {parseFloat(trade.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(trade.pnl)).toFixed(2)}
+                              </td>
+                              <td style={{ padding: '10px 4px', textAlign: 'right' }}>
+                                <button
+                                  onClick={() => handleDeleteTrade(trade.id)}
+                                  className="btn btn-ghost btn-sm"
+                                  style={{
+                                    padding: '4px',
+                                    borderRadius: 'var(--r-md)',
+                                    color: 'var(--loss)',
+                                    borderColor: 'transparent',
+                                    background: 'transparent',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Delete Trade"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -1053,6 +1084,10 @@ const Mondays = () => {
       {lightbox && (
         <div className="modal-overlay" style={{ padding: 'var(--s8)' }} onClick={() => setLightbox(null)}>
           <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <button className="modal-close glass" onClick={() => handleDeleteTrade(lightbox.id)}
+              style={{ position: 'absolute', top: -40, left: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)', background: 'var(--loss-soft)', borderColor: 'var(--loss-border)', color: 'var(--loss)' }}>
+              <Trash2 size={14}/> <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Delete Chart</span>
+            </button>
             <button className="modal-close glass" onClick={() => setLightbox(null)}
               style={{ position: 'absolute', top: -40, right: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)' }}>
               <X size={16}/> <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Close</span>
