@@ -11,7 +11,7 @@ import {
   DollarSign, Shield, Download, Palette, Moon, Sun,
   Compass, Leaf, SunDim, Clock, RefreshCw, Trash2,
   History, AlertCircle, FileJson, Check, Share2, Eye, EyeOff,
-  Zap, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square
+  Zap, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square, Trophy
 } from 'lucide-react';
 
 const Settings = () => {
