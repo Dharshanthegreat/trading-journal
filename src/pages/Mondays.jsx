@@ -251,7 +251,7 @@ const Mondays = () => {
         lotSize: 0,
         stopLoss: 0,
         takeProfit: 0,
-        pnl: parseFloat(newTradeData.pnl) || 0,
+        pnl: 0,
         entryTime: entryTimeDate ? entryTimeDate.toISOString() : new Date().toISOString(),
         exitTime: '',
         setup: newTradeData.setup || '',
@@ -648,8 +648,8 @@ const Mondays = () => {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                        <span className={`badge ${parseFloat(trade.pnl) >= 0 ? 'badge-profit' : 'badge-loss'}`}>
-                          {parseFloat(trade.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(trade.pnl)).toFixed(2)}
+                        <span className={`badge ${trade.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.62rem', padding: '2px 6px' }}>
+                          {trade.type}
                         </span>
                         <ZoomIn size={14} style={{ color: 'rgba(255,255,255,0.7)' }}/>
                       </div>
@@ -1131,9 +1131,6 @@ const Mondays = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
                   <span className={`badge ${lightbox.type === 'Long' ? 'badge-profit' : 'badge-loss'}`}>{lightbox.type}</span>
-                  <span style={{ fontWeight: 700, fontSize: '1.1rem', fontFamily: 'JetBrains Mono', color: parseFloat(lightbox.pnl) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                    {parseFloat(lightbox.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(lightbox.pnl)).toFixed(2)}
-                  </span>
                 </div>
               </div>
               {lightbox.notes && (
@@ -1189,29 +1186,15 @@ const Mondays = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                  <div className="form-field">
-                    <label className="form-label">Net P&L ($) *</label>
-                    <input
-                      required
-                      className="input"
-                      type="number"
-                      step="any"
-                      placeholder="150.00"
-                      value={newTradeData.pnl}
-                      onChange={e => setNewTradeData(prev => ({ ...prev, pnl: e.target.value }))}
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label className="form-label">Entry Time *</label>
-                    <input
-                      required
-                      className="input"
-                      type="datetime-local"
-                      value={newTradeData.entryTime}
-                      onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
-                    />
-                  </div>
+                <div className="form-field full">
+                  <label className="form-label">Entry Time *</label>
+                  <input
+                    required
+                    className="input"
+                    type="datetime-local"
+                    value={newTradeData.entryTime}
+                    onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
+                  />
                 </div>
 
                 <div className="form-field">
@@ -1322,12 +1305,7 @@ const Mondays = () => {
                   )}
                 </div>
 
-                {addMode === 'new' && (
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', lineHeight: 1.4, padding: '8px 10px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <ShieldCheck size={14} style={{ color: 'var(--profit)', flexShrink: 0 }} />
-                    <span>Logged trades are marked as <strong>Monday-Only</strong> and excluded from your main journal metrics.</span>
-                  </div>
-                )}
+
 
                 <div className="form-actions" style={{ marginTop: 'var(--s2)' }}>
                   <button type="button" className="btn btn-ghost" onClick={() => setShowAddChart(false)} disabled={isSaving}>
