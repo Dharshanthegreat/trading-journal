@@ -112,7 +112,9 @@ const Analytics = () => {
     }
   }, [selectedAccount, accounts, user]);
 
-  const tradesList = useMemo(() => trades || [], [trades]);
+  const tradesList = useMemo(() => {
+    return (trades || []).filter(t => !t.tags?.includes('Monday-Only'));
+  }, [trades]);
 
   // Extract unique symbol/pair and setup list dynamically
   const uniquePairs = useMemo(() => {

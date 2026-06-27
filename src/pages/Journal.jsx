@@ -357,6 +357,9 @@ const Journal = () => {
 
   const filtered = useMemo(() => {
     return trades.filter(t => {
+      // Exclude mock trades created specifically on the Monday's page
+      if (t.tags && t.tags.includes('Monday-Only')) return false;
+
       const q = search.toLowerCase();
       const matchSearch = !q || t.symbol?.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q) || t.setup?.toLowerCase().includes(q);
       

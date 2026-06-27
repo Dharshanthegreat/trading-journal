@@ -28,9 +28,10 @@ const CalendarPage = () => {
   }, [fetchAnalytics, fetchTrades]);
 
   const filteredTrades = useMemo(() => {
-    if (selectedAccountId === 'All') return trades;
+    const baseTrades = (trades || []).filter(t => !t.tags?.includes('Monday-Only'));
+    if (selectedAccountId === 'All') return baseTrades;
     const targetId = parseInt(selectedAccountId);
-    return trades.filter(t => {
+    return baseTrades.filter(t => {
       if (targetId === 1) {
         return t.accountId === 1 || !t.accountId;
       }

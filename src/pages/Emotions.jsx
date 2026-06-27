@@ -87,7 +87,9 @@ const Emotions = () => {
     fetchAnalyticsAccounts();
   }, [fetchTrades, fetchAnalyticsAccounts]);
 
-  const tradesList = useMemo(() => trades || [], [trades]);
+  const tradesList = useMemo(() => {
+    return (trades || []).filter(t => !t.tags?.includes('Monday-Only'));
+  }, [trades]);
 
   const startBalance = useMemo(() => {
     if (selectedAccount === 'All') {

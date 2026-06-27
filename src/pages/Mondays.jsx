@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTrades } from '../contexts/TradeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   CalendarDays, Image as ImageIcon, Brain, NotebookPen, 
   X, ZoomIn, Calendar, TrendingUp, TrendingDown, 
   Award, Zap, AlertTriangle, CheckCircle, Save,
-  Plus, Upload
+  Plus, Upload, ShieldCheck
 } from 'lucide-react';
 import { formatInNewYork, toNewYorkDatetimeString, parseNewYorkDatetimeToDate } from '../utils/timezone';
 
@@ -16,10 +17,86 @@ const EMOTION_COLORS = {
   Disciplined: '#60a5fa', Revenge: '#ef4444',
 };
 
+// Helper to generate the last 12 Mondays
+const getRecentMondays = () => {
+  const dates = [];
+  const today = new Date();
+  const day = today.getDay(); // 0 = Sunday, 1 = Monday, ...
+  
+  // Find the most recent Monday
+  const diff = (day === 0 ? -6 : 1) - day;
+  const lastMonday = new Date(today);
+  lastMonday.setDate(today.getDate() + diff);
+  
+  // Generate 12 Mondays backwards
+  for (let i = 0; i < 12; i++) {
+    const mon = new Date(lastMonday);
+    mon.setDate(lastMonday.getDate() - i * 7);
+    dates.push(mon);
+  }
+  return dates;
+};
+
 const Mondays = () => {
   const { trades, fetchTrades, addTrade, updateTrade } = useTrades();
+  const { user } = useAuth();
+  
   const [activeTab, setActiveTab] = useState('charts');
   const [lightbox, setLightbox] = useState(null);
+  const [selectedMonday, setSelectedMonday] = useState('All');
+
+  // Psychology log states for specific Monday
+  const [psychRating, setPsychRating] = useState(5);
+  const [psychMood, setPsychMood] = useState('Neutral');
+  const [psychPrepDone, setPsychPrepDone] = useState(true);
+  const [psychRulesAdhered, setPsychRulesAdhered] = useState(true);
+  const [psychReflections, setPsychReflections] = useState('');
+  const [psychSaveMessage, setPsychSaveMessage] = useState('');
+
+  const recentMondays = useMemo(() => getRecentMondays(), []);
+
+  // Load psychology log for selectedMonday
+  useEffect(() => {
+    if (selectedMonday !== 'All') {
+      const key = `tz_monday_psych_${user?.id || 'guest'}_${selectedMonday}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setPsychRating(parsed.rating !== undefined ? parsed.rating : 5);
+          setPsychMood(parsed.mood || 'Neutral');
+          setPsychPrepDone(parsed.prepDone !== undefined ? parsed.prepDone : true);
+          setPsychRulesAdhered(parsed.rulesAdhered !== undefined ? parsed.rulesAdhered : true);
+          setPsychReflections(parsed.reflections || '');
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        setPsychRating(5);
+        setPsychMood('Neutral');
+        setPsychPrepDone(true);
+        setPsychRulesAdhered(true);
+        setPsychReflections('');
+      }
+      setPsychSaveMessage('');
+    }
+  }, [selectedMonday, user]);
+
+  const savePsychLog = () => {
+    if (selectedMonday === 'All') return;
+    const key = `tz_monday_psych_${user?.id || 'guest'}_${selectedMonday}`;
+    const data = {
+      rating: psychRating,
+      mood: psychMood,
+      prepDone: psychPrepDone,
+      rulesAdhered: psychRulesAdhered,
+      reflections: psychReflections,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(key, JSON.stringify(data));
+    setPsychSaveMessage('Psychology log saved! ✓');
+    setTimeout(() => setPsychSaveMessage(''), 3000);
+  };
   
   // Add Chart modal states
   const [showAddChart, setShowAddChart] = useState(false);
@@ -162,7 +239,7 @@ const Mondays = () => {
         setup: newTradeData.setup || '',
         grade: 'B',
         notes: newTradeData.notes || '',
-        tags: [],
+        tags: ['Monday-Only'],
         emotionTags: [],
         fomoLevel: 5,
         confidenceLevel: 5,
@@ -194,56 +271,65 @@ const Mondays = () => {
   // Notes states
   const [notesText, setNotesText] = useState('');
   const [saveStatus, setSaveStatus] = useState(''); // '', 'saving', 'saved'
-
+ 
   // Fetch trades on component load
   useEffect(() => {
     fetchTrades({ limit: 1000 });
   }, [fetchTrades]);
-
-  // Load notes from LocalStorage on mount
+ 
+  // Load notes from LocalStorage when selectedMonday changes
   useEffect(() => {
-    const savedNotes = localStorage.getItem('tz_monday_notes');
-    if (savedNotes) {
-      setNotesText(savedNotes);
-    }
-  }, []);
-
-  // Filter trades for Monday
+    const key = selectedMonday === 'All' 
+      ? 'tz_monday_notes' 
+      : `tz_monday_notes_${user?.id || 'guest'}_${selectedMonday}`;
+    const savedNotes = localStorage.getItem(key);
+    setNotesText(savedNotes || '');
+    setSaveStatus('');
+  }, [selectedMonday, user]);
+ 
+  // Filter trades for Monday (incorporating selectedMonday)
   const mondayTrades = useMemo(() => {
     return (trades || []).filter(t => {
       const entryDate = t.entryTime || t.entry_time;
       if (!entryDate) return false;
-      return formatInNewYork(entryDate, 'EEEE') === 'Monday';
+      const isMonday = formatInNewYork(entryDate, 'EEEE') === 'Monday';
+      if (!isMonday) return false;
+      if (selectedMonday !== 'All') {
+        return formatInNewYork(entryDate, 'yyyy-MM-dd') === selectedMonday;
+      }
+      return true;
     });
-  }, [trades]);
-
+  }, [trades, selectedMonday]);
+ 
   // Filter Monday trades with charts
   const mondayCharts = useMemo(() => {
     return mondayTrades.filter(t => t.imageUrl);
   }, [mondayTrades]);
-
+ 
   // Monday trades formatted for dropdown select (no-chart trades first)
   const dropdownTrades = useMemo(() => {
     const noCharts = mondayTrades.filter(t => !t.imageUrl);
     const withCharts = mondayTrades.filter(t => t.imageUrl);
     return [...noCharts, ...withCharts];
   }, [mondayTrades]);
-
+ 
   // Handle note change with auto-save
   const handleNotesChange = (e) => {
     const val = e.target.value;
     setNotesText(val);
     setSaveStatus('saving');
     
-    // Save to LocalStorage
-    localStorage.setItem('tz_monday_notes', val);
+    const key = selectedMonday === 'All' 
+      ? 'tz_monday_notes' 
+      : `tz_monday_notes_${user?.id || 'guest'}_${selectedMonday}`;
+    localStorage.setItem(key, val);
     
     // Fake a brief saving animation state
     setTimeout(() => {
       setSaveStatus('saved');
     }, 600);
   };
-
+ 
   // Trigger manual save indicator clear
   useEffect(() => {
     if (saveStatus === 'saved') {
@@ -389,6 +475,89 @@ const Mondays = () => {
         </div>
       </div>
 
+      {/* Monday Dates Calendar Deck */}
+      <div className="glass" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+          <Calendar size={13} style={{ color: 'var(--accent)' }} /> Select Monday Date
+        </div>
+        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <button
+            onClick={() => setSelectedMonday('All')}
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px 16px',
+              borderRadius: 'var(--r-md)',
+              background: selectedMonday === 'All' ? 'var(--accent)' : 'rgba(255,255,255,0.02)',
+              border: selectedMonday === 'All' ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
+              color: selectedMonday === 'All' ? '#ffffff' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              minWidth: '80px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', opacity: 0.8 }}>View</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>All</span>
+          </button>
+
+          {recentMondays.map(date => {
+            const dateStr = formatInNewYork(date.toISOString(), 'yyyy-MM-dd');
+            const displayDay = formatInNewYork(date.toISOString(), 'MMM d');
+            const isSelected = selectedMonday === dateStr;
+            
+            // Query original unfiltered trades to get correct P&L for this day
+            const dayPnL = (trades || []).filter(t => {
+              const entryTime = t.entryTime || t.entry_time;
+              return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
+            }).reduce((acc, t) => acc + (t.pnl || 0), 0);
+            
+            const hasTrades = (trades || []).some(t => {
+              const entryTime = t.entryTime || t.entry_time;
+              return entryTime && formatInNewYork(entryTime, 'yyyy-MM-dd') === dateStr;
+            });
+
+            return (
+              <button
+                key={dateStr}
+                onClick={() => setSelectedMonday(dateStr)}
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--r-md)',
+                  background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.02)',
+                  border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
+                  color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  minWidth: '90px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isSelected ? '0 0 8px var(--accent-glow)' : 'none',
+                }}
+              >
+                <span style={{ fontSize: '0.52rem', textTransform: 'uppercase', opacity: 0.7 }}>Monday</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, margin: '2px 0' }}>{displayDay}</span>
+                {hasTrades ? (
+                  <span style={{ 
+                    fontSize: '0.62rem', 
+                    fontWeight: 700, 
+                    color: isSelected ? '#ffffff' : (dayPnL >= 0 ? 'var(--profit)' : 'var(--loss)') 
+                  }}>
+                    {dayPnL >= 0 ? '+' : ''}${Math.round(dayPnL)}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.55rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>No trades</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Tab Contents */}
       {activeTab === 'charts' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
@@ -471,7 +640,7 @@ const Mondays = () => {
 
       {activeTab === 'psychology' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-          {!stats ? (
+          {selectedMonday === 'All' && !stats ? (
             <div className="glass empty-state" style={{ padding: 'var(--s12)', textAlign: 'center' }}>
               <Brain size={36} style={{ opacity: 0.25, marginBottom: 'var(--s4)' }}/>
               <div className="empty-title" style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-secondary)' }}>No statistics available</div>
@@ -481,217 +650,340 @@ const Mondays = () => {
             </div>
           ) : (
             <>
-              {/* KPIs Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--s4)' }}>
-                <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Monday P&L</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                    {stats.totalPnL >= 0 ? '+' : '-'}${Math.abs(stats.totalPnL).toFixed(2)}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                    Across {stats.totalTrades} Monday trades
-                  </div>
-                </div>
+              {/* KPIs & Metrics Section (Only if stats is not null) */}
+              {stats ? (
+                <>
+                  {/* KPIs Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--s4)' }}>
+                    <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Monday P&L</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                        {stats.totalPnL >= 0 ? '+' : '-'}${Math.abs(stats.totalPnL).toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                        Across {stats.totalTrades} Monday trades
+                      </div>
+                    </div>
 
-                <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Win Rate</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--accent)' }}>
-                    {stats.winRate}%
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                    {stats.wins} Wins · {stats.losses} Losses
-                  </div>
-                </div>
+                    <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Win Rate</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--accent)' }}>
+                        {stats.winRate}%
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                        {stats.wins} Wins · {stats.losses} Losses
+                      </div>
+                    </div>
 
-                <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discipline Index</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: stats.disciplineScore >= 70 ? 'var(--profit)' : stats.disciplineScore >= 40 ? 'var(--warn)' : 'var(--loss)' }}>
-                    {stats.disciplineScore}/100
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                    Mindset execution index
-                  </div>
-                </div>
+                    <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discipline Index</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: stats.disciplineScore >= 70 ? 'var(--profit)' : stats.disciplineScore >= 40 ? 'var(--warn)' : 'var(--loss)' }}>
+                        {stats.disciplineScore}/100
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                        Mindset execution index
+                      </div>
+                    </div>
 
-                <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenge Trades</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: stats.revengeCount > 0 ? 'var(--loss)' : 'var(--profit)' }}>
-                    {stats.revengeCount}
+                    <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenge Trades</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: stats.revengeCount > 0 ? 'var(--loss)' : 'var(--profit)' }}>
+                        {stats.revengeCount}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                        Logged on Mondays
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                    Logged on Mondays
-                  </div>
-                </div>
-              </div>
 
-              {/* Psychology Metrics & Dials */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)', '@media (max-width: 768px)': { gridTemplateColumns: '1fr' } }}>
-                {/* Mental Averages */}
+                  {/* Psychology Metrics & Dials */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)', '@media (max-width: 768px)': { gridTemplateColumns: '1fr' } }}>
+                    {/* Mental Averages */}
+                    <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+                      <h3 style={{ fontSize: '0.85rem', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)', margin: 0, color: 'var(--text-primary)' }}>
+                        Mindset Averages
+                      </h3>
+                      
+                      {/* FOMO Progress Bar */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Zap size={12} style={{ color: 'var(--loss)' }}/> Average FOMO Level
+                          </span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{stats.avgFomo} / 10</strong>
+                        </div>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ 
+                            width: `${parseFloat(stats.avgFomo) * 10}%`, 
+                            height: '100%', 
+                            background: parseFloat(stats.avgFomo) >= 7 ? 'var(--loss)' : parseFloat(stats.avgFomo) >= 4 ? 'var(--warn)' : 'var(--profit)',
+                            boxShadow: '0 0 6px rgba(239, 68, 68, 0.2)',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textAlign: 'right' }}>
+                          Lower is better (1-3: Disciplined entry)
+                        </div>
+                      </div>
+
+                      {/* Confidence Progress Bar */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Award size={12} style={{ color: 'var(--profit)' }}/> Average Confidence Level
+                          </span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{stats.avgConfidence} / 10</strong>
+                        </div>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ 
+                            width: `${parseFloat(stats.avgConfidence) * 10}%`, 
+                            height: '100%', 
+                            background: parseFloat(stats.avgConfidence) >= 7 ? 'var(--profit)' : parseFloat(stats.avgConfidence) >= 4 ? 'var(--warn)' : 'var(--loss)',
+                            boxShadow: '0 0 6px rgba(52, 211, 153, 0.2)',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textAlign: 'right' }}>
+                          Higher is better (7-10: Decisive execution)
+                        </div>
+                      </div>
+
+                      {/* FOMO Cost Card */}
+                      <div style={{ 
+                        marginTop: 'auto',
+                        padding: '10px 14px', 
+                        background: stats.fomoCost > 0 ? 'var(--loss-soft)' : 'var(--profit-soft)', 
+                        border: `1px solid ${stats.fomoCost > 0 ? 'var(--loss-border)' : 'var(--profit-border)'}`,
+                        borderRadius: 'var(--r-md)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}>
+                        {stats.fomoCost > 0 ? (
+                          <>
+                            <AlertTriangle size={16} style={{ color: 'var(--loss)', flexShrink: 0 }} />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              Monday FOMO Cost: <strong style={{ color: 'var(--loss)' }}>-${stats.fomoCost.toFixed(2)}</strong> lost on high FOMO trades (FOMO &gt;= 7).
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle size={16} style={{ color: 'var(--profit)', flexShrink: 0 }} />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              Zero FOMO costs incurred! You did not trade impulsively on Mondays.
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Top Emotions & Mindsets */}
+                    <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+                      <h3 style={{ fontSize: '0.85rem', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)', margin: 0, color: 'var(--text-primary)' }}>
+                        Monday Emotional States
+                      </h3>
+
+                      {stats.topTags.length === 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 'var(--s4) 0', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                          No emotion tags logged for Monday trades yet.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', justifyContent: 'center', flex: 1 }}>
+                          {stats.topTags.map(([tag, count]) => {
+                            const color = EMOTION_COLORS[tag] || 'var(--accent)';
+                            const pct = Math.round((count / stats.totalTrades) * 100);
+                            return (
+                              <div key={tag} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span className="badge" style={{ 
+                                  background: `${color}15`, 
+                                  border: `1px solid ${color}40`, 
+                                  color: color, 
+                                  fontSize: '0.68rem',
+                                  width: '90px',
+                                  textAlign: 'center'
+                                }}>
+                                  {tag}
+                                </span>
+                                <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: 2, overflow: 'hidden' }}>
+                                  <div style={{ width: `${pct}%`, height: '100%', background: color }} />
+                                </div>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', minWidth: '42px', textAlign: 'right' }}>
+                                  {count} ({pct}%)
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Monday Trades */}
+                  <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+                    <h3 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                      Monday Trade History
+                    </h3>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                            <th style={{ padding: '8px 4px', fontWeight: 600 }}>Date</th>
+                            <th style={{ padding: '8px 4px', fontWeight: 600 }}>Symbol</th>
+                            <th style={{ padding: '8px 4px', fontWeight: 600 }}>Type</th>
+                            <th style={{ padding: '8px 4px', fontWeight: 600 }}>FOMO</th>
+                            <th style={{ padding: '8px 4px', fontWeight: 600 }}>Confidence</th>
+                            <th style={{ padding: '8px 4px', fontWeight: 600, textAlign: 'right' }}>P&L</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mondayTrades.slice(0, 5).map(trade => (
+                            <tr key={trade.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                              <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>
+                                {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMM d, yyyy') : '—'}
+                              </td>
+                              <td style={{ padding: '10px 4px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {trade.symbol}
+                              </td>
+                              <td style={{ padding: '10px 4px' }}>
+                                <span className={`badge ${trade.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.55rem', padding: '1px 6px' }}>
+                                  {trade.type}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 4px', color: (trade.fomoLevel || 5) >= 7 ? 'var(--loss)' : 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>
+                                {trade.fomoLevel || 5}/10
+                              </td>
+                              <td style={{ padding: '10px 4px', color: (trade.confidenceLevel || 5) >= 7 ? 'var(--profit)' : 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>
+                                {trade.confidenceLevel || 5}/10
+                              </td>
+                              <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, fontFamily: 'JetBrains Mono', color: trade.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                                {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="glass" style={{ padding: 'var(--s5)', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                  No trade metrics or charts recorded for this Monday. You can log practice trades on the Charts tab or complete the mindset log below.
+                </div>
+              )}
+
+              {/* Specific Monday Mindset Log Entry Form */}
+              {selectedMonday !== 'All' && (
                 <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)', margin: 0, color: 'var(--text-primary)' }}>
-                    Mindset Averages
-                  </h3>
-                  
-                  {/* FOMO Progress Bar */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                      <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Zap size={12} style={{ color: 'var(--loss)' }}/> Average FOMO Level
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Brain size={16} style={{ color: 'var(--accent)' }} />
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Monday Mindset & Psychology Journal ({selectedMonday})
                       </span>
-                      <strong style={{ color: 'var(--text-primary)' }}>{stats.avgFomo} / 10</strong>
                     </div>
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ 
-                        width: `${parseFloat(stats.avgFomo) * 10}%`, 
-                        height: '100%', 
-                        background: parseFloat(stats.avgFomo) >= 7 ? 'var(--loss)' : parseFloat(stats.avgFomo) >= 4 ? 'var(--warn)' : 'var(--profit)',
-                        boxShadow: '0 0 6px rgba(239, 68, 68, 0.2)',
-                        transition: 'width 0.3s ease'
-                      }} />
-                    </div>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textAlign: 'right' }}>
-                      Lower is better (1-3: Disciplined entry)
-                    </div>
-                  </div>
-
-                  {/* Confidence Progress Bar */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                      <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Award size={12} style={{ color: 'var(--profit)' }}/> Average Confidence Level
+                    {psychSaveMessage && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--profit)', fontWeight: 600 }}>
+                        {psychSaveMessage}
                       </span>
-                      <strong style={{ color: 'var(--text-primary)' }}>{stats.avgConfidence} / 10</strong>
-                    </div>
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ 
-                        width: `${parseFloat(stats.avgConfidence) * 10}%`, 
-                        height: '100%', 
-                        background: parseFloat(stats.avgConfidence) >= 7 ? 'var(--profit)' : parseFloat(stats.avgConfidence) >= 4 ? 'var(--warn)' : 'var(--loss)',
-                        boxShadow: '0 0 6px rgba(52, 211, 153, 0.2)',
-                        transition: 'width 0.3s ease'
-                      }} />
-                    </div>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textAlign: 'right' }}>
-                      Higher is better (7-10: Decisive execution)
-                    </div>
-                  </div>
-
-                  {/* FOMO Cost Card */}
-                  <div style={{ 
-                    marginTop: 'auto',
-                    padding: '10px 14px', 
-                    background: stats.fomoCost > 0 ? 'var(--loss-soft)' : 'var(--profit-soft)', 
-                    border: `1px solid ${stats.fomoCost > 0 ? 'var(--loss-border)' : 'var(--profit-border)'}`,
-                    borderRadius: 'var(--r-md)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                  }}>
-                    {stats.fomoCost > 0 ? (
-                      <>
-                        <AlertTriangle size={16} style={{ color: 'var(--loss)', flexShrink: 0 }} />
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                          Monday FOMO Cost: <strong style={{ color: 'var(--loss)' }}>-${stats.fomoCost.toFixed(2)}</strong> lost on high FOMO trades (FOMO &gt;= 7).
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={16} style={{ color: 'var(--profit)', flexShrink: 0 }} />
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                          Zero FOMO costs incurred! You did not trade impulsively on Mondays.
-                        </div>
-                      </>
                     )}
                   </div>
-                </div>
 
-                {/* Top Emotions & Mindsets */}
-                <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)', margin: 0, color: 'var(--text-primary)' }}>
-                    Monday Emotional States
-                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                    {/* Left Column: Metrics selection */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div className="form-field">
+                        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                          <span>Mindset / Focus Rating</span>
+                          <strong style={{ color: 'var(--accent)' }}>{psychRating}/10</strong>
+                        </label>
+                        <input 
+                          type="range" 
+                          min="1" 
+                          max="10" 
+                          value={psychRating} 
+                          onChange={e => setPsychRating(parseInt(e.target.value))}
+                          style={{ width: '100%', accentColor: 'var(--accent)' }}
+                        />
+                        <span style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>1 - Distracted / Stressed</span>
+                          <span>10 - Optimal Focus / Zen</span>
+                        </span>
+                      </div>
 
-                  {stats.topTags.length === 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 'var(--s4) 0', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                      No emotion tags logged for Monday trades yet.
+                      <div className="form-field">
+                        <label className="form-label">Primary Emotion / Mood State</label>
+                        <select 
+                          className="input"
+                          value={psychMood}
+                          onChange={e => setPsychMood(e.target.value)}
+                          style={{ width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                        >
+                          <option value="Neutral">Neutral 😐</option>
+                          <option value="Calm">Calm / Patient 🧘</option>
+                          <option value="Confident">Confident / Decisive 😎</option>
+                          <option value="Anxious">Anxious / Hesitant 😰</option>
+                          <option value="Fearful">Fearful / Risk-Averse 😨</option>
+                          <option value="Greedy">Greedy / Over-leveraged 🤑</option>
+                          <option value="FOMO">FOMO / Impulsive 🚀</option>
+                          <option value="Disciplined">Disciplined / Rule-Adherent 🛡️</option>
+                          <option value="Revenge">Revenge / Tilted 😡</option>
+                        </select>
+                      </div>
                     </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', justifyContent: 'center', flex: 1 }}>
-                      {stats.topTags.map(([tag, count]) => {
-                        const color = EMOTION_COLORS[tag] || 'var(--accent)';
-                        const pct = Math.round((count / stats.totalTrades) * 100);
-                        return (
-                          <div key={tag} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span className="badge" style={{ 
-                              background: `${color}15`, 
-                              border: `1px solid ${color}40`, 
-                              color: color, 
-                              fontSize: '0.68rem',
-                              width: '90px',
-                              textAlign: 'center'
-                            }}>
-                              {tag}
-                            </span>
-                            <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: 2, overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: color }} />
-                            </div>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', minWidth: '42px', textAlign: 'right' }}>
-                              {count} ({pct}%)
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Recent Monday Trades */}
-              <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Monday Trade History
-                </h3>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '8px 4px', fontWeight: 600 }}>Date</th>
-                        <th style={{ padding: '8px 4px', fontWeight: 600 }}>Symbol</th>
-                        <th style={{ padding: '8px 4px', fontWeight: 600 }}>Type</th>
-                        <th style={{ padding: '8px 4px', fontWeight: 600 }}>FOMO</th>
-                        <th style={{ padding: '8px 4px', fontWeight: 600 }}>Confidence</th>
-                        <th style={{ padding: '8px 4px', fontWeight: 600, textAlign: 'right' }}>P&L</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mondayTrades.slice(0, 5).map(trade => (
-                        <tr key={trade.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                          <td style={{ padding: '10px 4px', color: 'var(--text-secondary)' }}>
-                            {trade.entryTime ? formatInNewYork(trade.entryTime, 'MMM d, yyyy') : '—'}
-                          </td>
-                          <td style={{ padding: '10px 4px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {trade.symbol}
-                          </td>
-                          <td style={{ padding: '10px 4px' }}>
-                            <span className={`badge ${trade.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.55rem', padding: '1px 6px' }}>
-                              {trade.type}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 4px', color: (trade.fomoLevel || 5) >= 7 ? 'var(--loss)' : 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>
-                            {trade.fomoLevel || 5}/10
-                          </td>
-                          <td style={{ padding: '10px 4px', color: (trade.confidenceLevel || 5) >= 7 ? 'var(--profit)' : 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>
-                            {trade.confidenceLevel || 5}/10
-                          </td>
-                          <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 700, fontFamily: 'JetBrains Mono', color: trade.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                            {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                    {/* Right Column: Checklists */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', justifyContent: 'center' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={psychPrepDone}
+                          onChange={e => setPsychPrepDone(e.target.checked)}
+                          style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+                        />
+                        <span>Completed Pre-Market Prep & Plan</span>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={psychRulesAdhered}
+                          onChange={e => setPsychRulesAdhered(e.target.checked)}
+                          style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+                        />
+                        <span>Strictly Adhered to Risk & Setup Rules</span>
+                      </label>
+                      
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', lineHeight: 1.4, background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ShieldCheck size={14} style={{ color: 'var(--profit)', flexShrink: 0 }} />
+                        <span>Logs are stored persistently on this browser to monitor emotional patterns on Mondays.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Textarea Reflections */}
+                  <div className="form-field">
+                    <label className="form-label">Reflections / Lessons Learned / Mindset Notes</label>
+                    <textarea 
+                      className="input"
+                      rows={4}
+                      value={psychReflections}
+                      onChange={e => setPsychReflections(e.target.value)}
+                      placeholder="How was your discipline? Did you follow your sizing limits? Write down lessons learned today..."
+                      style={{ width: '100%', minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                      onClick={savePsychLog} 
+                      className="btn btn-primary"
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.72rem', fontWeight: 600 }}
+                    >
+                      <Save size={12} /> Save Mindset Log
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
@@ -961,6 +1253,13 @@ const Mondays = () => {
                     </div>
                   )}
                 </div>
+
+                {addMode === 'new' && (
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', lineHeight: 1.4, padding: '8px 10px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <ShieldCheck size={14} style={{ color: 'var(--profit)', flexShrink: 0 }} />
+                    <span>Logged trades are marked as <strong>Monday-Only</strong> and excluded from your main journal metrics.</span>
+                  </div>
+                )}
 
                 <div className="form-actions" style={{ marginTop: 'var(--s2)' }}>
                   <button type="button" className="btn btn-ghost" onClick={() => setShowAddChart(false)} disabled={isSaving}>
