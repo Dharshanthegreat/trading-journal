@@ -5,29 +5,6 @@ import {
   ListTodo, Plus, X, Trash2, Edit2, Check, CheckCircle, AlertTriangle, Shield, Play, Ban, RefreshCw, Percent
 } from 'lucide-react';
 
-const SUGGESTIONS = {
-  risk: [
-    'Max daily loss: $500',
-    'Maximum 1.0% risk per trade',
-    'No adding to losing positions',
-    'Reduce position size by 50% after a loss',
-    'Stop trading for the day after 3 losses'
-  ],
-  psychology: [
-    'Take a 15-minute break after any trade',
-    'No trading when feeling anxious, tired, or distracted',
-    'Stick to the checklist; do not chase missed trades',
-    'No revenge trading to recover losses',
-    'Close charts and walk away after hitting daily profit goal'
-  ],
-  execution: [
-    'Always set a stop loss immediately on entry',
-    'No trading within 10 minutes of high-impact economic news',
-    'Only trade setups defined in my pre-market playbook',
-    'Do not trade during low volume lunch hour',
-    'Close all positions before the market close'
-  ]
-};
 
 const TradingRules = () => {
   const { user } = useAuth();
@@ -171,10 +148,6 @@ const TradingRules = () => {
     }
   };
 
-  // Apply suggestion chip text
-  const applySuggestion = (text) => {
-    setRuleTextInput(text);
-  };
 
   // Metrics calculations
   const totalCount = rules.length;
@@ -284,10 +257,10 @@ const TradingRules = () => {
         </div>
       )}
 
-      {/* Layout Split: Rules list (left) & Suggestions board (right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--s5)', alignItems: 'stretch' }} className="rules-layout-grid">
+      {/* Rule management list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
         
-        {/* Left Hand side: Rule management list */}
+        {/* Rules container */}
         <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
           <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -335,7 +308,7 @@ const TradingRules = () => {
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
               <ListTodo size={28} style={{ opacity: 0.25, marginBottom: '8px' }} />
               <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>No rules defined yet</div>
-              <div style={{ fontSize: '0.7rem', marginTop: '2px' }}>Use the form or suggestions on the right to add constraints for this account.</div>
+              <div style={{ fontSize: '0.7rem', marginTop: '2px' }}>Use the form above to add constraints for this account.</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -457,147 +430,6 @@ const TradingRules = () => {
               })}
             </div>
           )}
-        </div>
-
-        {/* Right Hand side: Quick-add suggestions board */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-          {/* Quick instructions widget */}
-          <div className="glass-deep" style={{ padding: 'var(--s4.5)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border-mid)', background: 'var(--bg-secondary)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warn)', marginBottom: '8px' }}>
-              <AlertTriangle size={14} />
-              <strong style={{ fontSize: '0.78rem' }}>Adherence is key</strong>
-            </div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', margin: 0, lineHeight: 1.5 }}>
-              Trading success is built upon discipline, not predictions. Choose from categories on the right to populate rules instantly. Mark rules as checked as you follow them.
-            </p>
-          </div>
-
-          {/* Categorized suggestions */}
-          <div className="glass" style={{ padding: 'var(--s4.5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-              Rules Suggestion Library
-            </span>
-
-            {/* Risk Control Suggestions */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                <Shield size={12} />
-                Risk Management
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {SUGGESTIONS.risk.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => applySuggestion(item)}
-                    style={{
-                      textAlign: 'left',
-                      fontSize: '0.68rem',
-                      padding: '6px 10px',
-                      background: 'rgba(255,255,255,0.02)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--r-md)',
-                      color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      width: '100%'
-                    }}
-                    className="suggestion-btn-hover"
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--accent)';
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.color = 'var(--text-secondary)';
-                    }}
-                  >
-                    • {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Psychology & Discipline Suggestions */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--warn)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                <Play size={12} />
-                Mindset & Psychology
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {SUGGESTIONS.psychology.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => applySuggestion(item)}
-                    style={{
-                      textAlign: 'left',
-                      fontSize: '0.68rem',
-                      padding: '6px 10px',
-                      background: 'rgba(255,255,255,0.02)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--r-md)',
-                      color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      width: '100%'
-                    }}
-                    className="suggestion-btn-hover"
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--warn)';
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.color = 'var(--text-secondary)';
-                    }}
-                  >
-                    • {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Execution Parameter Suggestions */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--profit)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                <Check size={12} />
-                Execution Playbook
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {SUGGESTIONS.execution.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => applySuggestion(item)}
-                    style={{
-                      textAlign: 'left',
-                      fontSize: '0.68rem',
-                      padding: '6px 10px',
-                      background: 'rgba(255,255,255,0.02)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--r-md)',
-                      color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      width: '100%'
-                    }}
-                    className="suggestion-btn-hover"
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--profit)';
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.color = 'var(--text-secondary)';
-                    }}
-                  >
-                    • {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
 
       </div>
