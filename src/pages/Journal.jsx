@@ -21,6 +21,7 @@ const defaultForm = () => ({
   fomoLevel: 5, confidenceLevel: 5, grade: 'B',
   accountId: '',
   notionLink: '',
+  riskRewardRatio: '',
 });
 
 const Journal = () => {
@@ -267,6 +268,7 @@ const Journal = () => {
       grade: trade.grade || 'B',
       accountId: trade.accountId || '',
       notionLink: trade.notionLink || '',
+      riskRewardRatio: trade.riskRewardRatio !== undefined ? String(trade.riskRewardRatio) : '',
     });
     manuallyEditedRef.current = {};
     setAutoFeatures(true);
@@ -309,6 +311,25 @@ const Journal = () => {
     };
     loadRules();
   }, [formData.accountId]);
+
+  // Auto-calculate risk reward ratio (R/R) based on entry, stop loss, and take profit (or exit price)
+  useEffect(() => {
+    if (manuallyEditedRef.current.riskRewardRatio) return;
+    const entry = parseFloat(formData.entryPrice);
+    const sl = parseFloat(formData.stopLoss);
+    const tp = parseFloat(formData.takeProfit || formData.exitPrice || 0);
+
+    if (!isNaN(entry) && !isNaN(sl) && !isNaN(tp) && entry !== sl) {
+      const risk = Math.abs(entry - sl);
+      const reward = Math.abs(tp - entry);
+      if (risk > 0) {
+        const rr = (reward / risk).toFixed(2);
+        setFormData(prev => ({ ...prev, riskRewardRatio: rr }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, riskRewardRatio: '' }));
+    }
+  }, [formData.entryPrice, formData.stopLoss, formData.takeProfit, formData.exitPrice, formData.type]);
 
   // Sync selectedTrade state if trades are updated in the background/context
   const currentSelectedTrade = useMemo(() => {
@@ -402,7 +423,8 @@ const Journal = () => {
         fomoLevel: formData.fomoLevel,
         confidenceLevel: formData.confidenceLevel,
         accountId: formData.accountId || null,
-        notionLink: formData.notionLink
+        notionLink: formData.notionLink,
+        riskRewardRatio: parseFloat(formData.riskRewardRatio) || 0
       };
 
       if (editingTrade) {
@@ -490,17 +512,17 @@ const Journal = () => {
             <thead>
               <tr>
                 <th>Date</th><th>Symbol</th><th>Dir.</th><th>Entry</th><th>Exit</th>
-                <th>Lot</th><th>Setup</th><th>P&L</th><th>Grade</th><th>Notes</th><th></th>
+                <th>Lot</th><th>R/R</th><th>Setup</th><th>P&L</th><th>Grade</th><th>Notes</th><th></th>
               </tr>
             </thead>
             <tbody>
               {loading && !trades.length ? (
                 [...Array(4)].map((_, i) => (
-                  <tr key={i}>{[...Array(11)].map((_, j) => (<td key={j}><div className="skeleton" style={{ height: 14, borderRadius: 4 }}/></td>))}</tr>
+                  <tr key={i}>{[...Array(12)].map((_, j) => (<td key={j}><div className="skeleton" style={{ height: 14, borderRadius: 4 }}/></td>))}</tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={12}>
                     <div className="empty-state">
                       <FileText size={28} style={{ opacity: 0.3 }}/>
                       <div className="empty-title">No trades found</div>
@@ -529,6 +551,7 @@ const Journal = () => {
                     <td style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono' }}>{t.entryPrice || '—'}</td>
                     <td style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono' }}>{t.exitPrice || '—'}</td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t.lotSize || '—'}</td>
+                    <td style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.riskRewardRatio ? `${t.riskRewardRatio} R` : '—'}</td>
                     <td style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{t.setup || '—'}</td>
                     <td style={{
                       fontWeight: 700, fontSize: '0.82rem', fontFamily: 'JetBrains Mono',
@@ -652,6 +675,20 @@ const Journal = () => {
                   </div>
                   <input required className="input" type="number" step="any" placeholder="250.00" value={formData.pnl} onChange={e => handleFieldChange('pnl', e.target.value)}/>
                 </div>
+
+                <div className="form-field">
+                  <label className="form-label">Stop Loss</label>
+                  <input className="input" type="number" step="any" placeholder="0.00" value={formData.stopLoss} onChange={e => handleFieldChange('stopLoss', e.target.value)}/>
+                </div>
+                <div className="form-field">
+                  <label className="form-label">Take Profit</label>
+                  <input className="input" type="number" step="any" placeholder="0.00" value={formData.takeProfit} onChange={e => handleFieldChange('takeProfit', e.target.value)}/>
+                </div>
+                <div className="form-field">
+                  <label className="form-label">Risk/Reward Ratio (R/R)</label>
+                  <input className="input" type="number" step="any" placeholder="2.00" value={formData.riskRewardRatio} onChange={e => handleFieldChange('riskRewardRatio', e.target.value)}/>
+                </div>
+
                 <div className="form-field">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label className="form-label">Entry Time (Auto-OCR)</label>
@@ -1103,6 +1140,9 @@ const Journal = () => {
                     {[
                       { label: 'Setup / Strategy', value: currentSelectedTrade.setup || '—' },
                       { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
+                      { label: 'Stop Loss', value: currentSelectedTrade.stopLoss || '—' },
+                      { label: 'Take Profit', value: currentSelectedTrade.takeProfit || '—' },
+                      { label: 'Risk/Reward Ratio (R/R)', value: currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—' },
                       { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
                       { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' },
                       {

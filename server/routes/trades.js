@@ -134,7 +134,7 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId, notionLink
+      fomoLevel, confidenceLevel, accountId, notionLink, riskRewardRatio
     } = req.body;
 
     if (!symbol) {
@@ -164,8 +164,8 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
       INSERT INTO trades (
         user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
         pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
-        fomo_level, confidence_level, image_path, account_id, notion_link
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        fomo_level, confidence_level, image_path, account_id, notion_link, risk_reward_ratio
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING *
     `, [
       req.user.id,
@@ -188,7 +188,8 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
       parseInt(confidenceLevel) || 5,
       imagePathValue,
       dbAccountId,
-      notionLink || ''
+      notionLink || '',
+      parseFloat(riskRewardRatio) || 0
     ]);
 
     const trade = result.rows[0];
@@ -215,7 +216,7 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId, existingImages, notionLink
+      fomoLevel, confidenceLevel, accountId, existingImages, notionLink, riskRewardRatio
     } = req.body;
 
     let imagePaths = [];
@@ -272,8 +273,8 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
         stop_loss = $6, take_profit = $7, pnl = $8, entry_time = $9, exit_time = $10,
         setup = $11, grade = $12, notes = $13, tags = $14, emotion_tags = $15,
         fomo_level = $16, confidence_level = $17, image_path = $18, account_id = $19,
-        notion_link = $20
-      WHERE id = $21 AND user_id = $22
+        notion_link = $20, risk_reward_ratio = $21
+      WHERE id = $22 AND user_id = $23
     `, [
       symbol?.toUpperCase() || trade.symbol,
       type || trade.type,
@@ -295,6 +296,7 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
       imagePathValue,
       dbAccountId,
       notionLink !== undefined ? notionLink : trade.notion_link,
+      riskRewardRatio !== undefined ? parseFloat(riskRewardRatio) : trade.risk_reward_ratio,
       req.params.id,
       req.user.id
     ]);
@@ -374,8 +376,8 @@ router.post('/import', async (req, res) => {
           INSERT INTO trades (
             user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
             pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
-            fomo_level, confidence_level
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            fomo_level, confidence_level, risk_reward_ratio
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         `, [
           req.user.id,
           (t.symbol || '').toUpperCase(),
@@ -394,7 +396,8 @@ router.post('/import', async (req, res) => {
           JSON.stringify(tagsList),
           JSON.stringify(t.emotionTags || []),
           parseInt(t.fomoLevel) || 5,
-          parseInt(t.confidenceLevel) || 5
+          parseInt(t.confidenceLevel) || 5,
+          parseFloat(t.riskRewardRatio) || 0
         ]);
         count++;
       }
@@ -698,6 +701,7 @@ function formatTrade(t) {
     shareToken: t.share_token,
     accountId: t.account_id,
     notionLink: t.notion_link || '',
+    riskRewardRatio: t.risk_reward_ratio || 0,
     createdAt: t.created_at,
   };
 }

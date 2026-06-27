@@ -475,6 +475,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       fomoLevel: parseInt(data.fomoLevel) || 5,
       confidenceLevel: parseInt(data.confidenceLevel) || 5,
       notionLink: data.notionLink || '',
+      riskRewardRatio: parseFloat(data.riskRewardRatio) || 0,
       createdAt: new Date().toISOString(),
       imageKeys,
       imageUrl,
@@ -591,6 +592,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       fomoLevel: data.fomoLevel !== undefined ? parseInt(data.fomoLevel) : oldTrade.fomoLevel,
       confidenceLevel: data.confidenceLevel !== undefined ? parseInt(data.confidenceLevel) : oldTrade.confidenceLevel,
       notionLink: data.notionLink !== undefined ? data.notionLink : oldTrade.notionLink,
+      riskRewardRatio: data.riskRewardRatio !== undefined ? parseFloat(data.riskRewardRatio) : oldTrade.riskRewardRatio,
       imageKeys,
       imageUrl,
       imageUrls

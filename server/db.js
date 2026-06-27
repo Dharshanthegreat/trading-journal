@@ -68,6 +68,7 @@ async function initDB() {
         share_token TEXT UNIQUE,
         account_id INTEGER,
         notion_link TEXT DEFAULT '',
+        risk_reward_ratio DOUBLE PRECISION DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW()
       );
 
@@ -180,6 +181,7 @@ async function initDB() {
       ALTER TABLE achievements ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS account_id INTEGER;
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS notion_link TEXT DEFAULT '';
+      ALTER TABLE trades ADD COLUMN IF NOT EXISTS risk_reward_ratio DOUBLE PRECISION DEFAULT 0;
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
     `);
 
