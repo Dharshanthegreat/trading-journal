@@ -5,7 +5,7 @@ import {
   CalendarDays, Image as ImageIcon, Brain, NotebookPen, 
   X, ZoomIn, Calendar, TrendingUp, TrendingDown, 
   Award, Zap, AlertTriangle, CheckCircle, Save,
-  Plus, Upload, ShieldCheck, Trash2
+  Plus, Upload, ShieldCheck, Trash2, Pencil
 } from 'lucide-react';
 import { formatInNewYork, toNewYorkDatetimeString, parseNewYorkDatetimeToDate } from '../utils/timezone';
 
@@ -113,8 +113,9 @@ const Mondays = () => {
     setTimeout(() => setPsychSaveMessage(''), 3000);
   };
   
-  // Add Chart modal states
+  // Add/Edit Chart modal states
   const [showAddChart, setShowAddChart] = useState(false);
+  const [editingTrade, setEditingTrade] = useState(null);
   const [addMode, setAddMode] = useState('new'); // Set default to 'new' since we've removed 'existing'
   const [selectedTradeId, setSelectedTradeId] = useState('');
   const [chartFile, setChartFile] = useState(null);
@@ -145,15 +146,15 @@ const Mondays = () => {
     confidenceLevel: 5,
   });
 
-  // Reset entry time when modal is opened
+  // Reset entry time when modal is opened for new trades
   useEffect(() => {
-    if (showAddChart) {
+    if (showAddChart && !editingTrade) {
       setNewTradeData(prev => ({
         ...prev,
         entryTime: getDefaultMondayDatetime()
       }));
     }
-  }, [showAddChart]);
+  }, [showAddChart, editingTrade]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -170,69 +171,32 @@ const Mondays = () => {
     }
   };
 
-  const handleExistingSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedTradeId) {
-      setErrorMsg('Please select a Monday trade.');
-      return;
-    }
-    if (!chartFile) {
-      setErrorMsg('Please select a chart file.');
-      return;
-    }
-    
-    setIsSaving(true);
+  const handleCloseModal = () => {
+    setShowAddChart(false);
+    setEditingTrade(null);
+    setNewTradeData({
+      symbol: '',
+      type: 'Long',
+      pnl: '',
+      entryTime: getDefaultMondayDatetime(),
+      setup: '',
+      notes: '',
+      emotionTags: [],
+      fomoLevel: 5,
+      confidenceLevel: 5,
+    });
+    setChartFile(null);
+    setImagePreview(null);
     setErrorMsg('');
-    
-    try {
-      const trade = mondayTrades.find(t => String(t.id) === String(selectedTradeId));
-      if (!trade) {
-        throw new Error('Selected trade not found.');
-      }
-      
-      const tradeData = {
-        symbol: trade.symbol,
-        type: trade.type || 'Long',
-        entryPrice: trade.entryPrice !== undefined && trade.entryPrice !== null ? parseFloat(trade.entryPrice) : 0,
-        exitPrice: trade.exitPrice !== undefined && trade.exitPrice !== null ? parseFloat(trade.exitPrice) : 0,
-        lotSize: trade.lotSize !== undefined && trade.lotSize !== null ? parseFloat(trade.lotSize) : 0,
-        stopLoss: trade.stopLoss !== undefined && trade.stopLoss !== null ? parseFloat(trade.stopLoss) : 0,
-        takeProfit: trade.takeProfit !== undefined && trade.takeProfit !== null ? parseFloat(trade.takeProfit) : 0,
-        pnl: trade.pnl !== undefined && trade.pnl !== null ? parseFloat(trade.pnl) : 0,
-        entryTime: trade.entryTime ? new Date(trade.entryTime).toISOString() : new Date().toISOString(),
-        exitTime: trade.exitTime ? new Date(trade.exitTime).toISOString() : '',
-        setup: trade.setup || '',
-        grade: trade.grade || 'B',
-        notes: trade.notes || '',
-        tags: Array.isArray(trade.tags) ? trade.tags : [],
-        emotionTags: Array.isArray(trade.emotionTags) ? trade.emotionTags : [],
-        fomoLevel: parseInt(trade.fomoLevel) || 5,
-        confidenceLevel: parseInt(trade.confidenceLevel) || 5,
-        accountId: trade.accountId || null,
-        notionLink: trade.notionLink || '',
-      };
-      
-      await updateTrade(trade.id, tradeData, [chartFile], trade.imageUrls || []);
-      
-      setShowAddChart(false);
-      setSelectedTradeId('');
-      setChartFile(null);
-      setImagePreview(null);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg(err.message || 'Failed to attach chart.');
-    } finally {
-      setIsSaving(false);
-    }
   };
 
-  const handleNewSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newTradeData.symbol) {
       setErrorMsg('Please enter a symbol.');
       return;
     }
-    if (!chartFile) {
+    if (!editingTrade && !chartFile) {
       setErrorMsg('Please select a chart file.');
       return;
     }
@@ -246,44 +210,37 @@ const Mondays = () => {
       const tradeData = {
         symbol: newTradeData.symbol.toUpperCase(),
         type: newTradeData.type || 'Long',
-        entryPrice: 0,
-        exitPrice: 0,
-        lotSize: 0,
-        stopLoss: 0,
-        takeProfit: 0,
-        pnl: 0,
+        entryPrice: editingTrade ? (editingTrade.entryPrice || 0) : 0,
+        exitPrice: editingTrade ? (editingTrade.exitPrice || 0) : 0,
+        lotSize: editingTrade ? (editingTrade.lotSize || 0) : 0,
+        stopLoss: editingTrade ? (editingTrade.stopLoss || 0) : 0,
+        takeProfit: editingTrade ? (editingTrade.takeProfit || 0) : 0,
+        pnl: parseFloat(newTradeData.pnl) || 0,
         entryTime: entryTimeDate ? entryTimeDate.toISOString() : new Date().toISOString(),
-        exitTime: '',
+        exitTime: editingTrade ? (editingTrade.exitTime || '') : '',
         setup: newTradeData.setup || '',
-        grade: 'B',
+        grade: editingTrade ? (editingTrade.grade || 'B') : 'B',
         notes: newTradeData.notes || '',
-        tags: ['Monday-Only'],
+        tags: editingTrade ? (editingTrade.tags || ['Monday-Only']) : ['Monday-Only'],
         emotionTags: newTradeData.emotionTags || [],
         fomoLevel: parseInt(newTradeData.fomoLevel) || 5,
         confidenceLevel: parseInt(newTradeData.confidenceLevel) || 5,
-        accountId: null,
-        notionLink: '',
+        accountId: editingTrade ? editingTrade.accountId : null,
+        notionLink: editingTrade ? editingTrade.notionLink : '',
       };
       
-      await addTrade(tradeData, [chartFile]);
+      if (editingTrade) {
+        const filesToSend = chartFile ? [chartFile] : [];
+        const existingImages = chartFile ? [] : (editingTrade.imageUrls || (editingTrade.imageUrl ? [editingTrade.imageUrl] : []));
+        await updateTrade(editingTrade.id, tradeData, filesToSend, existingImages);
+      } else {
+        await addTrade(tradeData, [chartFile]);
+      }
       
-      setShowAddChart(false);
-      setNewTradeData({
-        symbol: '',
-        type: 'Long',
-        pnl: '',
-        entryTime: getDefaultMondayDatetime(),
-        setup: '',
-        notes: '',
-        emotionTags: [],
-        fomoLevel: 5,
-        confidenceLevel: 5,
-      });
-      setChartFile(null);
-      setImagePreview(null);
+      handleCloseModal();
     } catch (err) {
       console.error(err);
-      setErrorMsg(err.message || 'Failed to create new Monday trade.');
+      setErrorMsg(err.message || `Failed to ${editingTrade ? 'update' : 'create'} Monday trade.`);
     } finally {
       setIsSaving(false);
     }
@@ -908,21 +865,54 @@ const Mondays = () => {
                                 {parseFloat(trade.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(trade.pnl)).toFixed(2)}
                               </td>
                               <td style={{ padding: '10px 4px', textAlign: 'right' }}>
-                                <button
-                                  onClick={() => handleDeleteTrade(trade.id)}
-                                  className="btn btn-ghost btn-sm"
-                                  style={{
-                                    padding: '4px',
-                                    borderRadius: 'var(--r-md)',
-                                    color: 'var(--loss)',
-                                    borderColor: 'transparent',
-                                    background: 'transparent',
-                                    cursor: 'pointer'
-                                  }}
-                                  title="Delete Trade"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
+                                <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button
+                                    onClick={() => {
+                                      setEditingTrade(trade);
+                                      setNewTradeData({
+                                        symbol: trade.symbol,
+                                        type: trade.type || 'Long',
+                                        pnl: trade.pnl !== undefined && trade.pnl !== null ? String(trade.pnl) : '',
+                                        entryTime: trade.entryTime ? toNewYorkDatetimeString(new Date(trade.entryTime)) : '',
+                                        setup: trade.setup || '',
+                                        notes: trade.notes || '',
+                                        emotionTags: Array.isArray(trade.emotionTags) ? trade.emotionTags : [],
+                                        fomoLevel: trade.fomoLevel !== undefined ? trade.fomoLevel : 5,
+                                        confidenceLevel: trade.confidenceLevel !== undefined ? trade.confidenceLevel : 5,
+                                      });
+                                      setChartFile(null);
+                                      setImagePreview(trade.imageUrl || null);
+                                      setShowAddChart(true);
+                                    }}
+                                    className="btn btn-ghost btn-sm"
+                                    style={{
+                                      padding: '4px',
+                                      borderRadius: 'var(--r-md)',
+                                      color: 'var(--accent)',
+                                      borderColor: 'transparent',
+                                      background: 'transparent',
+                                      cursor: 'pointer'
+                                    }}
+                                    title="Edit Trade"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTrade(trade.id)}
+                                    className="btn btn-ghost btn-sm"
+                                    style={{
+                                      padding: '4px',
+                                      borderRadius: 'var(--r-md)',
+                                      color: 'var(--loss)',
+                                      borderColor: 'transparent',
+                                      background: 'transparent',
+                                      cursor: 'pointer'
+                                    }}
+                                    title="Delete Trade"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -1138,6 +1128,54 @@ const Mondays = () => {
               <Trash2 size={13}/>
               <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Delete Chart</span>
             </button>
+            <button className="modal-close glass" onClick={() => {
+                const trade = lightbox;
+                setLightbox(null); // Close lightbox
+                setEditingTrade(trade);
+                setNewTradeData({
+                  symbol: trade.symbol,
+                  type: trade.type || 'Long',
+                  pnl: trade.pnl !== undefined && trade.pnl !== null ? String(trade.pnl) : '',
+                  entryTime: trade.entryTime ? toNewYorkDatetimeString(new Date(trade.entryTime)) : '',
+                  setup: trade.setup || '',
+                  notes: trade.notes || '',
+                  emotionTags: Array.isArray(trade.emotionTags) ? trade.emotionTags : [],
+                  fomoLevel: trade.fomoLevel !== undefined ? trade.fomoLevel : 5,
+                  confidenceLevel: trade.confidenceLevel !== undefined ? trade.confidenceLevel : 5,
+                });
+                setChartFile(null);
+                setImagePreview(trade.imageUrl || null);
+                setShowAddChart(true);
+              }}
+              style={{ 
+                position: 'absolute', 
+                top: -40, 
+                left: 120, 
+                padding: 'var(--s2) var(--s3)', 
+                borderRadius: 'var(--r-md)', 
+                background: '#000000', 
+                border: '1px solid rgba(255,255,255,0.15)', 
+                color: '#ffffff', 
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#111111';
+                e.currentTarget.style.color = 'var(--accent)';
+                e.currentTarget.style.borderColor = 'var(--border-accent)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#000000';
+                e.currentTarget.style.color = '#ffffff';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+              }}
+            >
+              <Pencil size={13}/>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Edit Trade</span>
+            </button>
             <button className="modal-close glass" onClick={() => setLightbox(null)}
               style={{ position: 'absolute', top: -40, right: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)' }}>
               <X size={16}/> <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Close</span>
@@ -1147,8 +1185,13 @@ const Mondays = () => {
                 style={{ maxWidth: '100%', maxHeight: '75vh', display: 'block', borderRadius: 'var(--r-lg)' }}/>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--s4) var(--s2) var(--s2)', borderTop: '1px solid var(--border)', marginTop: 'var(--s4)' }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)', marginBottom: 4 }}>{lightbox.symbol}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)' }}>{lightbox.symbol}</div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, fontFamily: 'JetBrains Mono', color: parseFloat(lightbox.pnl) >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                      ({parseFloat(lightbox.pnl) >= 0 ? '+' : ''}${Math.abs(parseFloat(lightbox.pnl)).toFixed(2)})
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
                     {lightbox.entryTime ? formatInNewYork(lightbox.entryTime, 'MMMM d, yyyy HH:mm') : ''}
                     {lightbox.setup && ` · ${lightbox.setup}`}
                   </div>
@@ -1168,17 +1211,17 @@ const Mondays = () => {
       )}
 
       {showAddChart && (
-        <div className="modal-overlay" onClick={() => setShowAddChart(false)}>
+        <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="glass-deep modal-panel" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ImageIcon size={18} style={{ color: 'var(--accent)' }}/>
-                <span>Add Monday Chart</span>
+                <span>{editingTrade ? 'Edit Monday Trade' : 'Add Monday Chart'}</span>
               </div>
-              <button className="modal-close" onClick={() => setShowAddChart(false)}><X size={18}/></button>
+              <button className="modal-close" onClick={handleCloseModal}><X size={18}/></button>
             </div>
 
-            <form onSubmit={handleNewSubmit}>
+            <form onSubmit={handleSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
                 {errorMsg && (
                   <div style={{ color: 'var(--loss)', fontSize: '0.75rem', fontWeight: 600, padding: '8px 12px', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)', borderRadius: 'var(--r-md)' }}>
@@ -1210,15 +1253,28 @@ const Mondays = () => {
                   </div>
                 </div>
 
-                <div className="form-field full">
-                  <label className="form-label">Entry Time *</label>
-                  <input
-                    required
-                    className="input"
-                    type="datetime-local"
-                    value={newTradeData.entryTime}
-                    onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                  <div className="form-field">
+                    <label className="form-label">P&L ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input"
+                      placeholder="0.00"
+                      value={newTradeData.pnl}
+                      onChange={e => setNewTradeData(prev => ({ ...prev, pnl: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Entry Time *</label>
+                    <input
+                      required
+                      className="input"
+                      type="datetime-local"
+                      value={newTradeData.entryTime}
+                      onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-field">
@@ -1305,7 +1361,9 @@ const Mondays = () => {
                 </div>
 
                 <div className="form-field full">
-                  <label className="form-label">Chart Screenshot *</label>
+                  <label className="form-label">
+                    {editingTrade ? 'Chart Screenshot (Optional)' : 'Chart Screenshot *'}
+                  </label>
                   <label style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--s2)',
                     padding: '20px', border: '1px dashed var(--border-mid)',
@@ -1318,9 +1376,19 @@ const Mondays = () => {
                     {chartFile ? (
                       <div style={{ color: 'var(--accent)', fontWeight: 600 }}>{chartFile.name}</div>
                     ) : (
-                      <div>Click to select or drag chart image here (PNG, JPG, WEBP)</div>
+                      <div>
+                        {editingTrade 
+                          ? 'Click to replace chart image (Leave blank to keep existing)' 
+                          : 'Click to select or drag chart image here (PNG, JPG, WEBP)'}
+                      </div>
                     )}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} required={!chartFile}/>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      style={{ display: 'none' }} 
+                      onChange={handleFileChange} 
+                      required={!editingTrade && !chartFile}
+                    />
                   </label>
                   {imagePreview && (
                     <div style={{ marginTop: '10px', textAlign: 'center' }}>
@@ -1329,14 +1397,12 @@ const Mondays = () => {
                   )}
                 </div>
 
-
-
                 <div className="form-actions" style={{ marginTop: 'var(--s2)' }}>
-                  <button type="button" className="btn btn-ghost" onClick={() => setShowAddChart(false)} disabled={isSaving}>
+                  <button type="button" className="btn btn-ghost" onClick={handleCloseModal} disabled={isSaving}>
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                    {isSaving ? 'Saving...' : 'Add Chart'}
+                    {isSaving ? 'Saving...' : editingTrade ? 'Save Changes' : 'Add Chart'}
                   </button>
                 </div>
               </div>

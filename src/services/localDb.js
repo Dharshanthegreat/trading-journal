@@ -520,26 +520,10 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     let imageUrls = [];
     let imageUrl = null;
     
-    if (existingImages) {
-      if (oldTrade.imageKeys && oldTrade.imageUrls) {
-        existingImages.forEach(urlStr => {
-          const idx = oldTrade.imageUrls.indexOf(urlStr);
-          if (idx >= 0 && oldTrade.imageKeys[idx]) {
-            imageKeys.push(oldTrade.imageKeys[idx]);
-            imageUrls.push(urlStr);
-          } else {
-            imageUrls.push(urlStr);
-          }
-        });
-      } else {
-        if (oldTrade.imageUrl && existingImages.includes(oldTrade.imageUrl)) {
-          imageUrls.push(oldTrade.imageUrl);
-        }
-      }
+    if (existingImages && existingImages.length > 0) {
+      imageKeys = oldTrade.imageKeys || [];
     } else if (chartFiles.length === 0) {
       imageKeys = oldTrade.imageKeys || [];
-      imageUrl = oldTrade.imageUrl || null;
-      imageUrls = oldTrade.imageUrls || (oldTrade.imageUrl ? [oldTrade.imageUrl] : []);
     }
     
     if (chartFiles.length > 0) {
@@ -558,7 +542,14 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       imageUrls = [...imageUrls, ...newUrls.filter(Boolean)];
       imageUrl = imageUrls[0] || null;
     } else {
-      imageUrl = imageUrls[0] || null;
+      if (imageKeys.length > 0) {
+        const base64 = await getLocalImage(imageKeys[0]);
+        imageUrl = base64 || null;
+        imageUrls = base64 ? [base64] : [];
+      } else {
+        imageUrl = null;
+        imageUrls = [];
+      }
     }
     
     const oldEntryTime = oldTrade.entryTime;
