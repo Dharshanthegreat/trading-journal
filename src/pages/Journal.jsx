@@ -1044,7 +1044,7 @@ const Journal = () => {
                       {currentSelectedTrade.lotSize || '—'}
                     </div>
                   </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', gridColumn: 'span 2', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Tags</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center', alignItems: 'center' }}>
                       {currentSelectedTrade.tags && currentSelectedTrade.tags.length > 0 ? (
@@ -1056,6 +1056,12 @@ const Journal = () => {
                       ) : (
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
                       )}
+                    </div>
+                  </div>
+                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>R/R</div>
+                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2, color: 'var(--text-secondary)' }}>
+                      {currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—'}
                     </div>
                   </div>
                 </div>

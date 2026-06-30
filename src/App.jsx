@@ -1029,12 +1029,30 @@ const Dashboard = () => {
                   {filteredTrades.slice(0, 5).map((t, idx) => (
                     <tr key={t.id || idx}>
                       <td>
-                        <span className={t.type === 'Long' ? 'tz-badge-buy' : 'tz-badge-sell'}>
-                          {t.symbol} · {t.type}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: t.type === 'Long' ? 'var(--profit)' : 'var(--loss)',
+                            boxShadow: `0 0 6px ${t.type === 'Long' ? 'var(--profit)' : 'var(--loss)'}`
+                          }} />
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.symbol}</span>
+                          <span style={{
+                            fontSize: '0.62rem',
+                            color: 'var(--text-secondary)',
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border)',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            fontWeight: 500
+                          }}>{t.type}</span>
+                        </div>
                       </td>
-                      <td>{t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}</td>
-                      <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`}>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                        {t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}
+                      </td>
+                      <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`} style={{ fontWeight: 700, textAlign: 'right' }}>
                         {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
                       </td>
                     </tr>
