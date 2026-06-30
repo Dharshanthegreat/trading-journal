@@ -342,16 +342,24 @@ const Settings = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', maxWidth: 700 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', maxWidth: 900, paddingBottom: '60px' }}>
       <div className="page-header">
         <div className="page-title"><SettingsIcon size={18} style={{ opacity: 0.6 }}/> Settings</div>
         <div className="page-subtitle">Configure your journal and manage your account</div>
       </div>
 
       {/* Account */}
-      <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
-        <div className="settings-section-title"><User size={12}/> Account</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '32px', alignItems: 'start' }}>
+        <div>
+          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <User size={14} style={{ color: 'var(--text-muted)' }}/> Account Profile
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            Update your display name and associated email address.
+          </p>
+        </div>
+        <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
           <div className="form-field">
             <label className="form-label">Display Name</label>
             <input className="input" value={profileForm.displayName} onChange={e => setProfileForm({ ...profileForm, displayName: e.target.value })} disabled={user?.isGuest}/>
@@ -360,6 +368,7 @@ const Settings = () => {
             <label className="form-label">Email</label>
             <div className="input" style={{ cursor: 'default', color: 'var(--text-tertiary)' }}>{user?.email || '—'}</div>
           </div>
+        </div>
         </div>
       </div>
 
@@ -512,6 +521,7 @@ const Settings = () => {
               {passwordLoading ? 'Updating...' : 'Change Password'}
             </button>
           </div>
+          </div>
         </div>
       )}
 
@@ -539,33 +549,37 @@ const Settings = () => {
             {profileSaved ? 'Saved ✓' : 'Save Preferences'}
           </button>
         </div>
+        </div>
       </div>
 
 
       {/* Showcase Sharing Card */}
       {!user?.isGuest && (
-        <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s2)' }}>
-            <div className="settings-section-title" style={{ margin: 0, borderBottom: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Share2 size={14} style={{ opacity: 0.6 }}/> Showcase Sharing
+        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '32px', alignItems: 'start' }}>
+          <div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Share2 size={14} style={{ color: 'var(--text-muted)' }}/> Showcase Sharing
             </div>
-            {shareToken && (
-              <span className="badge badge-success" style={{
-                fontSize: '0.62rem',
-                padding: '2px 8px',
-                background: 'var(--profit-soft)',
-                border: '1px solid var(--profit-border)',
-                color: 'var(--profit)',
-                borderRadius: 'var(--r-md)',
-                fontWeight: 600
-              }}>
-                Active
-              </span>
-            )}
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Generate a secure, read-only showcase link to share your complete trading journal with your friends. Visitors can view your dashboard, analytics, journal entries, and query the AI coach, but cannot modify your data.
+            </p>
           </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)', lineHeight: 1.6 }}>
-            Generate a secure, read-only showcase link to share your complete trading journal with your friends. Visitors can view your dashboard, analytics, journal entries, and query the AI coach, but cannot modify your data.
-          </p>
+          <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 'var(--s2)' }}>
+              {shareToken && (
+                <span className="badge badge-success" style={{
+                  fontSize: '0.62rem',
+                  padding: '2px 8px',
+                  background: 'var(--profit-soft)',
+                  border: '1px solid var(--profit-border)',
+                  color: 'var(--profit)',
+                  borderRadius: 'var(--r-md)',
+                  fontWeight: 600
+                }}>
+                  Active
+                </span>
+              )}
+            </div>
 
           {shareToken ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
@@ -628,18 +642,22 @@ const Settings = () => {
               </button>
             </div>
           )}
+          </div>
         </div>
       )}
 
       {/* AI Configuration */}
       {!user?.isGuest && (
-        <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
-          <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={12} style={{ opacity: 0.6 }}/> AI Configuration
+        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '32px', alignItems: 'start' }}>
+          <div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={14} style={{ color: 'var(--text-muted)' }}/> AI Configuration
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Power your journal with state-of-the-art models. Add your Google Gemini API Key to enable instant, highly accurate trade metric extraction from chart screenshots. Add your Nvidia API Key to power the interactive AI Trading Coach.
+            </p>
           </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)', lineHeight: 1.6 }}>
-            Power your journal with state-of-the-art models. Add your Google Gemini API Key to enable instant, highly accurate trade metric extraction from chart screenshots. Add your Nvidia API Key to power the interactive AI Trading Coach.
-          </p>
+          <div className="glass settings-section" style={{ padding: 'var(--s6)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             <div className="form-field">
               <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
