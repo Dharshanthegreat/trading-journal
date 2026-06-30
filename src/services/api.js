@@ -20,6 +20,32 @@ export const getMode = () => isLocalMode ? 'local' : 'cloud';
 
 async function request(url, options = {}) {
   if (isLocalMode) {
+    // Attempt to fetch real news from backend server first if possible
+    if (url.startsWith('/news')) {
+      try {
+        const headers = {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        };
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`${BASE}${url}`, {
+          ...options,
+          headers,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        // Fall back to local mock below
+      }
+    }
     return localDb.handleRequest(url, options);
   }
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { syncNewsData } from '../utils/news_agent.js';
 
 const router = Router();
 
@@ -25,114 +26,72 @@ function checkRateLimit(userId) {
   return true;
 }
 
-// Deterministic generator to populate a full month's economic events
-function generateMonthlyEvents(year, month, realEvents) {
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const eventsList = [];
-
-  const realEventDays = new Set();
-  if (Array.isArray(realEvents)) {
-    realEvents.forEach(e => {
-      try {
-        const d = new Date(e.date);
-        if (d.getFullYear() === year && d.getMonth() === month) {
-          eventsList.push(e);
-          realEventDays.add(d.getDate());
-        }
-      } catch (err) {
-        // Skip invalid real events
-      }
-    });
-  }
-
-  const currencies = ['USD', 'EUR', 'GBP', 'AUD', 'JPY', 'CAD', 'CHF', 'NZD'];
-  const eventTemplates = [
-    { title: 'CPI m/m', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'AUD'] },
-    { title: 'Core CPI y/y', impact: 'High', currencies: ['USD', 'EUR', 'GBP'] },
-    { title: 'Unemployment Rate', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'] },
-    { title: 'GDP q/q', impact: 'High', currencies: ['USD', 'GBP', 'EUR', 'AUD'] },
-    { title: 'Interest Rate Decision', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'AUD'] },
-    { title: 'Retail Sales m/m', impact: 'Medium', currencies: ['USD', 'GBP', 'AUD'] },
-    { title: 'OPEC-JMMC Meetings', impact: 'Medium', currencies: ['CAD'] },
-    { title: 'PMI Economic Outlook', impact: 'Medium', currencies: ['EUR', 'GBP', 'USD'] },
-    { title: 'Producer Price Index (PPI)', impact: 'Low', currencies: ['USD', 'EUR'] },
-    { title: 'Trade Balance', impact: 'Low', currencies: ['AUD', 'NZD', 'JPY'] },
-    { title: 'Consumer Sentiment Index', impact: 'Low', currencies: ['USD'] },
-    { title: 'Government Bond Auction', impact: 'Low', currencies: ['USD', 'EUR', 'GBP'] }
-  ];
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    if (realEventDays.has(day)) continue;
-
-    const date = new Date(year, month, day);
-    const dayOfWeek = date.getDay();
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      if (day % 11 === 0) {
-        eventsList.push({
-          title: 'Bank Holiday',
-          country: currencies[(day * 3) % currencies.length],
-          date: new Date(year, month, day, 0, 0, 0).toISOString(),
-          impact: 'Holiday',
-          forecast: '',
-          previous: ''
-        });
-      }
-      continue;
-    }
-
-    const numEvents = 1 + ((day * 3) % 3);
-    const indexSeed = (day * 7) % eventTemplates.length;
-
-    for (let i = 0; i < numEvents; i++) {
-      const template = eventTemplates[(indexSeed + i) % eventTemplates.length];
-      const currency = template.currencies[(day + i) % template.currencies.length];
-      
-      const hour = 8 + (i * 3) + (day % 4);
-      const minute = (day * 15) % 60;
-      
-      let forecast = '';
-      let previous = '';
-      if (template.impact !== 'Holiday') {
-        const val = (((day + i) * 0.17) % 3.0).toFixed(1);
-        forecast = `${val}%`;
-        previous = `${(parseFloat(val) - 0.1).toFixed(1)}%`;
-      }
-
-      eventsList.push({
-        title: template.title,
-        country: currency,
-        date: new Date(year, month, day, hour, minute, 0).toISOString(),
-        impact: template.impact,
-        forecast,
-        previous
-      });
-    }
-  }
-
-  return eventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
-}
-
-// GET /api/news - Fetch monthly economic calendar news events
+// GET /api/news - Fetch monthly economic calendar news events (real Forex Factory data only)
 router.get('/', async (req, res) => {
   try {
     const reqYear = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
     const reqMonth = req.query.month ? parseInt(req.query.month) : new Date().getMonth();
 
-    // Query economic news releases from PostgreSQL database cache (synced by background agent)
-    let realEvents = [];
+    // Lazy sync on the fly if needed (every 30 minutes, or if DB has no entries)
+    try {
+      const syncCheck = await db.query('SELECT MAX(updated_at) as last_update FROM economic_news');
+      const lastUpdate = syncCheck.rows[0]?.last_update;
+      const shouldSync = !lastUpdate || (new Date() - new Date(lastUpdate)) > 30 * 60 * 1000;
+      if (shouldSync) {
+        console.log('[News Route] Lazy synchronizing economic news from Forex Factory...');
+        await syncNewsData().catch(err => {
+          console.error('[News Route] Lazy sync failed:', err);
+        });
+      }
+    } catch (syncErr) {
+      console.error('[News Route] Lazy sync check failed:', syncErr);
+    }
+
+    // Query real Forex Factory events from PostgreSQL, filtered by the requested month
+    let events = [];
     try {
       const result = await db.query(`
         SELECT title, country, date, impact, forecast, previous 
         FROM economic_news
+        ORDER BY date ASC
       `);
-      realEvents = result.rows;
+      
+      // Filter events to the requested month (dates are stored as timezone-offset strings)
+      events = result.rows.filter(e => {
+        try {
+          const d = new Date(e.date);
+          return d.getFullYear() === reqYear && d.getMonth() === reqMonth;
+        } catch {
+          return false;
+        }
+      });
     } catch (err) {
       console.error('Failed to retrieve news events from PostgreSQL:', err);
     }
 
-    const monthlyEvents = generateMonthlyEvents(reqYear, reqMonth, realEvents);
-    res.json(monthlyEvents);
+    // If DB returned no events for this month, try fetching live from Forex Factory CDN
+    if (events.length === 0) {
+      try {
+        const ffResponse = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+        if (ffResponse.ok) {
+          const ffData = await ffResponse.json();
+          if (Array.isArray(ffData)) {
+            events = ffData.filter(e => {
+              try {
+                const d = new Date(e.date);
+                return d.getFullYear() === reqYear && d.getMonth() === reqMonth;
+              } catch {
+                return false;
+              }
+            });
+          }
+        }
+      } catch (ffErr) {
+        console.error('[News Route] Direct Forex Factory fetch failed:', ffErr);
+      }
+    }
+
+    res.json(events);
   } catch (err) {
     console.error('Failed to retrieve economic calendar:', err);
     res.status(500).json({ error: 'Failed to retrieve economic calendar' });

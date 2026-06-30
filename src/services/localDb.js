@@ -1918,41 +1918,10 @@ const handleStoic = async (url, method, body) => {
 
 // 10. News Handler
 const handleNews = async (url, method, body, queryParams = {}) => {
-  const currencies = ['USD', 'EUR', 'GBP', 'AUD', 'JPY', 'CAD', 'CHF', 'NZD'];
-  const eventTemplates = [
-    { title: 'CPI m/m', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'AUD'] },
-    { title: 'Core CPI y/y', impact: 'High', currencies: ['USD', 'EUR', 'GBP'] },
-    { title: 'Unemployment Rate', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'] },
-    { title: 'GDP q/q', impact: 'High', currencies: ['USD', 'GBP', 'EUR', 'AUD'] },
-    { title: 'Interest Rate Decision', impact: 'High', currencies: ['USD', 'EUR', 'GBP', 'AUD'] }
-  ];
-
   if (url === '' && method === 'GET') {
-    const reqYear = queryParams.year ? parseInt(queryParams.year) : new Date().getFullYear();
-    const reqMonth = queryParams.month ? parseInt(queryParams.month) : new Date().getMonth();
-    const daysInMonth = new Date(reqYear, reqMonth + 1, 0).getDate();
-    const eventsList = [];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(reqYear, reqMonth, day);
-      if (date.getDay() === 0 || date.getDay() === 6) continue;
-      
-      const numEvents = 1 + ((day * 3) % 3);
-      for (let i = 0; i < numEvents; i++) {
-        const template = eventTemplates[(day + i) % eventTemplates.length];
-        const currency = template.currencies[(day + i) % template.currencies.length];
-        const val = (((day + i) * 0.17) % 3.0).toFixed(1);
-        eventsList.push({
-          title: template.title,
-          country: currency,
-          date: new Date(reqYear, reqMonth, day, 9 + i * 2, 30, 0).toISOString(),
-          impact: template.impact,
-          forecast: `${val}%`,
-          previous: `${(parseFloat(val) - 0.1).toFixed(1)}%`
-        });
-      }
-    }
-    return eventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // In offline mode, return empty array — no fake data.
+    // The api.js layer already tries the real backend server first for /news endpoints.
+    return [];
   }
 
   if (url === '/analyze' && method === 'POST') {
