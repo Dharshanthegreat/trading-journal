@@ -218,7 +218,34 @@ export const ai = {
 
 // ─── News ────────────────────────────────────────────
 export const news = {
-  list: (params = {}) => {
+  list: async (params = {}) => {
+    try {
+      // Direct integration with Forex Factory API
+      const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+      if (response.ok) {
+        let events = await response.json();
+        if (Array.isArray(events)) {
+          // Filter by requested month/year to match calendar UI requirements
+          if (params.year !== undefined && params.month !== undefined) {
+            const reqYear = parseInt(params.year);
+            const reqMonth = parseInt(params.month);
+            events = events.filter(e => {
+              try {
+                const d = new Date(e.date);
+                return d.getFullYear() === reqYear && d.getMonth() === reqMonth;
+              } catch {
+                return false;
+              }
+            });
+          }
+          return events;
+        }
+      }
+    } catch (err) {
+      console.warn('Direct Forex Factory API fetch failed, falling back to backend:', err);
+    }
+    
+    // Fallback
     const qs = new URLSearchParams(params).toString();
     return request(`/news${qs ? `?${qs}` : ''}`);
   },
