@@ -220,8 +220,11 @@ export const ai = {
 export const news = {
   list: async (params = {}) => {
     try {
-      // Direct integration with Forex Factory API
-      const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+      // Direct integration with Forex Factory API via static prebuild (avoids browser CORS)
+      const baseUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.BASE_URL : '/';
+      const staticUrl = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}/news.json`;
+      const response = await fetch(staticUrl);
+      
       if (response.ok) {
         let events = await response.json();
         if (Array.isArray(events)) {
@@ -242,7 +245,7 @@ export const news = {
         }
       }
     } catch (err) {
-      console.warn('Direct Forex Factory API fetch failed, falling back to backend:', err);
+      console.warn('Failed to load static news.json, falling back to backend:', err);
     }
     
     // Fallback
