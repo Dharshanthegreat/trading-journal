@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, BarChart2, Brain,
   Image as ImageIcon, Settings as SettingsIcon,
@@ -139,6 +139,8 @@ const getTradeR = (t) => {
 const Dashboard = () => {
   const { trades, fetchTrades, analytics, fetchAnalytics, loading } = useTrades();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const accountIdFromUrl = searchParams.get('accountId');
   
   // Filter states
   const [dateRange, setDateRange] = useState('all');
@@ -147,9 +149,28 @@ const Dashboard = () => {
   const [selectedSymbol, setSelectedSymbol] = useState('All');
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
-  const [selectedAccount, setSelectedAccount] = useState('All');
+  const [selectedAccount, setSelectedAccount] = useState(accountIdFromUrl || 'All');
   const [accounts, setAccounts] = useState([]);
   const [showAiChat, setShowAiChat] = useState(false);
+
+  // Sync selectedAccount if URL parameter changes
+  useEffect(() => {
+    if (accountIdFromUrl) {
+      setSelectedAccount(accountIdFromUrl);
+    } else {
+      setSelectedAccount('All');
+    }
+  }, [accountIdFromUrl]);
+
+  const handleAccountChange = (val) => {
+    setSelectedAccount(val);
+    if (val === 'All') {
+      searchParams.delete('accountId');
+    } else {
+      searchParams.set('accountId', val);
+    }
+    setSearchParams(searchParams);
+  };
 
   // Fetch/mock accounts list
   const fetchDashboardAccounts = useCallback(async () => {
@@ -703,7 +724,7 @@ const Dashboard = () => {
           )}
 
           <div className="tz-filter-btn">
-            <select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
+            <select value={selectedAccount} onChange={e => handleAccountChange(e.target.value)}>
               <option value="All">All accounts</option>
               {accounts.map(acc => (
                 <option key={acc.id} value={acc.id}>{acc.accountName}</option>

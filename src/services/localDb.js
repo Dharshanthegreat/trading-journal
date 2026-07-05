@@ -1303,7 +1303,7 @@ const handleAccounts = async (url, method, body) => {
       // Count distinct trading days
       const tradingDaysSet = new Set();
       accTrades.forEach(t => {
-        const dateStr = t.closeTime || t.date || t.entryDate;
+        const dateStr = t.exitTime || t.entryTime || t.createdAt;
         if (dateStr) {
           const dayStr = new Date(dateStr).toISOString().split('T')[0];
           tradingDaysSet.add(dayStr);
@@ -1323,14 +1323,14 @@ const handleAccounts = async (url, method, body) => {
       if (consistencyRule > 0 && totalPnL > 0) {
         const dailyPnL = {};
         accTrades.forEach(t => {
-          const dateStr = t.closeTime || t.date || t.entryDate;
+          const dateStr = t.exitTime || t.entryTime || t.createdAt;
           if (dateStr) {
             const dayStr = new Date(dateStr).toISOString().split('T')[0];
             dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
           }
         });
         const maxDayPnL = Math.max(...Object.values(dailyPnL).map(Math.abs), 0);
-        consistencyScore = totalPnL > 0 ? (maxDayPnL / totalPnL) * 100 : 0;
+        consistencyScore = (maxDayPnL / totalPnL) * 100;
       }
 
       return {

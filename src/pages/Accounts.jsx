@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -7,6 +8,7 @@ import {
 
 const Accounts = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
     try {
@@ -731,6 +733,27 @@ const Accounts = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* View Details Button */}
+                <button
+                  onClick={() => navigate(`/dashboard?accountId=${acc.id}`)}
+                  className="btn btn-sm btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    borderRadius: '10px',
+                    marginTop: '4px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Activity size={12} /> View Details on Dashboard
+                </button>
 
                 {/* Notion Page Link Integration */}
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '10px' }}>

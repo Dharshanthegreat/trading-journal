@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
 
     // Compute live stats for each account
     const accountsWithStats = await Promise.all(accountsResult.rows.map(async (acc) => {
-      const tradesResult = await db.query('SELECT pnl, close_time FROM trades WHERE user_id = $1 AND account_id = $2', [userId, acc.id]);
+      const tradesResult = await db.query('SELECT pnl, exit_time, entry_time, created_at FROM trades WHERE user_id = $1 AND account_id = $2', [userId, acc.id]);
       const totalPnL = tradesResult.rows.reduce((accPnL, t) => accPnL + (t.pnl || 0), 0);
       const tradesCount = tradesResult.rows.length;
       const currentBalance = (acc.balance || 0) + totalPnL;
@@ -19,8 +19,9 @@ router.get('/', async (req, res) => {
       // Count distinct trading days
       const tradingDaysSet = new Set();
       tradesResult.rows.forEach(t => {
-        if (t.close_time) {
-          const dayStr = new Date(t.close_time).toISOString().split('T')[0];
+        const tradeTime = t.exit_time || t.entry_time || t.created_at;
+        if (tradeTime) {
+          const dayStr = new Date(tradeTime).toISOString().split('T')[0];
           tradingDaysSet.add(dayStr);
         }
       });
@@ -38,13 +39,14 @@ router.get('/', async (req, res) => {
       if (consistencyRule > 0 && totalPnL > 0) {
         const dailyPnL = {};
         tradesResult.rows.forEach(t => {
-          if (t.close_time) {
-            const dayStr = new Date(t.close_time).toISOString().split('T')[0];
+          const tradeTime = t.exit_time || t.entry_time || t.created_at;
+          if (tradeTime) {
+            const dayStr = new Date(tradeTime).toISOString().split('T')[0];
             dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
           }
         });
         const maxDayPnL = Math.max(...Object.values(dailyPnL).map(Math.abs), 0);
-        consistencyScore = totalPnL > 0 ? (maxDayPnL / totalPnL) * 100 : 0;
+        consistencyScore = (maxDayPnL / totalPnL) * 100;
       }
 
       return {
