@@ -306,15 +306,8 @@ const Journal = () => {
     const loadRules = async () => {
       try {
         const data = await rulesApi.list({ accountId: formData.accountId });
-        const activeRules = (data || []).filter(r => r.isActive);
-        setAccountRules(activeRules);
-        
-        // Default to all active rules checked (Pass)
-        const initialChecks = {};
-        activeRules.forEach(r => {
-          initialChecks[r.id] = true;
-        });
-        setCheckedRules(initialChecks);
+        setAccountRules((data || []).filter(r => r.isActive));
+        setCheckedRules({});
       } catch (err) {
         console.error('Failed to load rules for account in modal:', err);
       }
@@ -426,7 +419,7 @@ const Journal = () => {
         // Automatically update the rule discipline counters for the selected account
         if (accountRules.length > 0) {
           for (const rule of accountRules) {
-            const isFollowed = !!checkedRules[rule.id];
+            const isFollowed = checkedRules[rule.id] !== false;
             const nextPassed = (rule.passedCount || 0) + (isFollowed ? 1 : 0);
             const nextFailed = (rule.failedCount || 0) + (isFollowed ? 0 : 1);
             try {
@@ -962,7 +955,7 @@ const Journal = () => {
                           <input
                             type="checkbox"
                             id={`rule-check-${rule.id}`}
-                            checked={!!checkedRules[rule.id]}
+                            checked={checkedRules[rule.id] !== false}
                             onChange={e => setCheckedRules(prev => ({ ...prev, [rule.id]: e.target.checked }))}
                             style={{
                               width: '16px',
