@@ -1315,7 +1315,27 @@ const handleAccounts = async (url, method, body) => {
       const profitTarget = acc.profitTarget || 0;
       const maxLossLimit = acc.maxLossLimit || 0;
       const consistencyRule = acc.consistencyRule || 0;
-      const mllValue = (acc.startingBalance || 0) - maxLossLimit;
+      const useTrailingDrawdown = acc.useTrailingDrawdown || false;
+
+      // Trailing drawdown calculation
+      let mllValue = (acc.startingBalance || 0) - maxLossLimit;
+      if (useTrailingDrawdown && maxLossLimit > 0) {
+        let runningBalance = acc.startingBalance || 0;
+        let peakBalance = acc.startingBalance || 0;
+        const chronoTrades = [...accTrades].sort((a, b) => {
+          const tA = new Date(a.exitTime || a.entryTime || a.createdAt).getTime();
+          const tB = new Date(b.exitTime || b.entryTime || b.createdAt).getTime();
+          return tA - tB;
+        });
+        chronoTrades.forEach(t => {
+          runningBalance += (t.pnl || 0);
+          if (runningBalance > peakBalance) {
+            peakBalance = runningBalance;
+          }
+        });
+        mllValue = peakBalance - maxLossLimit;
+      }
+
       const targetValue = (acc.startingBalance || 0) + profitTarget;
 
       // Consistency score
@@ -1343,6 +1363,7 @@ const handleAccounts = async (url, method, body) => {
         profitTarget,
         maxLossLimit,
         consistencyRule,
+        useTrailingDrawdown,
         mllValue,
         targetValue,
         consistencyScore
@@ -1352,7 +1373,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const startBal = parseFloat(balance) || 0;
@@ -1372,6 +1393,7 @@ const handleAccounts = async (url, method, body) => {
       profitTarget: parseFloat(profitTarget) || 0,
       maxLossLimit: parseFloat(maxLossLimit) || 0,
       consistencyRule: parseFloat(consistencyRule) || 0,
+      useTrailingDrawdown: useTrailingDrawdown === true,
       mllValue: startBal - (parseFloat(maxLossLimit) || 0),
       targetValue: startBal + (parseFloat(profitTarget) || 0),
       consistencyScore: 0,
@@ -1385,7 +1407,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1400,7 +1422,8 @@ const handleAccounts = async (url, method, body) => {
       notes: notes !== undefined ? notes : accountsList[idx].notes,
       profitTarget: profitTarget !== undefined ? parseFloat(profitTarget) : accountsList[idx].profitTarget,
       maxLossLimit: maxLossLimit !== undefined ? parseFloat(maxLossLimit) : accountsList[idx].maxLossLimit,
-      consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule
+      consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule,
+      useTrailingDrawdown: useTrailingDrawdown !== undefined ? useTrailingDrawdown : accountsList[idx].useTrailingDrawdown
     };
 
     accountsList[idx] = updatedAccount;

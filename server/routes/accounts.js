@@ -31,7 +31,27 @@ router.get('/', async (req, res) => {
       const profitTarget = acc.profit_target || 0;
       const maxLossLimit = acc.max_loss_limit || 0;
       const consistencyRule = acc.consistency_rule || 0;
-      const mllValue = (acc.balance || 0) - maxLossLimit;
+      const useTrailingDrawdown = acc.use_trailing_drawdown || false;
+
+      // Trailing drawdown calculation
+      let mllValue = (acc.balance || 0) - maxLossLimit;
+      if (useTrailingDrawdown && maxLossLimit > 0) {
+        let runningBalance = acc.balance || 0;
+        let peakBalance = acc.balance || 0;
+        const chronoTrades = [...tradesResult.rows].sort((a, b) => {
+          const tA = new Date(a.exit_time || a.entry_time || a.created_at).getTime();
+          const tB = new Date(b.exit_time || b.entry_time || b.created_at).getTime();
+          return tA - tB;
+        });
+        chronoTrades.forEach(t => {
+          runningBalance += (t.pnl || 0);
+          if (runningBalance > peakBalance) {
+            peakBalance = runningBalance;
+          }
+        });
+        mllValue = peakBalance - maxLossLimit;
+      }
+      
       const targetValue = (acc.balance || 0) + profitTarget;
 
       // Consistency score: largest single-day PnL as % of total profit
@@ -65,6 +85,7 @@ router.get('/', async (req, res) => {
         profitTarget,
         maxLossLimit,
         consistencyRule,
+        useTrailingDrawdown,
         mllValue,
         targetValue,
         consistencyScore,
@@ -82,7 +103,7 @@ router.get('/', async (req, res) => {
 // ─── Create Account ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule } = req.body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = req.body;
     const userId = req.user.id;
 
     if (!accountName) {
@@ -96,12 +117,13 @@ router.post('/', async (req, res) => {
     const accProfitTarget = parseFloat(profitTarget) || 0;
     const accMaxLossLimit = parseFloat(maxLossLimit) || 0;
     const accConsistencyRule = parseFloat(consistencyRule) || 0;
+    const accUseTrailing = useTrailingDrawdown === true;
 
     const result = await db.query(`
-      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, consistency_rule)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, consistency_rule, use_trailing_drawdown)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accConsistencyRule]);
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accConsistencyRule, accUseTrailing]);
 
     const newAccount = result.rows[0];
     res.status(201).json({
@@ -120,6 +142,7 @@ router.post('/', async (req, res) => {
       profitTarget: newAccount.profit_target || 0,
       maxLossLimit: newAccount.max_loss_limit || 0,
       consistencyRule: newAccount.consistency_rule || 0,
+      useTrailingDrawdown: newAccount.use_trailing_drawdown || false,
       mllValue: newAccount.balance - (newAccount.max_loss_limit || 0),
       targetValue: newAccount.balance + (newAccount.profit_target || 0),
       consistencyScore: 0,
@@ -134,7 +157,7 @@ router.post('/', async (req, res) => {
 // ─── Update Account ────────────────────────────────────
 router.put('/:id', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule } = req.body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = req.body;
     const accountId = req.params.id;
     const userId = req.user.id;
 
@@ -154,14 +177,16 @@ router.put('/:id', async (req, res) => {
           notes = COALESCE($7, notes),
           profit_target = COALESCE($8, profit_target),
           max_loss_limit = COALESCE($9, max_loss_limit),
-          consistency_rule = COALESCE($10, consistency_rule)
-      WHERE id = $11 AND user_id = $12
+          consistency_rule = COALESCE($10, consistency_rule),
+          use_trailing_drawdown = COALESCE($11, use_trailing_drawdown)
+      WHERE id = $12 AND user_id = $13
       RETURNING *
     `, [
       accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, notes,
       profitTarget !== undefined ? parseFloat(profitTarget) : null,
       maxLossLimit !== undefined ? parseFloat(maxLossLimit) : null,
       consistencyRule !== undefined ? parseFloat(consistencyRule) : null,
+      useTrailingDrawdown !== undefined ? useTrailingDrawdown : null,
       accountId, userId
     ]);
 
@@ -178,6 +203,7 @@ router.put('/:id', async (req, res) => {
       profitTarget: updatedAccount.profit_target || 0,
       maxLossLimit: updatedAccount.max_loss_limit || 0,
       consistencyRule: updatedAccount.consistency_rule || 0,
+      useTrailingDrawdown: updatedAccount.use_trailing_drawdown || false,
       createdAt: updatedAccount.created_at,
     });
   } catch (err) {

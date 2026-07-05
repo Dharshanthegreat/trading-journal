@@ -186,6 +186,7 @@ async function initDB() {
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profit_target DOUBLE PRECISION DEFAULT 0;
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS max_loss_limit DOUBLE PRECISION DEFAULT 0;
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS consistency_rule DOUBLE PRECISION DEFAULT 0;
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS use_trailing_drawdown BOOLEAN DEFAULT FALSE;
     `);
 
     await client.query('COMMIT');

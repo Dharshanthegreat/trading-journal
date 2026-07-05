@@ -76,7 +76,8 @@ const Accounts = () => {
       notes: '',
       profitTarget: '',
       maxLossLimit: '',
-      consistencyRule: ''
+      consistencyRule: '',
+      useTrailingDrawdown: false
     });
     setError('');
   };
@@ -93,7 +94,8 @@ const Accounts = () => {
       notes: acc.notes || '',
       profitTarget: acc.profitTarget ? String(acc.profitTarget) : '',
       maxLossLimit: acc.maxLossLimit ? String(acc.maxLossLimit) : '',
-      consistencyRule: acc.consistencyRule ? String(acc.consistencyRule) : ''
+      consistencyRule: acc.consistencyRule ? String(acc.consistencyRule) : '',
+      useTrailingDrawdown: acc.useTrailingDrawdown === true
     });
     setShowForm(true);
   };
@@ -119,7 +121,8 @@ const Accounts = () => {
           notes: formData.notes,
           profitTarget: parseFloat(formData.profitTarget) || 0,
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
-          consistencyRule: parseFloat(formData.consistencyRule) || 0
+          consistencyRule: parseFloat(formData.consistencyRule) || 0,
+          useTrailingDrawdown: formData.useTrailingDrawdown === true
         });
       } else {
         await accountsApi.create({
@@ -132,7 +135,8 @@ const Accounts = () => {
           notes: formData.notes,
           profitTarget: parseFloat(formData.profitTarget) || 0,
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
-          consistencyRule: parseFloat(formData.consistencyRule) || 0
+          consistencyRule: parseFloat(formData.consistencyRule) || 0,
+          useTrailingDrawdown: formData.useTrailingDrawdown === true
         });
       }
       handleCloseForm();
@@ -706,7 +710,9 @@ const Accounts = () => {
                             <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--loss)' }}>
                               ${Math.round(mll).toLocaleString()}
                             </div>
-                            <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>MLL</div>
+                            <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>
+                              {acc.useTrailingDrawdown ? 'MLL (Trailing)' : 'MLL'}
+                            </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--profit)' }}>
@@ -970,8 +976,28 @@ const Accounts = () => {
                         />
                       </div>
                     </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '4px' }}>
+                      <input
+                        type="checkbox"
+                        id="useTrailingDrawdown"
+                        checked={formData.useTrailingDrawdown || false}
+                        onChange={e => setFormData({ ...formData, useTrailingDrawdown: e.target.checked })}
+                        style={{
+                          width: '14px',
+                          height: '14px',
+                          accentColor: 'var(--accent)',
+                          cursor: 'pointer',
+                          margin: 0
+                        }}
+                      />
+                      <label htmlFor="useTrailingDrawdown" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}>
+                        Use Trailing Drawdown (Apex/prop-firm style dynamic MLL floor)
+                      </label>
+                    </div>
+
                     <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Leave blank or 0 to disable. Profit Target = profit needed to pass. Max Loss = max drawdown from starting balance. Consistency = max % of total profit from a single day.
+                      Leave blank or 0 to disable. Profit Target = profit needed to pass. Max Loss = max drawdown from starting balance (trails dynamically if Trailing Drawdown is checked). Consistency = max % of total profit from a single day.
                     </div>
                   </div>
                 )}
