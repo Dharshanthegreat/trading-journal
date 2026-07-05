@@ -1603,13 +1603,13 @@ const handleRules = async (url, method, body, queryParams = {}) => {
   const rulesSeeded = localStorage.getItem(`demo_rules_seeded_${activeUser.id}`);
   if (!rulesSeeded) {
     const defaultRules = [
-      { id: 1, accountId: 1, ruleText: 'Max daily loss: $500', isActive: true, createdAt: new Date().toISOString() },
-      { id: 2, accountId: 1, ruleText: 'No trading within 10 minutes of high-impact economic news', isActive: true, createdAt: new Date().toISOString() },
-      { id: 3, accountId: 1, ruleText: 'Maximum 3 trades per day', isActive: true, createdAt: new Date().toISOString() },
-      { id: 4, accountId: 2, ruleText: 'Stick to pre-market playbook setups only', isActive: true, createdAt: new Date().toISOString() },
-      { id: 5, accountId: 2, ruleText: 'Scale out 50% of position at 2R target', isActive: true, createdAt: new Date().toISOString() },
-      { id: 6, accountId: 3, ruleText: 'Walk away after 2 consecutive losses', isActive: true, createdAt: new Date().toISOString() },
-      { id: 7, accountId: 3, ruleText: 'Never revenge trade or increase risk size to recover losses', isActive: true, createdAt: new Date().toISOString() }
+      { id: 1, accountId: 1, ruleText: 'Max daily loss: $500', isActive: true, passedCount: 5, failedCount: 1, createdAt: new Date().toISOString() },
+      { id: 2, accountId: 1, ruleText: 'No trading within 10 minutes of high-impact economic news', isActive: true, passedCount: 8, failedCount: 0, createdAt: new Date().toISOString() },
+      { id: 3, accountId: 1, ruleText: 'Maximum 3 trades per day', isActive: true, passedCount: 12, failedCount: 2, createdAt: new Date().toISOString() },
+      { id: 4, accountId: 2, ruleText: 'Stick to pre-market playbook setups only', isActive: true, passedCount: 15, failedCount: 0, createdAt: new Date().toISOString() },
+      { id: 5, accountId: 2, ruleText: 'Scale out 50% of position at 2R target', isActive: true, passedCount: 10, failedCount: 1, createdAt: new Date().toISOString() },
+      { id: 6, accountId: 3, ruleText: 'Walk away after 2 consecutive losses', isActive: true, passedCount: 4, failedCount: 3, createdAt: new Date().toISOString() },
+      { id: 7, accountId: 3, ruleText: 'Never revenge trade or increase risk size to recover losses', isActive: true, passedCount: 14, failedCount: 1, createdAt: new Date().toISOString() }
     ];
     rulesList = [...defaultRules, ...rulesList];
     setStorageItem(`rules_${activeUser.id}`, rulesList);
@@ -1622,7 +1622,11 @@ const handleRules = async (url, method, body, queryParams = {}) => {
     if (accountId) {
       filtered = filtered.filter(r => String(r.accountId) === String(accountId));
     }
-    return filtered;
+    return filtered.map(r => ({
+      ...r,
+      passedCount: r.passedCount || 0,
+      failedCount: r.failedCount || 0
+    }));
   }
 
   if (url === '' && method === 'POST') {
@@ -1635,6 +1639,8 @@ const handleRules = async (url, method, body, queryParams = {}) => {
       accountId: accountId ? parseInt(accountId) : null,
       ruleText: ruleText.trim(),
       isActive: isActive !== undefined ? isActive : true,
+      passedCount: 0,
+      failedCount: 0,
       createdAt: new Date().toISOString()
     };
     rulesList = [newRule, ...rulesList];
@@ -1644,7 +1650,7 @@ const handleRules = async (url, method, body, queryParams = {}) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { ruleText, isActive, accountId } = body;
+    const { ruleText, isActive, accountId, passedCount, failedCount } = body;
     const idx = rulesList.findIndex(r => r.id === id);
     if (idx === -1) throw { status: 404, message: 'Rule not found' };
 
@@ -1652,7 +1658,9 @@ const handleRules = async (url, method, body, queryParams = {}) => {
       ...rulesList[idx],
       ruleText: ruleText !== undefined ? ruleText.trim() : rulesList[idx].ruleText,
       isActive: isActive !== undefined ? isActive : rulesList[idx].isActive,
-      accountId: accountId !== undefined ? (accountId ? parseInt(accountId) : null) : rulesList[idx].accountId
+      accountId: accountId !== undefined ? (accountId ? parseInt(accountId) : null) : rulesList[idx].accountId,
+      passedCount: passedCount !== undefined ? parseInt(passedCount) : (rulesList[idx].passedCount || 0),
+      failedCount: failedCount !== undefined ? parseInt(failedCount) : (rulesList[idx].failedCount || 0)
     };
 
     rulesList[idx] = updatedRule;

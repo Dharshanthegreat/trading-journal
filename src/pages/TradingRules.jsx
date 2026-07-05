@@ -147,13 +147,42 @@ const TradingRules = () => {
       triggerError(err.message || 'Failed to delete rule.');
     }
   };
-
+  const handleLogRuleAdherence = async (rule, type) => {
+    try {
+      let passed = rule.passedCount || 0;
+      let failed = rule.failedCount || 0;
+      if (type === 'pass') passed += 1;
+      if (type === 'fail') failed += 1;
+      if (type === 'reset') {
+        passed = 0;
+        failed = 0;
+      }
+      
+      const updated = await rulesApi.update(rule.id, {
+        passedCount: passed,
+        failedCount: failed
+      });
+      setRules(prev => prev.map(r => r.id === rule.id ? updated : r));
+      triggerSuccess(type === 'reset' ? 'Rule adherence log reset.' : `Logged ${type === 'pass' ? 'followed' : 'violated'} event for this rule.`);
+    } catch (err) {
+      triggerError(err.message || 'Failed to update rule adherence log.');
+    }
+  };
 
   // Metrics calculations
   const totalCount = rules.length;
   const activeCount = rules.filter(r => r.isActive).length;
   const inactiveCount = totalCount - activeCount;
-  const complianceRate = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 100;
+
+  // Calculate compliance rate as total passed / (total passed + total failed) across all rules
+  let totalPassed = 0;
+  let totalFailed = 0;
+  rules.forEach(r => {
+    totalPassed += r.passedCount || 0;
+    totalFailed += r.failedCount || 0;
+  });
+  const totalLogs = totalPassed + totalFailed;
+  const complianceRate = totalLogs > 0 ? Math.round((totalPassed / totalLogs) * 100) : 100;
 
   // Selected account detail
   const currentAccount = accounts.find(a => String(a.id) === String(selectedAccountId));
@@ -322,14 +351,15 @@ const TradingRules = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '10px 14px',
+                      padding: '12px 16px',
                       borderRadius: 'var(--r-md)',
                       border: '1px solid var(--border)',
                       opacity: rule.isActive ? 1 : 0.6,
-                      background: rule.isActive ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.1)'
+                      background: rule.isActive ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.1)',
+                      gap: '16px'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, marginRight: '16px' }}>
+                    <div style={{ display: 'flex', gap: '12px', flex: 1, alignItems: 'flex-start' }}>
                       {/* Interactive checkmark toggle */}
                       <button
                         onClick={() => handleToggleRule(rule)}
@@ -340,7 +370,8 @@ const TradingRules = () => {
                           padding: 0,
                           display: 'flex',
                           color: rule.isActive ? 'var(--profit)' : 'var(--text-tertiary)',
-                          transition: 'color var(--t-fast)'
+                          transition: 'color var(--t-fast)',
+                          marginTop: '2px'
                         }}
                         title={rule.isActive ? "Click to deactivate rule" : "Click to activate rule"}
                       >
@@ -351,43 +382,71 @@ const TradingRules = () => {
                         )}
                       </button>
 
-                      {/* Rule Text / Input */}
-                      {isEditing ? (
-                        <input
-                          className="input"
-                          style={{
-                            flex: 1,
-                            fontSize: '0.78rem',
-                            padding: '2px 8px',
-                            height: '28px',
-                            background: 'var(--bg-secondary)',
-                            borderColor: 'var(--accent)'
-                          }}
-                          value={editTextInput}
-                          onChange={e => setEditTextInput(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && handleSaveEdit(rule.id)}
-                          autoFocus
-                        />
-                      ) : (
-                        <span 
-                          style={{ 
-                            fontSize: '0.78rem', 
-                            color: rule.isActive ? 'var(--text-secondary)' : 'var(--text-muted)',
-                            textDecoration: rule.isActive ? 'none' : 'line-through',
-                            lineHeight: 1.4
-                          }}
-                        >
-                          <strong>{idx + 1}.</strong> {rule.ruleText}
-                          {selectedAccountId === 'All' && rule.accountId && (
-                            <span style={{ fontSize: '0.6rem', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '4px', marginLeft: '8px', border: '1px solid var(--border-accent)' }}>
-                              Account #{rule.accountId}
+                      {/* Rule content column */}
+                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                        {isEditing ? (
+                          <input
+                            className="input"
+                            style={{
+                              flex: 1,
+                              fontSize: '0.78rem',
+                              padding: '2px 8px',
+                              height: '28px',
+                              background: 'var(--bg-secondary)',
+                              borderColor: 'var(--accent)'
+                            }}
+                            value={editTextInput}
+                            onChange={e => setEditTextInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleSaveEdit(rule.id)}
+                            autoFocus
+                          />
+                        ) : (
+                          <>
+                            <span 
+                              style={{ 
+                                fontSize: '0.78rem', 
+                                color: rule.isActive ? 'var(--text-secondary)' : 'var(--text-muted)',
+                                textDecoration: rule.isActive ? 'none' : 'line-through',
+                                lineHeight: 1.4,
+                                fontWeight: 500
+                              }}
+                            >
+                              <strong>{idx + 1}.</strong> {rule.ruleText}
+                              {selectedAccountId === 'All' && rule.accountId && (
+                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '4px', marginLeft: '8px', border: '1px solid var(--border-accent)' }}>
+                                  Account #{rule.accountId}
+                                </span>
+                              )}
                             </span>
-                          )}
-                        </span>
-                      )}
+
+                            {/* Adherence metrics sub-row */}
+                            {rule.isActive && (() => {
+                              const passed = rule.passedCount || 0;
+                              const failed = rule.failedCount || 0;
+                              const total = passed + failed;
+                              const pct = total > 0 ? Math.round((passed / total) * 100) : null;
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                  <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+                                    {pct !== null && (
+                                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--profit)' }} />
+                                    )}
+                                  </div>
+                                  <span style={{ fontSize: '0.65rem', fontWeight: pct !== null ? 700 : 500, color: pct !== null ? (pct >= 80 ? 'var(--profit)' : (pct >= 50 ? 'var(--warn)' : 'var(--loss)')) : 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                                    {pct !== null ? `${pct}% Adherence` : 'No logs yet'}
+                                  </span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
+                                    ({passed} followed / {failed} violated)
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Action buttons (Edit, Delete, Save) */}
+                    {/* Action buttons (Log Followed, Log Broken, Edit, Delete, Save) */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                       {isEditing ? (
                         <>
@@ -408,6 +467,35 @@ const TradingRules = () => {
                         </>
                       ) : (
                         <>
+                          {rule.isActive && (
+                            <div style={{ display: 'flex', gap: '4px', marginRight: '4px' }}>
+                              <button
+                                onClick={() => handleLogRuleAdherence(rule, 'pass')}
+                                className="btn btn-sm btn-ghost"
+                                style={{ padding: '2px 8px', fontSize: '0.65rem', color: 'var(--profit)', border: '1px solid rgba(52, 211, 153, 0.12)', background: 'rgba(52, 211, 153, 0.04)', height: '24px', borderRadius: '6px', cursor: 'pointer' }}
+                                title="Log a session/trade where you followed this rule"
+                              >
+                                👍 Pass
+                              </button>
+                              <button
+                                onClick={() => handleLogRuleAdherence(rule, 'fail')}
+                                className="btn btn-sm btn-ghost"
+                                style={{ padding: '2px 8px', fontSize: '0.65rem', color: 'var(--loss)', border: '1px solid rgba(239, 68, 68, 0.12)', background: 'rgba(239, 68, 68, 0.04)', height: '24px', borderRadius: '6px', cursor: 'pointer' }}
+                                title="Log a session/trade where you violated this rule"
+                              >
+                                👎 Fail
+                              </button>
+                              {((rule.passedCount || 0) + (rule.failedCount || 0)) > 0 && (
+                                <button
+                                  onClick={() => handleLogRuleAdherence(rule, 'reset')}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.65rem', display: 'flex', alignItems: 'center', padding: '0 4px' }}
+                                  title="Reset adherence statistics counter"
+                                >
+                                  ⟲
+                                </button>
+                              )}
+                            </div>
+                          )}
                           <button
                             onClick={() => startEditRule(rule)}
                             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}

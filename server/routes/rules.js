@@ -25,6 +25,8 @@ router.get('/', async (req, res) => {
       accountId: row.account_id,
       ruleText: row.rule_text,
       isActive: row.is_active,
+      passedCount: row.passed_count || 0,
+      failedCount: row.failed_count || 0,
       createdAt: row.created_at
     }));
 
@@ -56,8 +58,8 @@ router.post('/', async (req, res) => {
     const ruleActive = isActive !== undefined ? isActive : true;
 
     const result = await db.query(`
-      INSERT INTO trading_rules (user_id, account_id, rule_text, is_active)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO trading_rules (user_id, account_id, rule_text, is_active, passed_count, failed_count)
+      VALUES ($1, $2, $3, $4, 0, 0)
       RETURNING *
     `, [userId, accountId || null, ruleText.trim(), ruleActive]);
 
@@ -67,6 +69,8 @@ router.post('/', async (req, res) => {
       accountId: newRule.account_id,
       ruleText: newRule.rule_text,
       isActive: newRule.is_active,
+      passedCount: newRule.passed_count || 0,
+      failedCount: newRule.failed_count || 0,
       createdAt: newRule.created_at
     });
   } catch (err) {
@@ -80,7 +84,7 @@ router.put('/:id', async (req, res) => {
   try {
     const ruleId = req.params.id;
     const userId = req.user.id;
-    const { ruleText, isActive, accountId } = req.body;
+    const { ruleText, isActive, accountId, passedCount, failedCount } = req.body;
 
     // Check ownership
     const existingCheck = await db.query('SELECT id FROM trading_rules WHERE id = $1 AND user_id = $2', [ruleId, userId]);
@@ -101,13 +105,17 @@ router.put('/:id', async (req, res) => {
       UPDATE trading_rules
       SET rule_text = COALESCE($1, rule_text),
           is_active = COALESCE($2, is_active),
-          account_id = COALESCE($3, account_id)
-      WHERE id = $4 AND user_id = $5
+          account_id = COALESCE($3, account_id),
+          passed_count = COALESCE($4, passed_count),
+          failed_count = COALESCE($5, failed_count)
+      WHERE id = $6 AND user_id = $7
       RETURNING *
     `, [
       ruleText !== undefined ? ruleText.trim() : null,
       isActive !== undefined ? isActive : null,
       accountId !== undefined ? accountId : null,
+      passedCount !== undefined ? parseInt(passedCount) : null,
+      failedCount !== undefined ? parseInt(failedCount) : null,
       ruleId,
       userId
     ]);
@@ -118,6 +126,8 @@ router.put('/:id', async (req, res) => {
       accountId: updated.account_id,
       ruleText: updated.rule_text,
       isActive: updated.is_active,
+      passedCount: updated.passed_count || 0,
+      failedCount: updated.failed_count || 0,
       createdAt: updated.created_at
     });
   } catch (err) {
