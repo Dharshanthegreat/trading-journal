@@ -426,9 +426,9 @@ const Accounts = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
           <style>{`
             .account-card-premium {
-              background: rgba(18, 22, 28, 0.45) !important;
-              border: 1px solid rgba(255, 255, 255, 0.05) !important;
-              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+              background: var(--bg-secondary) !important;
+              border: 1px solid var(--border) !important;
+              box-shadow: var(--shadow-sm) !important;
               backdrop-filter: blur(12px) !important;
               transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
               padding: 24px !important;
@@ -439,14 +439,14 @@ const Accounts = () => {
               position: relative !important;
             }
             .account-card-premium:hover {
-              transform: translateY(-5px) !important;
-              border-color: rgba(255, 255, 255, 0.12) !important;
-              box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35) !important;
-              background: rgba(20, 24, 32, 0.55) !important;
+              transform: translateY(-4px) !important;
+              border-color: var(--border-mid) !important;
+              box-shadow: var(--shadow-md) !important;
+              background: var(--bg-hover) !important;
             }
             .account-stat-block-new {
-              background: rgba(255, 255, 255, 0.025) !important;
-              border: 1px solid rgba(255, 255, 255, 0.06) !important;
+              background: var(--surface-glass) !important;
+              border: 1px solid var(--border) !important;
               border-radius: 12px !important;
               padding: 12px 14px !important;
               transition: all 0.2s ease !important;
@@ -456,16 +456,16 @@ const Accounts = () => {
               gap: 4px !important;
             }
             .account-stat-block-new:hover {
-              background: rgba(255, 255, 255, 0.04) !important;
-              border-color: rgba(255, 255, 255, 0.1) !important;
+              background: var(--surface-glass-h) !important;
+              border-color: var(--border-mid) !important;
             }
             .btn-action-round {
               width: 28px !important;
               height: 28px !important;
               border-radius: 50% !important;
-              background: rgba(255, 255, 255, 0.03) !important;
-              border: 1px solid rgba(255, 255, 255, 0.07) !important;
-              color: var(--text-muted) !important;
+              background: var(--surface-glass) !important;
+              border: 1px solid var(--border) !important;
+              color: var(--text-secondary) !important;
               display: flex !important;
               align-items: center !important;
               justify-content: center !important;
@@ -473,8 +473,8 @@ const Accounts = () => {
               transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             }
             .btn-action-round:hover {
-              background: rgba(255, 255, 255, 0.09) !important;
-              border-color: rgba(255, 255, 255, 0.2) !important;
+              background: var(--surface-glass-h) !important;
+              border-color: var(--border-mid) !important;
               color: var(--text-primary) !important;
             }
             .btn-action-round:hover .trash-icon {
@@ -485,20 +485,20 @@ const Accounts = () => {
               align-items: center !important;
               justify-content: space-between !important;
               padding: 8px 12px !important;
-              background: rgba(255, 255, 255, 0.02) !important;
+              background: var(--surface-glass) !important;
               border-radius: 10px !important;
-              border: 1px solid rgba(255, 255, 255, 0.05) !important;
+              border: 1px solid var(--border) !important;
               transition: all 0.2s ease !important;
             }
             .notion-link-premium:hover {
-              background: rgba(255, 255, 255, 0.04) !important;
-              border-color: rgba(255, 255, 255, 0.1) !important;
+              background: var(--surface-glass-h) !important;
+              border-color: var(--border-mid) !important;
             }
             .notes-preview-premium {
-              background: rgba(255, 255, 255, 0.015) !important;
+              background: var(--surface-glass) !important;
               border-radius: 10px !important;
               padding: 10px 12px !important;
-              border: 1px solid rgba(255, 255, 255, 0.04) !important;
+              border: 1px solid var(--border) !important;
               display: flex !important;
               flex-direction: column !important;
               gap: 6px !important;
@@ -511,9 +511,12 @@ const Accounts = () => {
                 key={acc.id}
                 className="account-card-premium"
                 style={{
-                  border: acc.status === 'Passed'
-                    ? '1px solid rgba(52, 211, 153, 0.25) !important'
-                    : (acc.status === 'Failed' ? '1px solid rgba(248, 113, 113, 0.25) !important' : undefined)
+                  borderColor: acc.status === 'Passed'
+                    ? 'var(--profit)'
+                    : (acc.status === 'Failed' ? 'var(--loss)' : 'var(--border)'),
+                  boxShadow: acc.status === 'Passed'
+                    ? '0 6px 20px var(--profit-soft)'
+                    : (acc.status === 'Failed' ? '0 6px 20px var(--loss-soft)' : 'var(--shadow-sm)')
                 }}
               >
                 {/* Action buttons (Edit & Delete) */}
