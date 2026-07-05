@@ -7,6 +7,16 @@ import {
 
 const Accounts = () => {
   const { user } = useAuth();
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr.split('T')[0] || dateStr;
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
   const [accounts, setAccounts] = useState([]);
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
@@ -413,34 +423,107 @@ const Accounts = () => {
           <button className="btn btn-sm btn-ghost" onClick={() => setStatusFilter('All')}>Clear Filter</button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s5)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
+          <style>{`
+            .account-card-premium {
+              background: rgba(18, 22, 28, 0.45) !important;
+              border: 1px solid rgba(255, 255, 255, 0.05) !important;
+              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+              backdrop-filter: blur(12px) !important;
+              transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+              padding: 24px !important;
+              border-radius: 16px !important;
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 18px !important;
+              position: relative !important;
+            }
+            .account-card-premium:hover {
+              transform: translateY(-5px) !important;
+              border-color: rgba(255, 255, 255, 0.12) !important;
+              box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35) !important;
+              background: rgba(20, 24, 32, 0.55) !important;
+            }
+            .account-stat-block-new {
+              background: rgba(255, 255, 255, 0.025) !important;
+              border: 1px solid rgba(255, 255, 255, 0.06) !important;
+              border-radius: 12px !important;
+              padding: 12px 14px !important;
+              transition: all 0.2s ease !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              gap: 4px !important;
+            }
+            .account-stat-block-new:hover {
+              background: rgba(255, 255, 255, 0.04) !important;
+              border-color: rgba(255, 255, 255, 0.1) !important;
+            }
+            .btn-action-round {
+              width: 28px !important;
+              height: 28px !important;
+              border-radius: 50% !important;
+              background: rgba(255, 255, 255, 0.03) !important;
+              border: 1px solid rgba(255, 255, 255, 0.07) !important;
+              color: var(--text-muted) !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              cursor: pointer !important;
+              transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            .btn-action-round:hover {
+              background: rgba(255, 255, 255, 0.09) !important;
+              border-color: rgba(255, 255, 255, 0.2) !important;
+              color: var(--text-primary) !important;
+            }
+            .btn-action-round:hover .trash-icon {
+              color: var(--loss) !important;
+            }
+            .notion-link-premium {
+              display: flex !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              padding: 8px 12px !important;
+              background: rgba(255, 255, 255, 0.02) !important;
+              border-radius: 10px !important;
+              border: 1px solid rgba(255, 255, 255, 0.05) !important;
+              transition: all 0.2s ease !important;
+            }
+            .notion-link-premium:hover {
+              background: rgba(255, 255, 255, 0.04) !important;
+              border-color: rgba(255, 255, 255, 0.1) !important;
+            }
+            .notes-preview-premium {
+              background: rgba(255, 255, 255, 0.015) !important;
+              border-radius: 10px !important;
+              padding: 10px 12px !important;
+              border: 1px solid rgba(255, 255, 255, 0.04) !important;
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 6px !important;
+            }
+          `}</style>
           {filteredAccounts.map(acc => {
             const isProfit = (acc.totalPnL || 0) >= 0;
             return (
               <div
                 key={acc.id}
-                className="glass glass-hover"
+                className="account-card-premium"
                 style={{
-                  padding: 'var(--s5)',
-                  borderRadius: 'var(--r-lg)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--s3.5)',
-                  position: 'relative',
-                  border: acc.status === 'Passed' ? '1px solid rgba(52,211,153,0.3)' : (acc.status === 'Failed' ? '1px solid rgba(248,113,113,0.3)' : '1px solid var(--border)')
+                  border: acc.status === 'Passed'
+                    ? '1px solid rgba(52, 211, 153, 0.25) !important'
+                    : (acc.status === 'Failed' ? '1px solid rgba(248, 113, 113, 0.25) !important' : undefined)
                 }}
               >
                 {/* Action buttons (Edit & Delete) */}
                 <div style={{
-                  position: 'absolute', top: 12, right: 12,
+                  position: 'absolute', top: 16, right: 16,
                   display: 'flex', gap: '8px', alignItems: 'center'
                 }}>
                   <button
                     onClick={() => startEditAccount(acc)}
-                    style={{
-                      background: 'none', border: 'none', color: 'var(--text-muted)',
-                      cursor: 'pointer', opacity: 0.7, padding: 2, display: 'flex', alignItems: 'center'
-                    }}
+                    className="btn-action-round"
                     title="Edit Account"
                     disabled={user?.isGuest}
                   >
@@ -448,10 +531,7 @@ const Accounts = () => {
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(acc.id)}
-                    style={{
-                      background: 'none', border: 'none', color: 'var(--text-muted)',
-                      cursor: 'pointer', opacity: 0.7, padding: 2, display: 'flex', alignItems: 'center'
-                    }}
+                    className="btn-action-round"
                     title="Delete Account"
                     disabled={user?.isGuest}
                   >
@@ -460,56 +540,60 @@ const Accounts = () => {
                 </div>
 
                 {/* Account Details Header */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <h3 style={{ fontSize: '0.92rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                <div style={{ paddingRight: '60px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
                       {acc.accountName}
                     </h3>
                     <span className={`badge ${
                       acc.status === 'Passed' ? 'badge-profit' : (acc.status === 'Failed' ? 'badge-loss' : 'badge-accent')
-                    }`} style={{ fontSize: '0.58rem', padding: '1px 6px' }}>
+                    }`} style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       {acc.status}
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
                     Type: <strong style={{ color: 'var(--text-secondary)' }}>{acc.accountType}</strong>
                   </span>
                 </div>
 
                 {/* Stats Grid — Balance, Profit Target, Trading Days */}
-                <div style={{ display: 'grid', gridTemplateColumns: (acc.profitTarget > 0 || acc.maxLossLimit > 0) ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
-                    <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Wallet size={10} /> Account Balance
+                <div style={{ display: 'grid', gridTemplateColumns: (acc.profitTarget > 0 || acc.maxLossLimit > 0) ? '1.1fr 1fr 0.9fr' : '1fr 1fr', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '14px' }}>
+                  <div className="account-stat-block-new">
+                    <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+                      <Wallet size={11} style={{ opacity: 0.6 }} /> Balance
                     </span>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
-                      ${(acc.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)' }}>
+                        ${Math.round(acc.currentBalance || 0).toLocaleString()}
+                      </span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                        / ${(acc.startingBalance || 0).toLocaleString()}
+                      </span>
                     </div>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
-                      / ${(acc.startingBalance || 0).toLocaleString()}
-                    </span>
                   </div>
 
-                  {(acc.profitTarget > 0) && (
-                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
-                      <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Target size={10} /> Profit Target
+                  {acc.profitTarget > 0 && (
+                    <div className="account-stat-block-new">
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+                        <Target size={11} style={{ opacity: 0.6 }} /> Target
                       </span>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.totalPnL || 0) >= acc.profitTarget ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
-                        ${Math.max(acc.totalPnL || 0, 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                        <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)' }}>
+                          ${Math.round(acc.totalPnL || 0).toLocaleString()}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                          / ${acc.profitTarget.toLocaleString()}
+                        </span>
                       </div>
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
-                        / ${acc.profitTarget.toLocaleString()}
-                      </span>
                     </div>
                   )}
 
                   {(acc.profitTarget > 0 || acc.maxLossLimit > 0) && (
-                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
-                      <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CalendarDays size={10} /> Trading Days
+                    <div className="account-stat-block-new">
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+                        <CalendarDays size={11} style={{ opacity: 0.6 }} /> Days
                       </span>
-                      <div style={{ fontSize: '1rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--accent)', marginTop: '2px' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
                         {acc.tradingDays || 0}
                       </div>
                     </div>
@@ -525,56 +609,76 @@ const Accounts = () => {
                   const progressPct = range > 0 ? Math.max(0, Math.min(100, ((current - mll) / range) * 100)) : 0;
                   const startPct = range > 0 ? Math.max(0, Math.min(100, (((acc.startingBalance || 0) - mll) / range) * 100)) : 0;
 
+                  const isHigher = current >= (acc.startingBalance || 0);
+                  const fillLeft = isHigher ? startPct : progressPct;
+                  const fillWidth = isHigher ? (progressPct - startPct) : (startPct - progressPct);
+                  const fillBackground = isHigher
+                    ? 'linear-gradient(90deg, var(--profit-border), var(--profit))'
+                    : 'linear-gradient(90deg, var(--loss), var(--loss-border))';
+
                   return (
-                    <div style={{ display: 'grid', gridTemplateColumns: acc.consistencyRule > 0 ? '1fr 2fr' : '1fr', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: acc.consistencyRule > 0 ? '1.1fr 2.9fr' : '1fr', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '14px' }}>
                       {/* Consistency */}
                       {acc.consistencyRule > 0 && (
-                        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
-                          <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Consistency</span>
-                          <div style={{ fontSize: '0.92rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.consistencyScore || 0) <= acc.consistencyRule ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
+                        <div className="account-stat-block-new" style={{ justifyContent: 'center' }}>
+                          <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Consistency</span>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.consistencyScore || 0) <= acc.consistencyRule ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
                             {(acc.consistencyScore || 0).toFixed(1)}%
                           </div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
-                            max {acc.consistencyRule}% per day
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            Limit: {acc.consistencyRule}%
                           </span>
                         </div>
                       )}
 
-                      {/* Progress Bar */}
-                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '10px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        {/* START label */}
-                        <div style={{ position: 'relative', marginBottom: '4px', height: '14px' }}>
+                      {/* Progress Bar Container */}
+                      <div className="progress-bar-container-custom" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.015)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '12px 14px' }}>
+                        {/* START Label */}
+                        <div style={{ position: 'relative', marginBottom: '4px', height: '12px' }}>
                           <span style={{
                             position: 'absolute',
                             left: `${startPct}%`,
                             transform: 'translateX(-50%)',
-                            fontSize: '0.5rem',
+                            fontSize: '0.52rem',
                             color: 'var(--text-muted)',
                             textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
+                            letterSpacing: '0.6px',
                             fontWeight: 700
                           }}>START</span>
                         </div>
 
-                        {/* Bar */}
+                        {/* Progress Track */}
                         <div style={{
                           position: 'relative',
                           height: '6px',
-                          background: 'rgba(255,255,255,0.06)',
-                          borderRadius: '3px',
-                          overflow: 'visible'
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: '4px',
                         }}>
-                          {/* Fill */}
+                          {/* Glow fill bar */}
                           <div style={{
                             position: 'absolute',
-                            top: 0, left: 0, bottom: 0,
-                            width: `${progressPct}%`,
-                            background: current < (acc.startingBalance || 0)
-                              ? 'linear-gradient(90deg, #ef4444, #f87171)'
-                              : 'linear-gradient(90deg, #059669, #34d399)',
-                            borderRadius: '3px',
-                            transition: 'width 0.5s ease'
+                            top: 0,
+                            left: `${fillLeft}%`,
+                            width: `${fillWidth}%`,
+                            height: '100%',
+                            background: fillBackground,
+                            borderRadius: '4px',
+                            transition: 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                            boxShadow: `0 0 8px ${isHigher ? 'rgba(52, 211, 153, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
                           }} />
+
+                          {/* Start Tick */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '-2px',
+                            left: `${startPct}%`,
+                            transform: 'translateX(-50%)',
+                            width: '2px',
+                            height: '10px',
+                            background: 'rgba(255, 255, 255, 0.25)',
+                            borderRadius: '1px'
+                          }} />
+
                           {/* Current position marker */}
                           <div style={{
                             position: 'absolute',
@@ -584,37 +688,26 @@ const Accounts = () => {
                             width: '12px',
                             height: '12px',
                             borderRadius: '50%',
-                            background: current < (acc.startingBalance || 0) ? '#ef4444' : '#34d399',
-                            border: '2px solid rgba(0,0,0,0.4)',
-                            boxShadow: `0 0 6px ${current < (acc.startingBalance || 0) ? 'rgba(239,68,68,0.4)' : 'rgba(52,211,153,0.4)'}`,
-                            transition: 'left 0.5s ease'
-                          }} />
-                          {/* Start position tick */}
-                          <div style={{
-                            position: 'absolute',
-                            top: '-2px',
-                            left: `${startPct}%`,
-                            transform: 'translateX(-50%)',
-                            width: '2px',
-                            height: '10px',
-                            background: 'rgba(255,255,255,0.25)',
-                            borderRadius: '1px'
+                            background: isHigher ? 'var(--profit)' : 'var(--loss)',
+                            border: '2.5px solid #0f1115',
+                            boxShadow: `0 0 6px ${isHigher ? 'rgba(52, 211, 153, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                            transition: 'left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)'
                           }} />
                         </div>
 
-                        {/* Labels below */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                        {/* Limits labels */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--loss)' }}>
-                              ${mll.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                              ${Math.round(mll).toLocaleString()}
                             </div>
-                            <div style={{ fontSize: '0.48rem', color: 'var(--loss)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>MLL</div>
+                            <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>MLL</div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--profit)' }}>
-                              ${target.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                              ${Math.round(target).toLocaleString()}
                             </div>
-                            <div style={{ fontSize: '0.48rem', color: 'var(--profit)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>TARGET</div>
+                            <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>TARGET</div>
                           </div>
                         </div>
                       </div>
@@ -625,32 +718,32 @@ const Accounts = () => {
                 {/* Performance Metrics Row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.6rem' }}>Trades Synced</span>
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trades Synced</span>
                     <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{acc.tradesCount || 0} trades</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end' }}>
-                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.6rem' }}>Total Return</span>
-                    <span style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)' }}>
-                      {isProfit ? '+' : ''}${(acc.totalPnL || 0).toFixed(2)}
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Return</span>
+                    <span style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)', fontSize: '0.78rem' }}>
+                      {isProfit ? '+' : ''}${(acc.totalPnL || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
 
                 {/* Notion Page Link Integration */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '4px' }}>
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '10px' }}>
                   {acc.notionLink ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
-                        <Globe size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                        <a href={acc.notionLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={acc.notionLink}>
+                    <div className="notion-link-premium">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1 }}>
+                        <Globe size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                        <a href={acc.notionLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={acc.notionLink}>
                           Notion Playbook
                         </a>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                        <button onClick={() => fetchPlaybook(acc)} className="btn btn-sm btn-ghost" style={{ padding: '2px 4px', fontSize: '0.6rem', height: '20px', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          <FileText size={10} /> AI
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                        <button onClick={() => fetchPlaybook(acc)} className="btn btn-sm btn-ghost" style={{ padding: '2px 6px', fontSize: '0.62rem', height: '22px', display: 'flex', alignItems: 'center', gap: '2px', borderRadius: '6px' }}>
+                          <FileText size={10} /> AI Audit
                         </button>
-                        <button onClick={() => startEditLink(acc)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center' }} title="Edit Link">
+                        <button onClick={() => startEditLink(acc)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center' }} title="Edit Link">
                           ✏️
                         </button>
                       </div>
@@ -661,20 +754,20 @@ const Accounts = () => {
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <input
                             className="input"
-                            style={{ fontSize: '0.65rem', padding: '2px 6px', height: '22px', flex: 1 }}
+                            style={{ fontSize: '0.7rem', padding: '2px 6px', height: '24px', flex: 1 }}
                             placeholder="Paste Notion link..."
                             value={tempLink}
                             onChange={e => setTempLink(e.target.value)}
                           />
-                          <button onClick={() => saveLink(acc.id)} className="btn btn-primary" style={{ padding: '0 6px', fontSize: '0.6rem', height: '22px' }}>
+                          <button onClick={() => saveLink(acc.id)} className="btn btn-primary" style={{ padding: '0 8px', fontSize: '0.65rem', height: '24px' }}>
                             Save
                           </button>
-                          <button onClick={() => setEditingLinkId(null)} className="btn btn-ghost" style={{ padding: '0 4px', fontSize: '0.6rem', height: '22px' }}>
+                          <button onClick={() => setEditingLinkId(null)} className="btn btn-ghost" style={{ padding: '0 6px', fontSize: '0.65rem', height: '24px' }}>
                             ✕
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditingLinkId(acc.id); setTempLink(''); }} className="btn btn-sm btn-ghost" style={{ width: '100%', padding: '4px', fontSize: '0.62rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-md)' }}>
+                        <button onClick={() => { setEditingLinkId(acc.id); setTempLink(''); }} className="btn btn-sm btn-ghost" style={{ width: '100%', padding: '6px', fontSize: '0.68rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '10px' }}>
                           + Link Notion Workspace
                         </button>
                       )}
@@ -683,38 +776,38 @@ const Accounts = () => {
                 </div>
 
                 {/* Account Notes Integration */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '2px' }}>
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '10px' }}>
                   {editingNotesId === acc.id ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <textarea
                         className="input"
-                        style={{ fontSize: '0.65rem', padding: '6px', minHeight: '52px', resize: 'vertical', fontFamily: 'inherit', background: 'var(--bg-tertiary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-md)', width: '100%' }}
+                        style={{ fontSize: '0.7rem', padding: '8px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', background: 'var(--bg-tertiary)', border: '1px solid var(--border-strong)', borderRadius: '10px', width: '100%' }}
                         placeholder="Add account rules, notes, strategy..."
                         value={tempNotes}
                         onChange={e => setTempNotes(e.target.value)}
                       />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
-                        <button onClick={() => saveNotes(acc.id)} className="btn btn-primary" style={{ padding: '2px 8px', fontSize: '0.6rem', height: '22px' }}>
+                        <button onClick={() => saveNotes(acc.id)} className="btn btn-primary" style={{ padding: '2px 10px', fontSize: '0.65rem', height: '24px' }}>
                           Save
                         </button>
-                        <button onClick={() => setEditingNotesId(null)} className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: '0.6rem', height: '22px' }}>
+                        <button onClick={() => setEditingNotesId(null)} className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '0.65rem', height: '24px' }}>
                           Cancel
                         </button>
                       </div>
                     </div>
                   ) : acc.notes ? (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--r-md)', padding: '6px 8px', border: '1px solid var(--border-mid)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div className="notes-preview-premium">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Account Notes</span>
+                        <span style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Account Notes</span>
                         <button 
                           onClick={() => startEditNotes(acc)} 
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.7, padding: 0, fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center' }} 
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.7, padding: 0, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center' }} 
                           title="Edit Notes"
                         >
                           ✏️
                         </button>
                       </div>
-                      <p style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                      <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                         {acc.notes}
                       </p>
                     </div>
@@ -722,16 +815,21 @@ const Accounts = () => {
                     <button 
                       onClick={() => startEditNotes(acc)} 
                       className="btn btn-sm btn-ghost" 
-                      style={{ width: '100%', padding: '4px', fontSize: '0.62rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed var(--border-mid)', borderRadius: 'var(--r-md)' }}
+                      style={{ width: '100%', padding: '6px', fontSize: '0.68rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '10px' }}
                     >
                       + Add Account Notes
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', paddingTop: '4px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Coins size={11} /> {acc.currency}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CalendarDays size={11} /> Since {acc.createdAt ? acc.createdAt.split(' ')[0] : '—'}</span>
+                {/* Footer Metadata */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-tertiary)', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <Coins size={11} style={{ opacity: 0.6 }} /> {acc.currency}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <CalendarDays size={11} style={{ opacity: 0.6 }} /> {formatDate(acc.createdAt)}
+                  </span>
                 </div>
               </div>
             );
