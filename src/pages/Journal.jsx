@@ -51,6 +51,7 @@ const Journal = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [modalTab, setModalTab] = useState('metrics');
   const [accountRules, setAccountRules] = useState([]);
+  const [checkedRules, setCheckedRules] = useState({});
 
   const [accounts, setAccounts] = useState([]);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -299,12 +300,21 @@ const Journal = () => {
   useEffect(() => {
     if (!formData.accountId) {
       setAccountRules([]);
+      setCheckedRules({});
       return;
     }
     const loadRules = async () => {
       try {
         const data = await rulesApi.list({ accountId: formData.accountId });
-        setAccountRules((data || []).filter(r => r.isActive));
+        const activeRules = (data || []).filter(r => r.isActive);
+        setAccountRules(activeRules);
+        
+        // Default to all active rules checked (Pass)
+        const initialChecks = {};
+        activeRules.forEach(r => {
+          initialChecks[r.id] = true;
+        });
+        setCheckedRules(initialChecks);
       } catch (err) {
         console.error('Failed to load rules for account in modal:', err);
       }
@@ -412,6 +422,23 @@ const Journal = () => {
         await updateTrade(editingTrade.id, tradeData, chartFiles, existingImages);
       } else {
         await addTrade(tradeData, chartFiles);
+        
+        // Automatically update the rule discipline counters for the selected account
+        if (accountRules.length > 0) {
+          for (const rule of accountRules) {
+            const isFollowed = !!checkedRules[rule.id];
+            const nextPassed = (rule.passedCount || 0) + (isFollowed ? 1 : 0);
+            const nextFailed = (rule.failedCount || 0) + (isFollowed ? 0 : 1);
+            try {
+              await rulesApi.update(rule.id, {
+                passedCount: nextPassed,
+                failedCount: nextFailed
+              });
+            } catch (ruleErr) {
+              console.error('Failed to update compliance for rule:', rule.id, ruleErr);
+            }
+          }
+        }
       }
       setShowForm(false);
       setFormData(defaultForm());
@@ -905,7 +932,7 @@ const Journal = () => {
                       Active Account Constraints
                     </span>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                      Confirm that your execution adhered to the rules configured for this account.
+                      Confirm that your execution adhered to the rules configured for this account. Checked rules will increment "Pass" (+1 Followed), and unchecked rules will increment "Fail" (+1 Violated) on the Trading Rules scorecard when saving.
                     </p>
                   </div>
 
@@ -935,6 +962,8 @@ const Journal = () => {
                           <input
                             type="checkbox"
                             id={`rule-check-${rule.id}`}
+                            checked={!!checkedRules[rule.id]}
+                            onChange={e => setCheckedRules(prev => ({ ...prev, [rule.id]: e.target.checked }))}
                             style={{
                               width: '16px',
                               height: '16px',
