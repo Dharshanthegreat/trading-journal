@@ -521,7 +521,6 @@ const Settings = () => {
               {passwordLoading ? 'Updating...' : 'Change Password'}
             </button>
           </div>
-          </div>
         </div>
       )}
 
@@ -548,7 +547,6 @@ const Settings = () => {
           <button className="btn btn-primary" onClick={handleSaveProfile} disabled={user?.isGuest}>
             {profileSaved ? 'Saved ✓' : 'Save Preferences'}
           </button>
-        </div>
         </div>
       </div>
 
@@ -696,6 +694,7 @@ const Settings = () => {
             </button>
           </div>
         </div>
+      </div>
       )}
 
       {/* Appearance & Themes */}

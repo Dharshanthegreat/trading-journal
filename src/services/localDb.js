@@ -1300,33 +1300,81 @@ const handleAccounts = async (url, method, body) => {
       const tradesCount = accTrades.length;
       const currentBalance = (acc.startingBalance || 0) + totalPnL;
 
+      // Count distinct trading days
+      const tradingDaysSet = new Set();
+      accTrades.forEach(t => {
+        const dateStr = t.closeTime || t.date || t.entryDate;
+        if (dateStr) {
+          const dayStr = new Date(dateStr).toISOString().split('T')[0];
+          tradingDaysSet.add(dayStr);
+        }
+      });
+      const tradingDays = tradingDaysSet.size;
+
+      // Prop challenge fields
+      const profitTarget = acc.profitTarget || 0;
+      const maxLossLimit = acc.maxLossLimit || 0;
+      const consistencyRule = acc.consistencyRule || 0;
+      const mllValue = (acc.startingBalance || 0) - maxLossLimit;
+      const targetValue = (acc.startingBalance || 0) + profitTarget;
+
+      // Consistency score
+      let consistencyScore = 0;
+      if (consistencyRule > 0 && totalPnL > 0) {
+        const dailyPnL = {};
+        accTrades.forEach(t => {
+          const dateStr = t.closeTime || t.date || t.entryDate;
+          if (dateStr) {
+            const dayStr = new Date(dateStr).toISOString().split('T')[0];
+            dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
+          }
+        });
+        const maxDayPnL = Math.max(...Object.values(dailyPnL).map(Math.abs), 0);
+        consistencyScore = totalPnL > 0 ? (maxDayPnL / totalPnL) * 100 : 0;
+      }
+
       return {
         ...acc,
         notes: acc.notes || '',
         currentBalance,
         totalPnL,
-        tradesCount
+        tradesCount,
+        tradingDays,
+        profitTarget,
+        maxLossLimit,
+        consistencyRule,
+        mllValue,
+        targetValue,
+        consistencyScore
       };
     });
     return accountsWithStats;
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, balance, currency, status, notionLink, notes } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
+    const startBal = parseFloat(balance) || 0;
     const newAccount = {
       id: Date.now(),
       accountName,
       accountType: accountType || 'Simulated',
-      startingBalance: parseFloat(balance) || 0,
-      currentBalance: parseFloat(balance) || 0,
+      startingBalance: startBal,
+      currentBalance: startBal,
       totalPnL: 0,
       tradesCount: 0,
+      tradingDays: 0,
       currency: currency || 'USD',
       status: status || 'Active',
       notionLink: notionLink || '',
       notes: notes || '',
+      profitTarget: parseFloat(profitTarget) || 0,
+      maxLossLimit: parseFloat(maxLossLimit) || 0,
+      consistencyRule: parseFloat(consistencyRule) || 0,
+      mllValue: startBal - (parseFloat(maxLossLimit) || 0),
+      targetValue: startBal + (parseFloat(profitTarget) || 0),
+      consistencyScore: 0,
       createdAt: new Date().toISOString()
     };
     
@@ -1337,7 +1385,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, balance, currency, status, notionLink, notes } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1349,7 +1397,10 @@ const handleAccounts = async (url, method, body) => {
       currency: currency !== undefined ? currency : accountsList[idx].currency,
       status: status !== undefined ? status : accountsList[idx].status,
       notionLink: notionLink !== undefined ? notionLink : accountsList[idx].notionLink,
-      notes: notes !== undefined ? notes : accountsList[idx].notes
+      notes: notes !== undefined ? notes : accountsList[idx].notes,
+      profitTarget: profitTarget !== undefined ? parseFloat(profitTarget) : accountsList[idx].profitTarget,
+      maxLossLimit: maxLossLimit !== undefined ? parseFloat(maxLossLimit) : accountsList[idx].maxLossLimit,
+      consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule
     };
 
     accountsList[idx] = updatedAccount;

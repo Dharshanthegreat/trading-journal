@@ -183,6 +183,9 @@ async function initDB() {
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS notion_link TEXT DEFAULT '';
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS risk_reward_ratio DOUBLE PRECISION DEFAULT 0;
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profit_target DOUBLE PRECISION DEFAULT 0;
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS max_loss_limit DOUBLE PRECISION DEFAULT 0;
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS consistency_rule DOUBLE PRECISION DEFAULT 0;
     `);
 
     await client.query('COMMIT');

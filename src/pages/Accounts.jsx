@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink, FileText, Edit2
+  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink, FileText, Edit2, Target, Crosshair
 } from 'lucide-react';
 
 const Accounts = () => {
@@ -20,7 +20,10 @@ const Accounts = () => {
     currency: 'USD',
     status: 'Active',
     notionLink: '',
-    notes: ''
+    notes: '',
+    profitTarget: '',
+    maxLossLimit: '',
+    consistencyRule: ''
   });
   const [editingLinkId, setEditingLinkId] = useState(null);
   const [tempLink, setTempLink] = useState('');
@@ -58,7 +61,10 @@ const Accounts = () => {
       currency: 'USD',
       status: 'Active',
       notionLink: '',
-      notes: ''
+      notes: '',
+      profitTarget: '',
+      maxLossLimit: '',
+      consistencyRule: ''
     });
     setError('');
   };
@@ -72,7 +78,10 @@ const Accounts = () => {
       currency: acc.currency,
       status: acc.status,
       notionLink: acc.notionLink || '',
-      notes: acc.notes || ''
+      notes: acc.notes || '',
+      profitTarget: acc.profitTarget ? String(acc.profitTarget) : '',
+      maxLossLimit: acc.maxLossLimit ? String(acc.maxLossLimit) : '',
+      consistencyRule: acc.consistencyRule ? String(acc.consistencyRule) : ''
     });
     setShowForm(true);
   };
@@ -95,7 +104,10 @@ const Accounts = () => {
           currency: formData.currency,
           status: formData.status,
           notionLink: formData.notionLink,
-          notes: formData.notes
+          notes: formData.notes,
+          profitTarget: parseFloat(formData.profitTarget) || 0,
+          maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
+          consistencyRule: parseFloat(formData.consistencyRule) || 0
         });
       } else {
         await accountsApi.create({
@@ -105,7 +117,10 @@ const Accounts = () => {
           currency: formData.currency,
           status: formData.status,
           notionLink: formData.notionLink,
-          notes: formData.notes
+          notes: formData.notes,
+          profitTarget: parseFloat(formData.profitTarget) || 0,
+          maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
+          consistencyRule: parseFloat(formData.consistencyRule) || 0
         });
       }
       handleCloseForm();
@@ -226,7 +241,11 @@ const Accounts = () => {
               balance: '10000',
               currency: 'USD',
               status: 'Active',
-              notionLink: ''
+              notionLink: '',
+              notes: '',
+              profitTarget: '',
+              maxLossLimit: '',
+              consistencyRule: ''
             });
             setShowForm(true);
           }} 
@@ -457,21 +476,151 @@ const Accounts = () => {
                   </span>
                 </div>
 
-                {/* Balance Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                  <div>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Starting Balance</span>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)' }}>
-                      ${(acc.startingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {/* Stats Grid — Balance, Profit Target, Trading Days */}
+                <div style={{ display: 'grid', gridTemplateColumns: (acc.profitTarget > 0 || acc.maxLossLimit > 0) ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
+                    <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Wallet size={10} /> Account Balance
+                    </span>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
+                      ${(acc.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}
                     </div>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                      / ${(acc.startingBalance || 0).toLocaleString()}
+                    </span>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Balance</span>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)' }}>
-                      ${(acc.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+
+                  {(acc.profitTarget > 0) && (
+                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
+                      <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Target size={10} /> Profit Target
+                      </span>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.totalPnL || 0) >= acc.profitTarget ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
+                        ${Math.max(acc.totalPnL || 0, 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                      </div>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                        / ${acc.profitTarget.toLocaleString()}
+                      </span>
                     </div>
-                  </div>
+                  )}
+
+                  {(acc.profitTarget > 0 || acc.maxLossLimit > 0) && (
+                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
+                      <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CalendarDays size={10} /> Trading Days
+                      </span>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--accent)', marginTop: '2px' }}>
+                        {acc.tradingDays || 0}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Consistency + Progress Bar (only when challenge fields are set) */}
+                {(acc.profitTarget > 0 || acc.maxLossLimit > 0) && (() => {
+                  const mll = acc.mllValue || ((acc.startingBalance || 0) - (acc.maxLossLimit || 0));
+                  const target = acc.targetValue || ((acc.startingBalance || 0) + (acc.profitTarget || 0));
+                  const current = acc.currentBalance || 0;
+                  const range = target - mll;
+                  const progressPct = range > 0 ? Math.max(0, Math.min(100, ((current - mll) / range) * 100)) : 0;
+                  const startPct = range > 0 ? Math.max(0, Math.min(100, (((acc.startingBalance || 0) - mll) / range) * 100)) : 0;
+
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: acc.consistencyRule > 0 ? '1fr 2fr' : '1fr', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                      {/* Consistency */}
+                      {acc.consistencyRule > 0 && (
+                        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '8px 10px' }}>
+                          <span style={{ fontSize: '0.56rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Consistency</span>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.consistencyScore || 0) <= acc.consistencyRule ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
+                            {(acc.consistencyScore || 0).toFixed(1)}%
+                          </div>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>
+                            max {acc.consistencyRule}% per day
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Progress Bar */}
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-md)', padding: '10px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        {/* START label */}
+                        <div style={{ position: 'relative', marginBottom: '4px', height: '14px' }}>
+                          <span style={{
+                            position: 'absolute',
+                            left: `${startPct}%`,
+                            transform: 'translateX(-50%)',
+                            fontSize: '0.5rem',
+                            color: 'var(--text-muted)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            fontWeight: 700
+                          }}>START</span>
+                        </div>
+
+                        {/* Bar */}
+                        <div style={{
+                          position: 'relative',
+                          height: '6px',
+                          background: 'rgba(255,255,255,0.06)',
+                          borderRadius: '3px',
+                          overflow: 'visible'
+                        }}>
+                          {/* Fill */}
+                          <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, bottom: 0,
+                            width: `${progressPct}%`,
+                            background: current < (acc.startingBalance || 0)
+                              ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                              : 'linear-gradient(90deg, #059669, #34d399)',
+                            borderRadius: '3px',
+                            transition: 'width 0.5s ease'
+                          }} />
+                          {/* Current position marker */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '-3px',
+                            left: `${progressPct}%`,
+                            transform: 'translateX(-50%)',
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            background: current < (acc.startingBalance || 0) ? '#ef4444' : '#34d399',
+                            border: '2px solid rgba(0,0,0,0.4)',
+                            boxShadow: `0 0 6px ${current < (acc.startingBalance || 0) ? 'rgba(239,68,68,0.4)' : 'rgba(52,211,153,0.4)'}`,
+                            transition: 'left 0.5s ease'
+                          }} />
+                          {/* Start position tick */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '-2px',
+                            left: `${startPct}%`,
+                            transform: 'translateX(-50%)',
+                            width: '2px',
+                            height: '10px',
+                            background: 'rgba(255,255,255,0.25)',
+                            borderRadius: '1px'
+                          }} />
+                        </div>
+
+                        {/* Labels below */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                          <div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--loss)' }}>
+                              ${mll.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                            </div>
+                            <div style={{ fontSize: '0.48rem', color: 'var(--loss)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>MLL</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--profit)' }}>
+                              ${target.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                            </div>
+                            <div style={{ fontSize: '0.48rem', color: 'var(--profit)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>TARGET</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Performance Metrics Row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
@@ -657,6 +806,51 @@ const Accounts = () => {
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
+
+                {/* Challenge / Prop Firm Settings */}
+                {formData.accountType !== 'Live' && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s2)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--s3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Target size={13} style={{ color: 'var(--accent)' }} />
+                      Challenge / Prop Firm Rules
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s3)' }}>
+                      <div className="form-field">
+                        <label className="form-label">Profit Target ($)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="e.g. 1250"
+                          value={formData.profitTarget}
+                          onChange={e => setFormData({ ...formData, profitTarget: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Max Loss Limit ($)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="e.g. 1500"
+                          value={formData.maxLossLimit}
+                          onChange={e => setFormData({ ...formData, maxLossLimit: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Consistency (%)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="e.g. 30"
+                          value={formData.consistencyRule}
+                          onChange={e => setFormData({ ...formData, consistencyRule: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Leave blank or 0 to disable. Profit Target = profit needed to pass. Max Loss = max drawdown from starting balance. Consistency = max % of total profit from a single day.
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
                   <div className="form-field">
