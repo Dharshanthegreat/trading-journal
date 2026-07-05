@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/trading-journal/',
+  base: process.env.VERCEL ? '/' : '/trading-journal/',
   plugins: [react()],
   server: {
     port: 5173,
