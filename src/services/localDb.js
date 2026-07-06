@@ -476,6 +476,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       confidenceLevel: parseInt(data.confidenceLevel) || 5,
       notionLink: data.notionLink || '',
       riskRewardRatio: parseFloat(data.riskRewardRatio) || 0,
+      rulesChecklist: data.rulesChecklist ? (typeof data.rulesChecklist === 'string' ? JSON.parse(data.rulesChecklist) : data.rulesChecklist) : {},
       createdAt: new Date().toISOString(),
       imageKeys,
       imageUrl,
@@ -584,6 +585,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       confidenceLevel: data.confidenceLevel !== undefined ? parseInt(data.confidenceLevel) : oldTrade.confidenceLevel,
       notionLink: data.notionLink !== undefined ? data.notionLink : oldTrade.notionLink,
       riskRewardRatio: data.riskRewardRatio !== undefined ? parseFloat(data.riskRewardRatio) : oldTrade.riskRewardRatio,
+      rulesChecklist: data.rulesChecklist !== undefined ? (typeof data.rulesChecklist === 'string' ? JSON.parse(data.rulesChecklist) : data.rulesChecklist) : oldTrade.rulesChecklist,
       imageKeys,
       imageUrl,
       imageUrls

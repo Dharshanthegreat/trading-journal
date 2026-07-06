@@ -307,19 +307,40 @@ const Journal = () => {
       try {
         const data = await rulesApi.list({ accountId: formData.accountId });
         setAccountRules((data || []).filter(r => r.isActive));
-        setCheckedRules({});
+        if (editingTrade && editingTrade.rulesChecklist) {
+          setCheckedRules(editingTrade.rulesChecklist);
+        } else {
+          setCheckedRules({});
+        }
       } catch (err) {
         console.error('Failed to load rules for account in modal:', err);
       }
     };
     loadRules();
-  }, [formData.accountId]);
+  }, [formData.accountId, editingTrade]);
 
   // Sync selectedTrade state if trades are updated in the background/context
   const currentSelectedTrade = useMemo(() => {
     if (!selectedTrade) return null;
     return trades.find(t => t.id === selectedTrade.id) || selectedTrade;
   }, [trades, selectedTrade]);
+
+  const [detailsRules, setDetailsRules] = useState([]);
+  useEffect(() => {
+    if (!currentSelectedTrade || !currentSelectedTrade.accountId) {
+      setDetailsRules([]);
+      return;
+    }
+    const loadDetailsRules = async () => {
+      try {
+        const data = await rulesApi.list({ accountId: currentSelectedTrade.accountId });
+        setDetailsRules((data || []).filter(r => r.isActive));
+      } catch (err) {
+        console.error('Failed to load rules for details modal:', err);
+      }
+    };
+    loadDetailsRules();
+  }, [currentSelectedTrade]);
 
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 
@@ -408,11 +429,61 @@ const Journal = () => {
         confidenceLevel: formData.confidenceLevel,
         accountId: formData.accountId || null,
         notionLink: formData.notionLink,
-        riskRewardRatio: parseFloat(formData.riskRewardRatio) || 0
+        riskRewardRatio: parseFloat(formData.riskRewardRatio) || 0,
+        rulesChecklist: checkedRules
       };
 
       if (editingTrade) {
         await updateTrade(editingTrade.id, tradeData, chartFiles, existingImages);
+        
+        // Update compliance stats in playbook
+        if (accountRules.length > 0) {
+          const isSameAccount = String(editingTrade.accountId) === String(tradeData.accountId);
+          if (isSameAccount) {
+            const oldChecklist = editingTrade.rulesChecklist || {};
+            for (const rule of accountRules) {
+              const wasFollowed = oldChecklist[rule.id] !== false;
+              const isFollowed = checkedRules[rule.id] !== false;
+              if (wasFollowed !== isFollowed) {
+                const nextPassed = Math.max(0, (rule.passedCount || 0) + (isFollowed ? 1 : -1));
+                const nextFailed = Math.max(0, (rule.failedCount || 0) + (isFollowed ? -1 : 1));
+                try {
+                  await rulesApi.update(rule.id, {
+                    passedCount: nextPassed,
+                    failedCount: nextFailed
+                  });
+                } catch (ruleErr) {
+                  console.error('Failed to update rule adherence on edit:', rule.id, ruleErr);
+                }
+              }
+            }
+          } else {
+            // Remove compliance from old account rules
+            try {
+              const oldRules = await rulesApi.list({ accountId: editingTrade.accountId });
+              const oldChecklist = editingTrade.rulesChecklist || {};
+              for (const rule of oldRules) {
+                const wasFollowed = oldChecklist[rule.id] !== false;
+                const nextPassed = Math.max(0, (rule.passedCount || 0) - (wasFollowed ? 1 : 0));
+                const nextFailed = Math.max(0, (rule.failedCount || 0) - (wasFollowed ? 0 : 1));
+                await rulesApi.update(rule.id, { passedCount: nextPassed, failedCount: nextFailed });
+              }
+            } catch (err) {
+              console.error('Failed to adjust old account rules on edit:', err);
+            }
+            // Add compliance to new account rules
+            for (const rule of accountRules) {
+              const isFollowed = checkedRules[rule.id] !== false;
+              const nextPassed = (rule.passedCount || 0) + (isFollowed ? 1 : 0);
+              const nextFailed = (rule.failedCount || 0) + (isFollowed ? 0 : 1);
+              try {
+                await rulesApi.update(rule.id, { passedCount: nextPassed, failedCount: nextFailed });
+              } catch (ruleErr) {
+                console.error('Failed to update compliance for new rule:', rule.id, ruleErr);
+              }
+            }
+          }
+        }
       } else {
         await addTrade(tradeData, chartFiles);
         
@@ -450,6 +521,29 @@ const Journal = () => {
   };
 
   const confirmDelete = async (id) => {
+    try {
+      const tradeToDelete = trades.find(t => t.id === id);
+      if (tradeToDelete && tradeToDelete.rulesChecklist && tradeToDelete.accountId) {
+        const rulesList = await rulesApi.list({ accountId: tradeToDelete.accountId });
+        for (const rule of rulesList) {
+          if (tradeToDelete.rulesChecklist[rule.id] !== undefined) {
+            const wasFollowed = tradeToDelete.rulesChecklist[rule.id] !== false;
+            const nextPassed = Math.max(0, (rule.passedCount || 0) - (wasFollowed ? 1 : 0));
+            const nextFailed = Math.max(0, (rule.failedCount || 0) - (wasFollowed ? 0 : 1));
+            try {
+              await rulesApi.update(rule.id, {
+                passedCount: nextPassed,
+                failedCount: nextFailed
+              });
+            } catch (ruleErr) {
+              console.error('Failed to adjust compliance for rule on delete:', rule.id, ruleErr);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to adjust rules compliance on delete:', err);
+    }
     await deleteTrade(id);
     setDeleteConfirm(null);
   };
@@ -1165,6 +1259,32 @@ const Journal = () => {
                     ))}
                   </div>
                 </div>
+
+                {/* Rules Compliance */}
+                {currentSelectedTrade.accountId && (
+                  <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s3)', fontWeight: 600 }}>Rules Compliance</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {detailsRules.length > 0 ? (
+                        detailsRules.map((rule, idx) => {
+                          const isFollowed = currentSelectedTrade.rulesChecklist && currentSelectedTrade.rulesChecklist[rule.id] !== false;
+                          return (
+                            <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}>
+                              <span style={{ color: isFollowed ? 'var(--profit)' : 'var(--loss)', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                                {isFollowed ? '✓' : '✗'}
+                              </span>
+                              <span style={{ color: isFollowed ? 'var(--text-secondary)' : 'var(--text-muted)', textDecoration: isFollowed ? 'none' : 'line-through' }}>
+                                {rule.ruleText}
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>No active rules configured for this account.</span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Psychology & Tags */}
                 <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--s3.5)' }}>

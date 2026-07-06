@@ -60,7 +60,7 @@ export const TradeProvider = ({ children }) => {
     const formData = new FormData();
     Object.entries(tradeData).forEach(([key, val]) => {
       if (val !== null && val !== undefined) {
-        if (Array.isArray(val)) {
+        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
           formData.append(key, JSON.stringify(val));
         } else {
           formData.append(key, val);
@@ -88,7 +88,7 @@ export const TradeProvider = ({ children }) => {
     const formData = new FormData();
     Object.entries(tradeData).forEach(([key, val]) => {
       if (val !== null && val !== undefined) {
-        if (Array.isArray(val)) {
+        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
           formData.append(key, JSON.stringify(val));
         } else {
           formData.append(key, val);

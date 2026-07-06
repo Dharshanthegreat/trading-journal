@@ -134,7 +134,8 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId, notionLink, riskRewardRatio
+      fomoLevel, confidenceLevel, accountId, notionLink, riskRewardRatio,
+      rulesChecklist
     } = req.body;
 
     if (!symbol) {
@@ -160,12 +161,17 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
     const actualEntryTime = entryTime || new Date().toISOString();
     finalTags = addSessionTags(finalTags, actualEntryTime);
 
+    const rulesChecklistValue = rulesChecklist
+      ? (typeof rulesChecklist === 'string' ? rulesChecklist : JSON.stringify(rulesChecklist))
+      : '{}';
+
     const result = await db.query(`
       INSERT INTO trades (
         user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
         pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags,
-        fomo_level, confidence_level, image_path, account_id, notion_link, risk_reward_ratio
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+        fomo_level, confidence_level, image_path, account_id, notion_link, risk_reward_ratio,
+        rules_checklist
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *
     `, [
       req.user.id,
@@ -189,7 +195,8 @@ router.post('/', upload.array('chart', 10), async (req, res) => {
       imagePathValue,
       dbAccountId,
       notionLink || '',
-      parseFloat(riskRewardRatio) || 0
+      parseFloat(riskRewardRatio) || 0,
+      rulesChecklistValue
     ]);
 
     const trade = result.rows[0];
@@ -216,7 +223,8 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
     const {
       symbol, type, entryPrice, exitPrice, lotSize, stopLoss, takeProfit,
       pnl, entryTime, exitTime, setup, grade, notes, tags, emotionTags,
-      fomoLevel, confidenceLevel, accountId, existingImages, notionLink, riskRewardRatio
+      fomoLevel, confidenceLevel, accountId, existingImages, notionLink, riskRewardRatio,
+      rulesChecklist
     } = req.body;
 
     let imagePaths = [];
@@ -267,14 +275,18 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
       finalTags = JSON.stringify(addSessionTags(currentTags, entryTime));
     }
 
+    const rulesChecklistValue = rulesChecklist !== undefined
+      ? (typeof rulesChecklist === 'string' ? rulesChecklist : JSON.stringify(rulesChecklist))
+      : trade.rules_checklist;
+
     await db.query(`
       UPDATE trades SET
         symbol = $1, type = $2, entry_price = $3, exit_price = $4, lot_size = $5,
         stop_loss = $6, take_profit = $7, pnl = $8, entry_time = $9, exit_time = $10,
         setup = $11, grade = $12, notes = $13, tags = $14, emotion_tags = $15,
         fomo_level = $16, confidence_level = $17, image_path = $18, account_id = $19,
-        notion_link = $20, risk_reward_ratio = $21
-      WHERE id = $22 AND user_id = $23
+        notion_link = $20, risk_reward_ratio = $21, rules_checklist = $22
+      WHERE id = $23 AND user_id = $24
     `, [
       symbol?.toUpperCase() || trade.symbol,
       type || trade.type,
@@ -297,6 +309,7 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
       dbAccountId,
       notionLink !== undefined ? notionLink : trade.notion_link,
       riskRewardRatio !== undefined ? parseFloat(riskRewardRatio) : trade.risk_reward_ratio,
+      rulesChecklistValue,
       req.params.id,
       req.user.id
     ]);
@@ -702,6 +715,7 @@ function formatTrade(t) {
     accountId: t.account_id,
     notionLink: t.notion_link || '',
     riskRewardRatio: t.risk_reward_ratio || 0,
+    rulesChecklist: safeParseJSON(t.rules_checklist, {}),
     createdAt: t.created_at,
   };
 }
