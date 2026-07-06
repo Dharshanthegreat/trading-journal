@@ -223,6 +223,9 @@ const runStorageMigrations = async (userId) => {
 const getActiveUser = () => {
   const session = getStorageItem('active_session', null);
   if (!session) throw { status: 401, message: 'Unauthorized' };
+  if (session.shareToken && !session.dashboardShareToken) {
+    session.dashboardShareToken = session.shareToken;
+  }
   return session;
 };
 
@@ -260,6 +263,9 @@ const handleAuth = async (url, method, body) => {
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (!user) throw { status: 401, message: 'Invalid email or password' };
     
+    if (user.shareToken && !user.dashboardShareToken) {
+      user.dashboardShareToken = user.shareToken;
+    }
     setStorageItem('active_session', user);
     return { user, token: 'local-session-token' };
   }
@@ -308,17 +314,19 @@ const handleAuth = async (url, method, body) => {
 
   if (url === '/auth/share-dashboard' && method === 'POST') {
     const activeUser = getActiveUser();
-    activeUser.shareToken = 'showcase-token-' + activeUser.id;
-    const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, shareToken: activeUser.shareToken } : u);
+    activeUser.dashboardShareToken = 'showcase-token-' + activeUser.id;
+    activeUser.shareToken = activeUser.dashboardShareToken;
+    const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, dashboardShareToken: activeUser.dashboardShareToken, shareToken: activeUser.shareToken } : u);
     setStorageItem('users', updatedUsers);
     setStorageItem('active_session', activeUser);
-    return { success: true, token: activeUser.shareToken };
+    return { success: true, dashboardShareToken: activeUser.dashboardShareToken, token: activeUser.shareToken };
   }
   
   if (url === '/auth/share-dashboard' && method === 'DELETE') {
     const activeUser = getActiveUser();
+    activeUser.dashboardShareToken = null;
     activeUser.shareToken = null;
-    const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, shareToken: null } : u);
+    const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, dashboardShareToken: null, shareToken: null } : u);
     setStorageItem('users', updatedUsers);
     setStorageItem('active_session', activeUser);
     return { success: true };
