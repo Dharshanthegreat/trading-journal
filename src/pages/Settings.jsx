@@ -118,7 +118,7 @@ const Settings = () => {
   };
 
   const handleCopyShowcaseLink = () => {
-    const link = `${window.location.origin}/shared/dashboard/${shareToken}`;
+    const link = `${window.location.origin}${window.location.pathname}#/shared/dashboard/${shareToken}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -600,7 +600,7 @@ const Settings = () => {
                   whiteSpace: 'nowrap',
                   flex: 1
                 }}>
-                  {`${window.location.origin}/shared/dashboard/${shareToken}`}
+                  {`${window.location.origin}${window.location.pathname}#/shared/dashboard/${shareToken}`}
                 </span>
                 <button
                   className="btn btn-secondary"

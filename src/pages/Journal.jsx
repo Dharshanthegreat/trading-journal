@@ -1309,14 +1309,14 @@ const Journal = () => {
                           readOnly
                           className="input"
                           style={{ fontSize: '0.72rem', height: 32, flex: 1, textOverflow: 'ellipsis', background: 'rgba(0,0,0,0.2)' }}
-                          value={`${window.location.origin}/shared/trade/${currentSelectedTrade.shareToken}`}
+                          value={`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`}
                           onClick={e => e.target.select()}
                         />
                         <button
                           className="btn btn-sm btn-ghost"
                           style={{ height: 32, width: 36, padding: 0 }}
                           onClick={async () => {
-                            await navigator.clipboard.writeText(`${window.location.origin}/shared/trade/${currentSelectedTrade.shareToken}`);
+                            await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`);
                             setCopySuccess(true);
                             setTimeout(() => setCopySuccess(false), 2000);
                           }}
@@ -1328,7 +1328,7 @@ const Journal = () => {
 
                       <div style={{ display: 'flex', gap: 'var(--s2)' }}>
                         <a
-                          href={`/shared/trade/${currentSelectedTrade.shareToken}`}
+                          href={`#/shared/trade/${currentSelectedTrade.shareToken}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-ghost"
