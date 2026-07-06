@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { rules as rulesApi, accounts as accountsApi } from '../services/api';
+import { rules as rulesApi, accounts as accountsApi, trades as tradesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
   ListTodo, Plus, X, Trash2, Edit2, Check, CheckCircle, AlertTriangle, Shield, Play, Ban, RefreshCw, Percent
@@ -11,6 +11,7 @@ const TradingRules = () => {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState('All');
   const [rules, setRules] = useState([]);
+  const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [ruleTextInput, setRuleTextInput] = useState('');
@@ -53,13 +54,24 @@ const TradingRules = () => {
     }
   }, [selectedAccountId]);
 
+  // Fetch trades list
+  const fetchTrades = useCallback(async () => {
+    try {
+      const data = await tradesApi.list({ limit: 1000 });
+      setTrades(data.trades || []);
+    } catch (err) {
+      console.error('Failed to load trades:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
 
   useEffect(() => {
     fetchRules();
-  }, [fetchRules]);
+    fetchTrades();
+  }, [fetchRules, fetchTrades]);
 
   // Flash message helpers
   const triggerSuccess = (msg) => {
@@ -169,15 +181,39 @@ const TradingRules = () => {
     }
   };
 
+  // Combine DB rules counters with auto-calculated stats from trades checklist
+  const rulesWithStats = React.useMemo(() => {
+    return rules.map(rule => {
+      let passed = rule.passedCount || 0;
+      let failed = rule.failedCount || 0;
+
+      trades.forEach(t => {
+        if (t.rulesChecklist && t.rulesChecklist[rule.id] !== undefined) {
+          if (t.rulesChecklist[rule.id] !== false) {
+            passed++;
+          } else {
+            failed++;
+          }
+        }
+      });
+
+      return {
+        ...rule,
+        passedCount: passed,
+        failedCount: failed
+      };
+    });
+  }, [rules, trades]);
+
   // Metrics calculations
-  const totalCount = rules.length;
-  const activeCount = rules.filter(r => r.isActive).length;
+  const totalCount = rulesWithStats.length;
+  const activeCount = rulesWithStats.filter(r => r.isActive).length;
   const inactiveCount = totalCount - activeCount;
 
   // Calculate compliance rate as total passed / (total passed + total failed) across all rules
   let totalPassed = 0;
   let totalFailed = 0;
-  rules.forEach(r => {
+  rulesWithStats.forEach(r => {
     totalPassed += r.passedCount || 0;
     totalFailed += r.failedCount || 0;
   });
@@ -295,7 +331,7 @@ const TradingRules = () => {
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Rules List {selectedAccountId !== 'All' ? `for ${currentAccount?.accountName || ''}` : '(Global View)'}
             </span>
-            <button className="btn btn-ghost btn-sm" onClick={fetchRules} title="Reload rules">
+            <button className="btn btn-ghost btn-sm" onClick={() => { fetchRules(); fetchTrades(); }} title="Reload rules">
               <RefreshCw size={12} />
             </button>
           </div>
@@ -333,7 +369,7 @@ const TradingRules = () => {
                 <div key={i} className="skeleton" style={{ height: '36px', borderRadius: 'var(--r-md)' }} />
               ))}
             </div>
-          ) : rules.length === 0 ? (
+          ) : rulesWithStats.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
               <ListTodo size={28} style={{ opacity: 0.25, marginBottom: '8px' }} />
               <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>No rules defined yet</div>
@@ -341,7 +377,7 @@ const TradingRules = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {rules.map((rule, idx) => {
+              {rulesWithStats.map((rule, idx) => {
                 const isEditing = editingRuleId === rule.id;
                 return (
                   <div

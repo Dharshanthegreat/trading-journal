@@ -435,74 +435,8 @@ const Journal = () => {
 
       if (editingTrade) {
         await updateTrade(editingTrade.id, tradeData, chartFiles, existingImages);
-        
-        // Update compliance stats in playbook
-        if (accountRules.length > 0) {
-          const isSameAccount = String(editingTrade.accountId) === String(tradeData.accountId);
-          if (isSameAccount) {
-            const oldChecklist = editingTrade.rulesChecklist || {};
-            for (const rule of accountRules) {
-              const wasFollowed = oldChecklist[rule.id] !== false;
-              const isFollowed = checkedRules[rule.id] !== false;
-              if (wasFollowed !== isFollowed) {
-                const nextPassed = Math.max(0, (rule.passedCount || 0) + (isFollowed ? 1 : -1));
-                const nextFailed = Math.max(0, (rule.failedCount || 0) + (isFollowed ? -1 : 1));
-                try {
-                  await rulesApi.update(rule.id, {
-                    passedCount: nextPassed,
-                    failedCount: nextFailed
-                  });
-                } catch (ruleErr) {
-                  console.error('Failed to update rule adherence on edit:', rule.id, ruleErr);
-                }
-              }
-            }
-          } else {
-            // Remove compliance from old account rules
-            try {
-              const oldRules = await rulesApi.list({ accountId: editingTrade.accountId });
-              const oldChecklist = editingTrade.rulesChecklist || {};
-              for (const rule of oldRules) {
-                const wasFollowed = oldChecklist[rule.id] !== false;
-                const nextPassed = Math.max(0, (rule.passedCount || 0) - (wasFollowed ? 1 : 0));
-                const nextFailed = Math.max(0, (rule.failedCount || 0) - (wasFollowed ? 0 : 1));
-                await rulesApi.update(rule.id, { passedCount: nextPassed, failedCount: nextFailed });
-              }
-            } catch (err) {
-              console.error('Failed to adjust old account rules on edit:', err);
-            }
-            // Add compliance to new account rules
-            for (const rule of accountRules) {
-              const isFollowed = checkedRules[rule.id] !== false;
-              const nextPassed = (rule.passedCount || 0) + (isFollowed ? 1 : 0);
-              const nextFailed = (rule.failedCount || 0) + (isFollowed ? 0 : 1);
-              try {
-                await rulesApi.update(rule.id, { passedCount: nextPassed, failedCount: nextFailed });
-              } catch (ruleErr) {
-                console.error('Failed to update compliance for new rule:', rule.id, ruleErr);
-              }
-            }
-          }
-        }
       } else {
         await addTrade(tradeData, chartFiles);
-        
-        // Automatically update the rule discipline counters for the selected account
-        if (accountRules.length > 0) {
-          for (const rule of accountRules) {
-            const isFollowed = checkedRules[rule.id] !== false;
-            const nextPassed = (rule.passedCount || 0) + (isFollowed ? 1 : 0);
-            const nextFailed = (rule.failedCount || 0) + (isFollowed ? 0 : 1);
-            try {
-              await rulesApi.update(rule.id, {
-                passedCount: nextPassed,
-                failedCount: nextFailed
-              });
-            } catch (ruleErr) {
-              console.error('Failed to update compliance for rule:', rule.id, ruleErr);
-            }
-          }
-        }
       }
       setShowForm(false);
       setFormData(defaultForm());
@@ -521,29 +455,6 @@ const Journal = () => {
   };
 
   const confirmDelete = async (id) => {
-    try {
-      const tradeToDelete = trades.find(t => t.id === id);
-      if (tradeToDelete && tradeToDelete.rulesChecklist && tradeToDelete.accountId) {
-        const rulesList = await rulesApi.list({ accountId: tradeToDelete.accountId });
-        for (const rule of rulesList) {
-          if (tradeToDelete.rulesChecklist[rule.id] !== undefined) {
-            const wasFollowed = tradeToDelete.rulesChecklist[rule.id] !== false;
-            const nextPassed = Math.max(0, (rule.passedCount || 0) - (wasFollowed ? 1 : 0));
-            const nextFailed = Math.max(0, (rule.failedCount || 0) - (wasFollowed ? 0 : 1));
-            try {
-              await rulesApi.update(rule.id, {
-                passedCount: nextPassed,
-                failedCount: nextFailed
-              });
-            } catch (ruleErr) {
-              console.error('Failed to adjust compliance for rule on delete:', rule.id, ruleErr);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to adjust rules compliance on delete:', err);
-    }
     await deleteTrade(id);
     setDeleteConfirm(null);
   };
