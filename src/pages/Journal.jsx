@@ -52,6 +52,7 @@ const Journal = () => {
   const [modalTab, setModalTab] = useState('metrics');
   const [accountRules, setAccountRules] = useState([]);
   const [checkedRules, setCheckedRules] = useState({});
+  const [newRuleText, setNewRuleText] = useState('');
 
   const [accounts, setAccounts] = useState([]);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -291,6 +292,23 @@ const Journal = () => {
     setAutoFeatures(true);
   };
 
+  const handleAddRuleFromModal = async () => {
+    if (!newRuleText.trim() || !formData.accountId) return;
+    try {
+      const newRule = await rulesApi.create({
+        ruleText: newRuleText.trim(),
+        accountId: parseInt(formData.accountId),
+        isActive: true
+      });
+      setAccountRules(prev => [...prev, newRule]);
+      setCheckedRules(prev => ({ ...prev, [newRule.id]: true }));
+      setNewRuleText('');
+    } catch (err) {
+      console.error('Failed to add rule from modal:', err);
+      alert('Failed to add rule: ' + (err.message || err));
+    }
+  };
+
   useEffect(() => {
     fetchTrades({ limit: 200 });
     accountsApi.list().then(setAccounts).catch(console.error);
@@ -306,11 +324,18 @@ const Journal = () => {
     const loadRules = async () => {
       try {
         const data = await rulesApi.list({ accountId: formData.accountId });
-        setAccountRules((data || []).filter(r => r.isActive));
+        const activeRules = (data || []).filter(r => r.isActive);
+        setAccountRules(activeRules);
+
+        const defaultChecks = {};
+        activeRules.forEach(r => {
+          defaultChecks[r.id] = true;
+        });
+
         if (editingTrade && editingTrade.rulesChecklist) {
-          setCheckedRules(editingTrade.rulesChecklist);
+          setCheckedRules({ ...defaultChecks, ...editingTrade.rulesChecklist });
         } else {
-          setCheckedRules({});
+          setCheckedRules(defaultChecks);
         }
       } catch (err) {
         console.error('Failed to load rules for account in modal:', err);
@@ -983,6 +1008,41 @@ const Journal = () => {
                           </label>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {formData.accountId && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                      <input
+                        type="text"
+                        className="input"
+                        style={{
+                          flex: 1,
+                          fontSize: '0.75rem',
+                          height: '32px',
+                          background: 'var(--bg-secondary)',
+                          borderColor: 'var(--border-mid)',
+                          borderRadius: 'var(--r-md)'
+                        }}
+                        placeholder="Add new rule directly..."
+                        value={newRuleText}
+                        onChange={e => setNewRuleText(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            await handleAddRuleFromModal();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ height: '32px', padding: '0 12px', fontSize: '0.72rem', borderRadius: 'var(--r-md)', display: 'inline-flex', alignItems: 'center' }}
+                        onClick={handleAddRuleFromModal}
+                        disabled={!newRuleText.trim()}
+                      >
+                        Add Rule
+                      </button>
                     </div>
                   )}
                 </div>
