@@ -134,6 +134,8 @@ const Settings = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [importSuccess, setImportSuccess] = useState(false);
+  const [savingLocal, setSavingLocal] = useState(false);
+  const [localSaveResult, setLocalSaveResult] = useState(null);
 
   // Load audit logs on mount
   useEffect(() => {
@@ -235,6 +237,23 @@ const Settings = () => {
       addAuditLog('Full Export', 'Export Failed', 'error');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleSaveLocal = async () => {
+    if (user?.isGuest) { alert("Cannot trigger database sync in Showcase view."); return; }
+    setSavingLocal(true);
+    setLocalSaveResult(null);
+    try {
+      const res = await backupApi.saveLocal();
+      setLocalSaveResult(res);
+      addAuditLog('Server Sync', 'Success', 'success');
+    } catch (err) {
+      console.error('Server sync failed:', err);
+      alert(err.message || 'Failed to sync data to server local file or Firebase Cloud Storage.');
+      addAuditLog('Server Sync', 'Sync Failed', 'error');
+    } finally {
+      setSavingLocal(false);
     }
   };
 
@@ -964,6 +983,60 @@ const Settings = () => {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+
+          {/* Card: Sync to Local & Cloud Storage */}
+          <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Sync to Local File & Firebase Cloud Server</h4>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    Save a full data backup directly to the host machine filesystem (`trading_journal_backup.json` in the root folder) and upload it to Firebase Cloud Storage.
+                  </p>
+                </div>
+                <button className="btn btn-secondary" onClick={handleSaveLocal} disabled={savingLocal}>
+                  {savingLocal ? (
+                    <>
+                      <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={13} /> Sync to Local & Firebase
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {localSaveResult && (
+                <div className="glass" style={{
+                  padding: 'var(--s3)',
+                  borderRadius: 'var(--r-sm)',
+                  border: '1px solid rgba(52, 211, 153, 0.2)',
+                  background: 'rgba(52, 211, 153, 0.05)',
+                  fontSize: '0.7rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  color: 'var(--text-secondary)',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Check size={12} /> Sync Complete!
+                  </div>
+                  {localSaveResult.localPath ? (
+                    <div>📂 <strong>Local File Saved to:</strong> <code style={{ wordBreak: 'break-all', fontFamily: 'JetBrains Mono', color: 'var(--accent)' }}>{localSaveResult.localPath}</code></div>
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)' }}>⚠️ Local saving is disabled (running on remote cloud server).</div>
+                  )}
+                  {localSaveResult.firebaseUrl ? (
+                    <div>🔥 <strong>Firebase Cloud URL:</strong> <a href={localSaveResult.firebaseUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#fbbf24', textDecoration: 'underline', wordBreak: 'break-all' }}>Download Cloud Backup</a></div>
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)' }}>⚠️ Firebase Cloud Storage backup is skipped (not configured/running locally).</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

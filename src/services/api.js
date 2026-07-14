@@ -365,6 +365,7 @@ export const backup = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  saveLocal: () => request('/backup/save-local', { method: 'POST' }),
 };
 
 // ─── Accounts ────────────────────────────────────────

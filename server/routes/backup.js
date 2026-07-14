@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { writeLocalBackup } from '../utils/localBackup.js';
 
 const router = Router();
 
@@ -223,6 +224,22 @@ router.post('/import', async (req, res) => {
   } catch (err) {
     console.error('Backup import error:', err);
     res.status(500).json({ error: err.message || 'Failed to import backup data' });
+  }
+});
+
+// ─── Save Local / Firebase Cloud Backup ────────────────
+router.post('/save-local', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await writeLocalBackup(userId);
+    res.json({
+      message: 'Backup completed successfully.',
+      localPath: result.localPath,
+      firebaseUrl: result.firebaseUrl
+    });
+  } catch (err) {
+    console.error('Backup save-local error:', err);
+    res.status(500).json({ error: err.message || 'Failed to execute backup save' });
   }
 });
 
