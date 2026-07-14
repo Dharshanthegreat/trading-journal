@@ -27,6 +27,7 @@ import AiCoach from './pages/AiCoach';
 import TradingViewPage from './pages/TradingView';
 import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
+import OrbisNft from './pages/OrbisNft';
 import News from './pages/News';
 import Stoic from './pages/Stoic';
 import TradovateConnect from './pages/TradovateConnect';
@@ -1702,7 +1703,10 @@ function AppContent() {
       </div>
     );
   }
-  const isPublicRoute = location.pathname.startsWith('/shared/') && !location.pathname.startsWith('/shared/dashboard/');
+  const isPublicRoute = 
+    (location.pathname.startsWith('/shared/') && !location.pathname.startsWith('/shared/dashboard/')) ||
+    location.pathname === '/orbis-nft' ||
+    location.pathname === '/nft';
 
   if (isPublicRoute) {
     return (
@@ -1710,6 +1714,8 @@ function AppContent() {
         {cursorEffect && <CustomCursor />}
         <Routes>
           <Route path="/shared/trade/:token" element={<SharedTrade />} />
+          <Route path="/orbis-nft" element={<OrbisNft />} />
+          <Route path="/nft" element={<OrbisNft />} />
         </Routes>
       </div>
     );
