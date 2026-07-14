@@ -31,14 +31,14 @@ const PORT = process.env.PORT || 3001;
 
 let dbInitialized = false;
 
-// Middleware to lazily initialize PostgreSQL tables on the first Vercel serverless request
+// Middleware to lazily initialize PostgreSQL tables on the first Vercel/Firebase serverless request
 app.use(async (req, res, next) => {
-  if (process.env.VERCEL && !dbInitialized) {
+  if ((process.env.VERCEL || process.env.FIREBASE_CONFIG) && !dbInitialized) {
     try {
       await db.initDB();
       dbInitialized = true;
     } catch (err) {
-      console.error('Vercel lazy DB initialization failed:', err);
+      console.error('Lazy DB initialization failed:', err);
     }
   }
   next();
@@ -152,8 +152,8 @@ app.use((err, req, res, next) => {
 // ─── Start (async to initialize PostgreSQL first) ────
 async function start() {
   try {
-    // Only run normal startup if not on Vercel
-    if (!process.env.VERCEL) {
+    // Only run normal startup if not on Vercel or Firebase
+    if (!process.env.VERCEL && !process.env.FIREBASE_CONFIG) {
       // Initialize PostgreSQL database tables
       try {
         await db.initDB();

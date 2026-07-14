@@ -3,6 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
+  "main": "server/firebase.js",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run server\" \"npm run client\"",
     "client": "vite",
@@ -17,6 +18,8 @@
     "cors": "^2.8.5",
     "date-fns": "^4.4.0",
     "express": "^5.1.0",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.2.5",
     "framer-motion": "^12.40.0",
     "gsap": "^3.15.0",
     "jsonwebtoken": "^9.0.2",
