@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTrades } from '../contexts/TradeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ai as aiApi } from '../services/api';
 import {
   Brain, Send, Sparkles, Trash2, Cpu,
@@ -75,6 +76,7 @@ const formatMessageContent = (text) => {
 };
 
 const AiCoach = () => {
+  const { user } = useAuth();
   const { trades, analytics, fetchTrades, fetchAnalytics } = useTrades();
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
@@ -94,13 +96,15 @@ const AiCoach = () => {
 
   // Initialize with a welcome message from the coach if history is empty
   useEffect(() => {
-    const saved = localStorage.getItem('dtg_ai_chat');
-    if (saved) {
-      try {
-        setMessages(JSON.parse(saved));
-        return;
-      } catch (e) {
-        // Fallback
+    if (!user?.isGuest) {
+      const saved = localStorage.getItem('dtg_ai_chat');
+      if (saved) {
+        try {
+          setMessages(JSON.parse(saved));
+          return;
+        } catch (e) {
+          // Fallback
+        }
       }
     }
     
@@ -118,14 +122,14 @@ How is your trading session going today? Feel free to ask me questions like:
         `
       }
     ]);
-  }, []);
+  }, [user]);
 
   // Save chat to local storage
   useEffect(() => {
-    if (messages.length > 0) {
+    if (!user?.isGuest && messages.length > 0) {
       localStorage.setItem('dtg_ai_chat', JSON.stringify(messages));
     }
-  }, [messages]);
+  }, [messages, user]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -180,7 +184,13 @@ How is your trading session going today? Feel free to ask me questions like:
 
     try {
       // Fetch response from server using message history
-      const response = await aiApi.chat(updatedMessages);
+      let response;
+      if (user?.isGuest) {
+        const { publicApi } = await import('../services/api');
+        response = await publicApi.aiChat(user.guestToken, updatedMessages);
+      } else {
+        response = await aiApi.chat(updatedMessages);
+      }
       setMessages(prev => [...prev, response]);
     } catch (err) {
       console.error(err);

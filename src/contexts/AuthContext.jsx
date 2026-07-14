@@ -13,8 +13,11 @@ export const AuthProvider = ({ children }) => {
     const checkSession = async () => {
       // First check if we are landing on a share page to capture the token
       let token = null;
-      if (window.location.pathname.startsWith('/shared/dashboard/')) {
-        const parts = window.location.pathname.split('/');
+      const isPathShare = window.location.pathname.includes('/shared/dashboard/');
+      const isHashShare = window.location.hash.includes('/shared/dashboard/');
+      if (isPathShare || isHashShare) {
+        const urlStr = isPathShare ? window.location.pathname : window.location.hash;
+        const parts = urlStr.split('/');
         token = parts[parts.length - 1];
         if (token) {
           sessionStorage.setItem('guestToken', token);
