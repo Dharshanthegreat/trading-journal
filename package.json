@@ -10,7 +10,8 @@
     "server": "node server/server.js",
     "prebuild": "node -e \"fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json').then(r => r.json()).then(d => require('fs').writeFileSync('public/news.json', JSON.stringify(d))).catch(e => console.log('Skipping news prebuild fetch'))\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && firebase deploy"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
