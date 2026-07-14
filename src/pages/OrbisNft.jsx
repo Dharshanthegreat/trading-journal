@@ -33,17 +33,17 @@ export default function OrbisNft() {
     {
       id: 1,
       video: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_053923_22c0a6a5-313c-474c-85ff-3b50d25e944a.mp4",
-      score: "8.7/10"
+      score: "87.5%"
     },
     {
       id: 2,
       video: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_054411_511c1b7a-fb2f-42ef-bf6c-32c0b1a06e79.mp4",
-      score: "9/10"
+      score: "92.0%"
     },
     {
       id: 3,
       video: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_055427_ac7035b5-9f3b-4289-86fc-941b2432317d.mp4",
-      score: "8.2/10"
+      score: "82.4%"
     }
   ];
 
@@ -73,16 +73,16 @@ export default function OrbisNft() {
         <header className="relative z-10 w-full max-w-[1831px] mx-auto px-6 lg:px-12 py-6 flex items-center justify-between">
           {/* Logo */}
           <div className="font-grotesk text-[16px] tracking-widest text-cream uppercase">
-            Orbis.Nft
+            Orbis.Trade
           </div>
 
           {/* Navigation Bar */}
           <nav className="hidden lg:block liquid-glass rounded-[28px] px-[52px] py-[24px]">
             <ul className="flex items-center gap-12 m-0 p-0 list-none">
-              {['Homepage', 'Gallery', 'Buy NFT', 'FAQ', 'Contact'].map((link) => (
+              {['Homepage', 'Gallery', 'Log Trade', 'FAQ', 'Contact'].map((link) => (
                 <li key={link}>
                   <a 
-                    href={`#${link.toLowerCase().replace(' ', '-')}`} 
+                    href={link === 'Log Trade' ? '#/dashboard' : `#${link.toLowerCase().replace(' ', '-')}`} 
                     className="font-grotesk text-[13px] tracking-widest text-cream uppercase no-underline hover:text-neon transition-colors duration-200"
                   >
                     {link}
@@ -100,15 +100,15 @@ export default function OrbisNft() {
         <div className="relative z-10 w-full max-w-[1831px] mx-auto px-6 lg:px-12 flex-grow flex flex-col justify-center py-12 lg:py-0">
           <div className="relative w-fit">
             <h1 className="font-grotesk text-[40px] sm:text-[60px] md:text-[75px] lg:text-[90px] leading-[1.05] lg:leading-[1] uppercase max-w-[780px] lg:ml-32 text-cream m-0">
-              Beyond earth<br />
-              and ( its ) familiar boundaries
+              Beyond charts<br />
+              and ( its ) trading boundaries
             </h1>
             
             {/* Overlaid Cursive Accent */}
             <span 
               className="font-condiment text-neon normal-case mix-blend-exclusion opacity-90 absolute right-[-20px] -bottom-[20px] sm:right-[-40px] sm:-bottom-[30px] lg:-right-12 lg:-bottom-6 text-[24px] sm:text-[36px] lg:text-[48px] rotate-[-1deg] whitespace-nowrap"
             >
-              Nft collection
+              Trading journal
             </span>
           </div>
 
@@ -190,20 +190,20 @@ export default function OrbisNft() {
             <div className="relative pb-6 lg:pb-0">
               <h2 className="font-grotesk text-[32px] sm:text-[45px] lg:text-[60px] uppercase leading-[1.05] text-cream m-0">
                 Hello!<br />
-                I'm orbis
+                I'm trader
               </h2>
               
               {/* Overlaid Cursive Accent */}
               <span 
                 className="font-condiment text-neon normal-case mix-blend-exclusion absolute bottom-[-10px] right-[20px] sm:bottom-[-15px] sm:right-[40px] lg:-bottom-6 lg:-right-4 text-[36px] sm:text-[52px] lg:text-[68px] rotate-[-1deg] opacity-90 whitespace-nowrap"
               >
-                Orbis
+                Trader
               </span>
             </div>
 
             <div className="max-w-[266px] w-full">
               <p className="font-mono text-[14px] lg:text-[16px] leading-[1.6] text-cream uppercase m-0">
-                A digital object fixed beyond time and place. An exploration of distance, form, and silence in space
+                A digital journal fixed beyond guess and emotion. An exploration of discipline, performance, and strategy in markets
               </p>
             </div>
           </div>
@@ -213,20 +213,20 @@ export default function OrbisNft() {
             {/* Left Column */}
             <div className="flex flex-col gap-6 max-w-sm w-full">
               <p className="font-mono text-[14px] lg:text-[16px] text-[#010828] lg:text-cream lg:opacity-10 uppercase select-none leading-[1.6] m-0">
-                A digital object fixed beyond time and place. An exploration of distance, form, and silence in space
+                A digital journal fixed beyond guess and emotion. An exploration of discipline, performance, and strategy in markets
               </p>
               <p className="font-mono text-[14px] lg:text-[16px] text-[#010828] lg:text-cream lg:opacity-10 uppercase select-none leading-[1.6] m-0">
-                A digital object fixed beyond time and place. An exploration of distance, form, and silence in space
+                A digital journal fixed beyond guess and emotion. An exploration of discipline, performance, and strategy in markets
               </p>
             </div>
 
             {/* Right Column (hidden below lg) */}
             <div className="hidden lg:flex flex-col gap-6 max-w-sm w-full">
               <p className="font-mono text-[14px] lg:text-[16px] text-cream/10 uppercase select-none leading-[1.6] m-0">
-                A digital object fixed beyond time and place. An exploration of distance, form, and silence in space
+                A digital journal fixed beyond guess and emotion. An exploration of discipline, performance, and strategy in markets
               </p>
               <p className="font-mono text-[14px] lg:text-[16px] text-cream/10 uppercase select-none leading-[1.6] m-0">
-                A digital object fixed beyond time and place. An exploration of distance, form, and silence in space
+                A digital journal fixed beyond guess and emotion. An exploration of discipline, performance, and strategy in markets
               </p>
             </div>
           </div>
@@ -242,8 +242,8 @@ export default function OrbisNft() {
             <h2 className="font-grotesk text-[32px] sm:text-[45px] lg:text-[60px] leading-tight text-cream uppercase m-0">
               Collection of<br />
               <span className="ml-12 sm:ml-24 lg:ml-32 inline-flex items-center gap-4">
-                <span className="font-condiment text-neon normal-case mix-blend-exclusion text-[36px] sm:text-[50px] lg:text-[64px] rotate-[-1deg] opacity-90">Space</span>
-                <span>objects</span>
+                <span className="font-condiment text-neon normal-case mix-blend-exclusion text-[36px] sm:text-[50px] lg:text-[64px] rotate-[-1deg] opacity-90">Trading</span>
+                <span>setups</span>
               </span>
             </h2>
 
@@ -252,7 +252,7 @@ export default function OrbisNft() {
                 <span className="text-[32px] sm:text-[45px] lg:text-[60px] leading-none">SEE</span>
                 <span className="flex flex-col text-left text-[20px] sm:text-[28px] lg:text-[36px] leading-[0.9] pb-0.5">
                   <span>ALL</span>
-                  <span>CREATORS</span>
+                  <span>TRADES</span>
                 </span>
               </div>
               <div className="bg-neon h-[6px] sm:h-[8px] lg:h-[10px] w-full mt-2 transition-transform duration-300 group-hover:scale-x-[1.03]" />
@@ -282,7 +282,7 @@ export default function OrbisNft() {
                 {/* Score overlay bar */}
                 <div className="liquid-glass rounded-[20px] px-5 py-4 flex items-center justify-between mt-4">
                   <div className="flex flex-col text-left">
-                    <span className="text-[11px] text-cream/70 tracking-wider font-mono">RARITY SCORE:</span>
+                    <span className="text-[11px] text-cream/70 tracking-wider font-mono">WIN RATE:</span>
                     <span className="text-[16px] font-grotesk text-cream mt-0.5">{item.score}</span>
                   </div>
                   <button className="w-12 h-12 rounded-full bg-gradient-to-br from-[#b724ff] to-[#7c3aed] flex items-center justify-center text-cream shadow-lg shadow-purple-500/50 hover:scale-110 transition-transform duration-200 border-none cursor-pointer">
@@ -315,14 +315,14 @@ export default function OrbisNft() {
             <span 
               className="font-condiment text-neon normal-case mix-blend-exclusion absolute -top-[1.2rem] sm:-top-[2.5rem] lg:-top-[4rem] left-[15%] lg:left-[5%] -rotate-1 text-[17px] sm:text-[34px] md:text-[51px] lg:text-[68px] pointer-events-none whitespace-nowrap opacity-90"
             >
-              Go beyond
+              Trade smart
             </span>
 
             {/* Heading in Anton */}
             <h2 className="font-grotesk text-[16px] sm:text-[30px] md:text-[45px] lg:text-[60px] uppercase leading-[1.05] m-0">
               <div className="mb-4 sm:mb-8 lg:mb-12">JOIN US.</div>
-              <div>REVEAL WHAT'S HIDDEN.</div>
-              <div>DEFINE WHAT'S NEXT.</div>
+              <div>REVEAL WHAT'S WORKING.</div>
+              <div>DEFINE YOUR SYSTEM.</div>
               <div>FOLLOW THE SIGNAL.</div>
             </h2>
           </div>
