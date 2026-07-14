@@ -98,18 +98,17 @@ export default function OrbisNft() {
 
         {/* Hero Content */}
         <div className="relative z-10 w-full max-w-[1831px] mx-auto px-6 lg:px-12 flex-grow flex flex-col justify-center py-12 lg:py-0">
-          <div className="relative w-fit">
-            <h1 className="font-grotesk text-[40px] sm:text-[60px] md:text-[75px] lg:text-[90px] leading-[1.05] lg:leading-[1] uppercase max-w-[780px] lg:ml-32 text-cream m-0">
-              Beyond charts<br />
-              and ( its ) trading boundaries
-            </h1>
-            
-            {/* Overlaid Cursive Accent */}
+          <div className="flex flex-col items-start lg:ml-32 max-w-[820px] w-full">
+            {/* Overlaid Cursive Accent (Moved above the heading to prevent overlap) */}
             <span 
-              className="font-condiment text-neon normal-case mix-blend-exclusion opacity-90 absolute right-[-20px] -bottom-[20px] sm:right-[-40px] sm:-bottom-[30px] lg:-right-12 lg:-bottom-6 text-[24px] sm:text-[36px] lg:text-[48px] rotate-[-1deg] whitespace-nowrap"
+              className="font-condiment text-neon normal-case mix-blend-exclusion opacity-90 text-[26px] sm:text-[38px] lg:text-[50px] rotate-[-1deg] mb-3 sm:mb-4 lg:mb-5 select-none"
             >
               Trading journal
             </span>
+            <h1 className="font-grotesk text-[40px] sm:text-[60px] md:text-[75px] lg:text-[90px] leading-[1.05] lg:leading-[1.1] uppercase text-cream m-0">
+              Beyond charts<br />
+              and ( its ) trading boundaries
+            </h1>
           </div>
 
           {/* Social Icons (Mobile) */}
@@ -187,18 +186,17 @@ export default function OrbisNft() {
         <div className="relative z-10 w-full max-w-[1831px] mx-auto px-6 lg:px-12 py-16 md:py-24 flex flex-col justify-between min-h-[80vh]">
           {/* Top Row */}
           <div className="flex flex-col lg:flex-row justify-between items-start gap-8 lg:gap-16">
-            <div className="relative pb-6 lg:pb-0">
+            <div className="flex flex-col items-start pb-6 lg:pb-0">
+              {/* Overlaid Cursive Accent (Moved above the heading to prevent overlap) */}
+              <span 
+                className="font-condiment text-neon normal-case mix-blend-exclusion text-[26px] sm:text-[38px] lg:text-[50px] rotate-[-1deg] opacity-90 mb-2 sm:mb-3 select-none"
+              >
+                Trader
+              </span>
               <h2 className="font-grotesk text-[32px] sm:text-[45px] lg:text-[60px] uppercase leading-[1.05] text-cream m-0">
                 Hello!<br />
                 I'm trader
               </h2>
-              
-              {/* Overlaid Cursive Accent */}
-              <span 
-                className="font-condiment text-neon normal-case mix-blend-exclusion absolute bottom-[-10px] right-[20px] sm:bottom-[-15px] sm:right-[40px] lg:-bottom-6 lg:-right-4 text-[36px] sm:text-[52px] lg:text-[68px] rotate-[-1deg] opacity-90 whitespace-nowrap"
-              >
-                Trader
-              </span>
             </div>
 
             <div className="max-w-[266px] w-full">
@@ -239,12 +237,12 @@ export default function OrbisNft() {
         <div className="w-full max-w-[1831px] mx-auto px-6 lg:px-12 py-16 md:py-24 flex flex-col gap-12 md:gap-16">
           {/* Header Row */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <h2 className="font-grotesk text-[32px] sm:text-[45px] lg:text-[60px] leading-tight text-cream uppercase m-0">
+            <h2 className="font-grotesk text-[32px] sm:text-[45px] lg:text-[60px] leading-[1.1] text-cream uppercase m-0">
               Collection of<br />
-              <span className="ml-12 sm:ml-24 lg:ml-32 inline-flex items-center gap-4">
-                <span className="font-condiment text-neon normal-case mix-blend-exclusion text-[36px] sm:text-[50px] lg:text-[64px] rotate-[-1deg] opacity-90">Trading</span>
-                <span>setups</span>
-              </span>
+              <div className="pl-6 sm:pl-16 lg:pl-24 flex items-center gap-x-3 sm:gap-x-4 flex-wrap mt-2 sm:mt-3">
+                <span className="font-condiment text-neon normal-case mix-blend-exclusion text-[36px] sm:text-[50px] lg:text-[64px] rotate-[-1deg] opacity-90 leading-none">Trading</span>
+                <span className="leading-none">setups</span>
+              </div>
             </h2>
 
             <button className="flex flex-col items-stretch group text-cream bg-transparent border-none p-0 cursor-pointer">
@@ -310,19 +308,19 @@ export default function OrbisNft() {
 
         {/* Text Content Overlay */}
         <div className="absolute inset-0 flex items-center justify-end z-10 pointer-events-none">
-          <div className="relative text-right max-w-[800px] w-full px-6 sm:px-12 md:px-16 lg:pr-[20%] lg:pl-[15%] text-cream pointer-events-auto">
-            {/* Cursive "Go beyond" */}
+          <div className="flex flex-col items-end text-right max-w-[800px] w-full px-6 sm:px-12 md:px-16 lg:pr-[20%] lg:pl-[15%] text-cream pointer-events-auto">
+            {/* Cursive Accent (Moved above the heading to prevent overlap and using flex) */}
             <span 
-              className="font-condiment text-neon normal-case mix-blend-exclusion absolute -top-[1.2rem] sm:-top-[2.5rem] lg:-top-[4rem] left-[15%] lg:left-[5%] -rotate-1 text-[17px] sm:text-[34px] md:text-[51px] lg:text-[68px] pointer-events-none whitespace-nowrap opacity-90"
+              className="font-condiment text-neon normal-case mix-blend-exclusion text-[20px] sm:text-[36px] lg:text-[48px] -rotate-1 opacity-90 mb-3 sm:mb-4 lg:mb-5 select-none"
             >
               Trade smart
             </span>
 
             {/* Heading in Anton */}
-            <h2 className="font-grotesk text-[16px] sm:text-[30px] md:text-[45px] lg:text-[60px] uppercase leading-[1.05] m-0">
-              <div className="mb-4 sm:mb-8 lg:mb-12">JOIN US.</div>
+            <h2 className="font-grotesk text-[15px] sm:text-[30px] md:text-[45px] lg:text-[60px] uppercase leading-[1.1] m-0">
+              <div className="mb-3 sm:mb-6 lg:mb-8">JOIN US.</div>
               <div>REVEAL WHAT'S WORKING.</div>
-              <div>DEFINE YOUR SYSTEM.</div>
+              <div className="my-1">DEFINE YOUR SYSTEM.</div>
               <div>FOLLOW THE SIGNAL.</div>
             </h2>
           </div>
