@@ -8,7 +8,7 @@ import {
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
   Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square,
-  ListTodo, Filter
+  ListTodo, Filter, Database
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
