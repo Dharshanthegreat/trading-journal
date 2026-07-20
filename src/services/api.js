@@ -383,6 +383,7 @@ export const backup = {
 // ─── Accounts ────────────────────────────────────────
 export const accounts = {
   list: () => request('/accounts'),
+  getDeleted: () => request('/accounts/deleted'),
   create: (data) =>
     request('/accounts', {
       method: 'POST',
@@ -395,6 +396,10 @@ export const accounts = {
     }),
   delete: (id) =>
     request(`/accounts/${id}`, { method: 'DELETE' }),
+  restore: (id) =>
+    request(`/accounts/${id}/restore`, { method: 'POST' }),
+  hardDelete: (id) =>
+    request(`/accounts/${id}/permanent`, { method: 'DELETE' }),
 };
 
 // ─── Achievements ────────────────────────────────────

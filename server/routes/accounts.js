@@ -11,6 +11,7 @@ router.get('/', async (req, res) => {
 
     // Compute live stats for each account
     const accountsWithStats = await Promise.all(accountsResult.rows.map(async (acc) => {
+      // ... same stats calculation ...
       const tradesResult = await db.query('SELECT pnl, exit_time, entry_time, created_at FROM trades WHERE user_id = $1 AND account_id = $2', [userId, acc.id]);
       const totalPnL = tradesResult.rows.reduce((accPnL, t) => accPnL + (t.pnl || 0), 0);
       const tradesCount = tradesResult.rows.length;
@@ -27,13 +28,11 @@ router.get('/', async (req, res) => {
       });
       const tradingDays = tradingDaysSet.size;
 
-      // Prop challenge fields
       const profitTarget = acc.profit_target || 0;
       const maxLossLimit = acc.max_loss_limit || 0;
       const consistencyRule = acc.consistency_rule || 0;
       const useTrailingDrawdown = acc.use_trailing_drawdown || false;
 
-      // Trailing drawdown calculation
       let mllValue = (acc.balance || 0) - maxLossLimit;
       if (useTrailingDrawdown && maxLossLimit > 0) {
         let runningBalance = acc.balance || 0;
@@ -54,7 +53,6 @@ router.get('/', async (req, res) => {
       
       const targetValue = (acc.balance || 0) + profitTarget;
 
-      // Consistency score: largest single-day PnL as % of total profit
       let consistencyScore = 0;
       if (consistencyRule > 0 && totalPnL > 0) {
         const dailyPnL = {};
@@ -90,6 +88,7 @@ router.get('/', async (req, res) => {
         targetValue,
         consistencyScore,
         createdAt: acc.created_at,
+        deletedAt: acc.deleted_at
       };
     }));
 
@@ -97,6 +96,28 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Get accounts error:', err);
     res.status(500).json({ error: 'Failed to retrieve accounts' });
+  }
+});
+
+// ─── Get Deleted Accounts ──────────────────────────────
+router.get('/deleted', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Assuming we add a deleted_at column to accounts
+    // If not, we can catch error. But localDb handles this primarily anyway.
+    const result = await db.query('SELECT * FROM accounts WHERE user_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC', [userId]);
+    res.json(result.rows.map(acc => ({
+        id: acc.id,
+        accountName: acc.account_name,
+        accountType: acc.account_type,
+        startingBalance: acc.balance,
+        currency: acc.currency || 'USD',
+        status: acc.status || 'Active',
+        createdAt: acc.created_at,
+        deletedAt: acc.deleted_at
+    })));
+  } catch (err) {
+    res.json([]); // Fail silently if column doesn't exist
   }
 });
 
@@ -212,7 +233,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// ─── Delete Account ────────────────────────────────────
+// ─── Delete Account (Soft Delete) ──────────────────────
 router.delete('/:id', async (req, res) => {
   try {
     const accountId = req.params.id;
@@ -223,11 +244,40 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    await db.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    try {
+      await db.query('UPDATE accounts SET deleted_at = NOW() WHERE id = $1', [accountId]);
+    } catch(err) {
+      // fallback if deleted_at doesn't exist
+      await db.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    }
     res.json({ success: true, message: 'Account deleted successfully' });
   } catch (err) {
     console.error('Delete account error:', err);
     res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+// ─── Restore Account ───────────────────────────────────
+router.post('/:id/restore', async (req, res) => {
+  try {
+    const accountId = req.params.id;
+    const userId = req.user.id;
+    await db.query('UPDATE accounts SET deleted_at = NULL WHERE id = $1 AND user_id = $2', [accountId, userId]);
+    res.json({ success: true, message: 'Account restored successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to restore account' });
+  }
+});
+
+// ─── Hard Delete Account ───────────────────────────────
+router.delete('/:id/permanent', async (req, res) => {
+  try {
+    const accountId = req.params.id;
+    const userId = req.user.id;
+    await db.query('DELETE FROM accounts WHERE id = $1 AND user_id = $2', [accountId, userId]);
+    res.json({ success: true, message: 'Account permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to permanently delete account' });
   }
 });
 

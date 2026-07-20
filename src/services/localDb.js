@@ -1432,6 +1432,10 @@ const handleAccounts = async (url, method, body) => {
     return accountsWithStats;
   }
 
+  if (url === '/deleted' && method === 'GET') {
+    return getStorageItem(`deleted_accounts_${activeUser.id}`, []);
+  }
+
   if (url === '' && method === 'POST') {
     const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
@@ -1491,22 +1495,58 @@ const handleAccounts = async (url, method, body) => {
     return updatedAccount;
   }
 
-  if (url.startsWith('/') && method === 'DELETE') {
-    const id = parseInt(url.slice(1));
-    const beforeLength = accountsList.length;
-    accountsList = accountsList.filter(acc => acc.id !== id);
-    if (accountsList.length === beforeLength) throw { status: 404, message: 'Account not found' };
-
+  if (url.startsWith('/') && method === 'POST' && url.endsWith('/restore')) {
+    const id = parseInt(url.slice(1).replace('/restore', ''));
+    let deletedList = getStorageItem(`deleted_accounts_${activeUser.id}`, []);
+    const accToRestore = deletedList.find(acc => acc.id === id);
+    if (!accToRestore) throw { status: 404, message: 'Account not found in trash' };
+    
+    deletedList = deletedList.filter(acc => acc.id !== id);
+    setStorageItem(`deleted_accounts_${activeUser.id}`, deletedList);
+    
+    delete accToRestore.deletedAt;
+    accountsList = [accToRestore, ...accountsList];
     setStorageItem(`accounts_${activeUser.id}`, accountsList);
     
-    // Cascade delete associated rules locally too
-    try {
-      let rulesList = getStorageItem(`rules_${activeUser.id}`, []);
-      rulesList = rulesList.filter(r => r.accountId !== id);
-      setStorageItem(`rules_${activeUser.id}`, rulesList);
-    } catch (e) {}
+    return { success: true, message: 'Account restored' };
+  }
 
-    return { success: true, message: 'Account deleted successfully' };
+  if (url.startsWith('/') && method === 'DELETE') {
+    const isPermanent = url.endsWith('/permanent');
+    let idStr = url.slice(1);
+    if (isPermanent) {
+      idStr = idStr.replace('/permanent', '');
+    }
+    const id = parseInt(idStr);
+    
+    if (isPermanent) {
+      let deletedList = getStorageItem(`deleted_accounts_${activeUser.id}`, []);
+      const beforeLength = deletedList.length;
+      deletedList = deletedList.filter(acc => acc.id !== id);
+      if (deletedList.length === beforeLength) throw { status: 404, message: 'Account not found in trash' };
+      setStorageItem(`deleted_accounts_${activeUser.id}`, deletedList);
+      
+      // Cascade delete associated rules locally too
+      try {
+        let rulesList = getStorageItem(`rules_${activeUser.id}`, []);
+        rulesList = rulesList.filter(r => r.accountId !== id);
+        setStorageItem(`rules_${activeUser.id}`, rulesList);
+      } catch (e) {}
+      
+      return { success: true, message: 'Account permanently deleted' };
+    } else {
+      const accToMove = accountsList.find(acc => acc.id === id);
+      if (!accToMove) throw { status: 404, message: 'Account not found' };
+      
+      accountsList = accountsList.filter(acc => acc.id !== id);
+      setStorageItem(`accounts_${activeUser.id}`, accountsList);
+      
+      let deletedList = getStorageItem(`deleted_accounts_${activeUser.id}`, []);
+      deletedList = [{...accToMove, deletedAt: new Date().toISOString()}, ...deletedList];
+      setStorageItem(`deleted_accounts_${activeUser.id}`, deletedList);
+      
+      return { success: true, message: 'Account moved to trash' };
+    }
   }
 
   throw { status: 404, message: 'Not Found' };

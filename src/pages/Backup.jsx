@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useJournal } from '../contexts/JournalContext';
-import { backup as backupApi } from '../services/api';
+import { backup as backupApi, accounts as accountsApi } from '../services/api';
 import {
   Database, Download, RefreshCw, AlertTriangle, Loader,
-  FileJson, Check, History, Trash2, Shield
+  FileJson, Check, History, Trash2, Shield, RotateCcw, Wallet
 } from 'lucide-react';
 
 const Backup = () => {
@@ -25,6 +25,26 @@ const Backup = () => {
   const [importSuccess, setImportSuccess] = useState(false);
   const [savingLocal, setSavingLocal] = useState(false);
   const [localSaveResult, setLocalSaveResult] = useState(null);
+
+  // Deleted Accounts State
+  const [deletedAccounts, setDeletedAccounts] = useState([]);
+  const [loadingDeleted, setLoadingDeleted] = useState(false);
+
+  const fetchDeletedAccounts = async () => {
+    try {
+      setLoadingDeleted(true);
+      const data = await accountsApi.getDeleted();
+      setDeletedAccounts(data || []);
+    } catch (err) {
+      console.error('Failed to fetch deleted accounts:', err);
+    } finally {
+      setLoadingDeleted(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeletedAccounts();
+  }, []);
 
   // Load audit logs on mount
   useEffect(() => {
@@ -139,6 +159,32 @@ const Backup = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleRestoreAccount = async (id) => {
+    if (user?.isGuest) { alert("Cannot modify accounts in Showcase view."); return; }
+    try {
+      await accountsApi.restore(id);
+      addAuditLog('Restore Account', `Account ID: ${id}`, 'success');
+      await fetchDeletedAccounts();
+      // Optional: trigger account list refresh if we had a global context for it
+    } catch (err) {
+      console.error('Failed to restore account', err);
+      alert('Failed to restore account');
+    }
+  };
+
+  const handlePermanentDeleteAccount = async (id) => {
+    if (user?.isGuest) { alert("Cannot modify accounts in Showcase view."); return; }
+    if (!window.confirm('Are you sure you want to permanently delete this account? This action cannot be undone.')) return;
+    try {
+      await accountsApi.hardDelete(id);
+      addAuditLog('Permanent Delete', `Account ID: ${id}`, 'success');
+      await fetchDeletedAccounts();
+    } catch (err) {
+      console.error('Failed to permanently delete account', err);
+      alert('Failed to permanently delete account');
+    }
   };
 
   const handleBackupDrop = (e) => {
@@ -532,6 +578,51 @@ const Backup = () => {
                     )}
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card: Account Backup (Recycle Bin) */}
+          <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 'var(--s3)' }}>
+              <Wallet size={14} style={{ color: 'var(--text-tertiary)' }} />
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Backup (Recycle Bin)</h4>
+            </div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)' }}>
+              Accounts you delete are stored here. You can restore them to recover their trades, or permanently delete them to free up space.
+            </p>
+
+            {loadingDeleted ? (
+              <div style={{ padding: 'var(--s4)', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <Loader size={16} style={{ animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+              </div>
+            ) : deletedAccounts.length === 0 ? (
+              <div style={{ padding: 'var(--s4) var(--s2)', fontStyle: 'italic', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem', background: 'var(--surface-glass)', borderRadius: 'var(--r-sm)' }}>
+                No deleted accounts found in the backup bin.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                {deletedAccounts.map(acc => (
+                  <div key={acc.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)',
+                    padding: 'var(--s3)', background: 'var(--surface-glass)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{acc.accountName || acc.account_name}</div>
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        Balance: {acc.startingBalance || acc.balance} {acc.currency} • Type: {acc.accountType || acc.account_type}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--profit)' }} onClick={() => handleRestoreAccount(acc.id)}>
+                        <RotateCcw size={12} /> Restore
+                      </button>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--loss)' }} onClick={() => handlePermanentDeleteAccount(acc.id)}>
+                        <Trash2 size={12} /> Delete Forever
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
