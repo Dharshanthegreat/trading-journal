@@ -53,9 +53,9 @@
   --info-soft:       rgba(96, 165, 250, 0.12);
 
   /* Borders */
-  --border:          rgba(255, 255, 255, 0.06);
-  --border-mid:      rgba(255, 255, 255, 0.10);
-  --border-strong:   rgba(255, 255, 255, 0.16);
+  --border:          rgba(255, 255, 255, 0.15);
+  --border-mid:      rgba(255, 255, 255, 0.22);
+  --border-strong:   rgba(255, 255, 255, 0.35);
   --border-accent:   rgba(129, 140, 248, 0.3);
 
   /* Shadows */
@@ -854,9 +854,9 @@ body.theme-emerald-dark {
   --loss-border:     rgba(239, 68, 68, 0.25);
 
   /* Borders */
-  --border:          rgba(255, 255, 255, 0.05);
-  --border-mid:      rgba(255, 255, 255, 0.09);
-  --border-strong:   rgba(255, 255, 255, 0.16);
+  --border:          rgba(255, 255, 255, 0.15);
+  --border-mid:      rgba(255, 255, 255, 0.22);
+  --border-strong:   rgba(255, 255, 255, 0.35);
   --border-accent:   rgba(16, 185, 129, 0.25);
 
   /* Shadows */
