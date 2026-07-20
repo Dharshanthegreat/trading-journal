@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target, Wallet, Sparkles } from 'lucide-react';
 
 import { toNewYorkDateString } from '../utils/timezone';
-import { accounts as accountsApi } from '../services/api';
+import { accounts as accountsApi, ai } from '../services/api';
 
 const CalendarPage = () => {
   const { analytics, fetchAnalytics, trades, fetchTrades, loading } = useTrades();
@@ -12,6 +12,8 @@ const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState('All');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [weeklyAnalysis, setWeeklyAnalysis] = useState(null);
 
   useEffect(() => {
     fetchAnalytics();
@@ -85,6 +87,32 @@ const CalendarPage = () => {
       }
     }
     return { pnl: totalPnL, count: totalCount };
+  };
+
+  const getWeekTrades = (saturdayDate) => {
+    const weekTrades = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(saturdayDate, -6 + i);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const dayTrades = filteredTrades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
+      weekTrades.push(...dayTrades);
+    }
+    return weekTrades;
+  };
+
+  const handleAnalyzeWeek = async (saturdayDate) => {
+    try {
+      setIsAnalyzing(true);
+      setWeeklyAnalysis(null);
+      const weekTrades = getWeekTrades(saturdayDate);
+      const res = await ai.analyzeWeek({ trades: weekTrades });
+      setWeeklyAnalysis(res.content);
+    } catch (err) {
+      console.error(err);
+      setWeeklyAnalysis('Failed to analyze the week.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   // Get trades for selected date
@@ -240,7 +268,12 @@ const CalendarPage = () => {
                     borderColor: isSelected ? 'var(--accent)' : undefined,
                     boxShadow: isSelected ? '0 0 8px var(--accent-glow)' : undefined,
                   }}
-                  onClick={() => inMonth && setSelectedDate(isSelected ? null : day)}
+                  onClick={() => {
+                    if (inMonth) {
+                      setSelectedDate(isSelected ? null : day);
+                      setWeeklyAnalysis(null);
+                    }
+                  }}
                 >
                   <div className="calendar-day" style={{ color: !inMonth ? 'var(--text-muted)' : today ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: today ? 700 : 500 }}>
                     {format(day, 'dd')}
@@ -291,6 +324,76 @@ const CalendarPage = () => {
             {(() => {
               const dateStr = format(selectedDate, 'yyyy-MM-dd');
               const dayData = dailyData[dateStr];
+              const isSaturday = selectedDate.getDay() === 6;
+              const weekTotal = isSaturday ? getWeekTotal(selectedDate) : null;
+              
+              if (isSaturday) {
+                 return (
+                   <>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)', flexWrap: 'wrap', gap: 'var(--s3)' }}>
+                       <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                         Weekly Summary (Sun - Sat)
+                       </div>
+                       <button className="btn" style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 12px', fontSize: '0.75rem', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer' }} onClick={() => handleAnalyzeWeek(selectedDate)} disabled={isAnalyzing}>
+                         <Sparkles size={14} />
+                         {isAnalyzing ? 'Analyzing...' : 'AI Weekly Analysis'}
+                       </button>
+                     </div>
+                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '360px' }}>
+                       <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                         <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Total P&L</div>
+                         <div style={{ fontSize: '1.05rem', fontWeight: 700, color: weekTotal.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                           {weekTotal.pnl >= 0 ? '+' : ''}${weekTotal.pnl.toFixed(2)}
+                         </div>
+                       </div>
+                       <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                         <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Trades Count</div>
+                         <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                           {weekTotal.count}
+                         </div>
+                       </div>
+                     </div>
+                     
+                     {weeklyAnalysis && (
+                        <div className="glass anim-fade-up" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--s3)', color: '#6366f1', fontWeight: 600 }}>
+                            <Sparkles size={16} /> AI Coach Analysis
+                          </div>
+                          <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                            {weeklyAnalysis}
+                          </div>
+                        </div>
+                     )}
+
+                     {dayData && dayData.count > 0 && (
+                       <>
+                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)', marginTop: 'var(--s4)' }}>
+                           Saturday Trade Details
+                         </div>
+                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s3)' }}>
+                           {selectedDateTrades.map((t, i) => (
+                             <div key={t.id || i} style={{
+                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                               padding: '10px var(--s4)', background: 'var(--surface-glass)',
+                               borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
+                               fontSize: '0.78rem',
+                             }}>
+                               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+                                 <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.58rem', padding: '2px 6px' }}>{t.type}</span>
+                                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.symbol}</span>
+                               </div>
+                               <span style={{ fontWeight: 700, color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.82rem' }}>
+                                 {t.pnl >= 0 ? '+' : ''}${Math.abs(t.pnl).toFixed(2)}
+                               </span>
+                             </div>
+                           ))}
+                         </div>
+                       </>
+                     )}
+                   </>
+                 );
+              }
+
               if (!dayData) {
                 return <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: 'var(--s3) 0' }}>No trades on this day</div>;
               }

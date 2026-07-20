@@ -124,6 +124,92 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
   }
 });
 
+// ─── Analyze Weekly Performance ──────────────────────────────
+router.post('/analyze-week', async (req, res) => {
+  try {
+    const { weekData } = req.body;
+    const apiKey = req.headers['x-nvidia-api-key'] || req.body.nvidiaApiKey || process.env.NVIDIA_API_KEY;
+
+    let tradeCount = 0;
+    let totalPnL = 0;
+    let wins = 0;
+    let losses = 0;
+    
+    if (weekData && Array.isArray(weekData.trades)) {
+      tradeCount = weekData.trades.length;
+      weekData.trades.forEach(t => {
+        const pnl = parseFloat(t.pnl) || 0;
+        totalPnL += pnl;
+        if (pnl > 0) wins++;
+        else if (pnl < 0) losses++;
+      });
+    }
+
+    const winRate = tradeCount > 0 ? Math.round((wins / tradeCount) * 100) : 0;
+
+    const systemPrompt = `You are a professional trading coach powered by NVIDIA Llama-3.1-Nemotron-70B-Instruct.
+You are reviewing a trader's performance for a specific week.
+Weekly Stats:
+- Total Trades: ${tradeCount}
+- Win Rate: ${winRate}%
+- Net P&L: $${totalPnL.toFixed(2)}
+
+Provide a brief, encouraging, and highly analytical review of this week's performance based on these stats and the trade details provided. Format your response in clean Markdown. Keep it actionable.`;
+
+    const userPrompt = `Here is the data for my trades this week: ${JSON.stringify(weekData)}`;
+
+    if (apiKey) {
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'nvidia/llama-3.1-nemotron-70b-instruct',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.5,
+          max_tokens: 1024
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`NVIDIA API Catalog returned error status ${response.status}: ${errText}`);
+      }
+
+      const apiResult = await response.json();
+      const responseContent = apiResult.choices[0]?.message?.content || 'No response generated.';
+      return res.json({
+        role: 'assistant',
+        content: responseContent
+      });
+    }
+
+    // Fallback: Simulated response
+    let responseText = '';
+    if (tradeCount === 0) {
+      responseText = "You didn't take any trades this week. Taking a break is sometimes the best position to have!";
+    } else if (totalPnL > 0) {
+      responseText = `Great job this week! You secured a net profit of **$${totalPnL.toFixed(2)}** with a win rate of **${winRate}%** across ${tradeCount} trades. Keep sticking to your setups and managing risk!`;
+    } else {
+      responseText = `This week was tough with a net P&L of **$${totalPnL.toFixed(2)}** and a win rate of **${winRate}%**. Review your losses carefully to ensure you followed your rules. Remember, risk management is key.`;
+    }
+
+    res.json({
+      role: 'assistant',
+      content: `🤖 **[NVIDIA Llama-3.1-Nemotron-70B-Instruct (Simulated)]**\n\n${responseText}`
+    });
+
+  } catch (err) {
+    console.error('AI Analyze Week error:', err);
+    res.status(500).json({ error: 'Failed to generate AI weekly analysis' });
+  }
+});
+
 // ─── Analyze Trading Chart Image via Gemini Vision ───────────────────
 router.post('/analyze-chart', upload.single('chart'), async (req, res) => {
   try {

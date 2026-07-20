@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useJournal } from '../contexts/JournalContext';
 import { useTrades } from '../contexts/TradeContext';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay } from 'date-fns';
 import { NotebookPen, ChevronLeft, ChevronRight, Save, Trash2, Sun, BookOpen, Lightbulb, AlertTriangle, Target } from 'lucide-react';
 
 import { toNewYorkDateString } from '../utils/timezone';
@@ -15,7 +15,7 @@ const MOODS = [
 ];
 
 const DailyJournal = () => {
-  const { currentEntry, getEntry, saveEntry, deleteEntry, loading } = useJournal();
+  const { currentEntry, getEntry, saveEntry, deleteEntry, loading, entries, fetchEntries } = useJournal();
   const { trades } = useTrades();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [form, setForm] = useState({
@@ -26,6 +26,10 @@ const DailyJournal = () => {
   const [saved, setSaved] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
 
   useEffect(() => {
     getEntry(dateStr);
@@ -67,6 +71,23 @@ const DailyJournal = () => {
   // Trades for this day
   const dayTrades = trades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
   const dayPnL = dayTrades.reduce((a, t) => a + (t.pnl || 0), 0);
+
+  const getMoodEmoji = (moodValue) => {
+    const m = MOODS.find(x => x.value === moodValue);
+    return m ? m.emoji : null;
+  };
+
+  const monthStart = startOfMonth(selectedDate);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart);
+  const endDate = endOfWeek(monthEnd);
+
+  const calendarDays = [];
+  let day = startDate;
+  while (day <= endDate) {
+    calendarDays.push(day);
+    day = addDays(day, 1);
+  }
 
   const sections = [
     { key: 'pre_market', title: 'Pre-Market Plan', icon: <Sun size={13}/>, placeholder: 'What are you watching today? Key levels, news events, game plan...' },
@@ -162,6 +183,73 @@ const DailyJournal = () => {
 
         {/* Sidebar — Day Summary */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+          
+          {/* Mini Calendar */}
+          <div className="glass" style={{ padding: 'var(--s5)' }}>
+            <div className="chart-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span>{format(selectedDate, 'MMMM yyyy')}</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button className="btn btn-ghost btn-sm" style={{ padding: '2px 4px' }} onClick={() => setSelectedDate(subMonths(selectedDate, 1))}><ChevronLeft size={14}/></button>
+                <button className="btn btn-ghost btn-sm" style={{ padding: '2px 4px' }} onClick={() => setSelectedDate(addMonths(selectedDate, 1))}><ChevronRight size={14}/></button>
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d}>{d}</div>)}
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+              {calendarDays.map((d, i) => {
+                const dStr = format(d, 'yyyy-MM-dd');
+                const isSelected = isSameDay(d, selectedDate);
+                const isCurrentMonth = isSameMonth(d, monthStart);
+                const isToday = isSameDay(d, new Date());
+                
+                const entry = entries.find(e => e.date === dStr);
+                const emoji = entry?.mood ? getMoodEmoji(entry.mood) : null;
+                
+                const dTrades = trades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dStr);
+                const dPnL = dTrades.reduce((a, t) => a + (t.pnl || 0), 0);
+                
+                let pnlColor = 'transparent';
+                if (dTrades.length > 0) {
+                  pnlColor = dPnL > 0 ? 'var(--profit)' : dPnL < 0 ? 'var(--loss)' : 'var(--text-muted)';
+                }
+                
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedDate(d)}
+                    style={{
+                      aspectRatio: '1',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      borderRadius: 'var(--r-sm)',
+                      border: isSelected ? '1px solid var(--accent)' : (isToday ? '1px dashed var(--border-strong)' : '1px solid transparent'),
+                      background: isSelected ? 'var(--bg-active)' : 'transparent',
+                      opacity: isCurrentMonth ? 1 : 0.3,
+                      position: 'relative',
+                      fontSize: '0.75rem',
+                      fontWeight: isSelected || isToday ? 700 : 500,
+                      color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)'
+                    }}
+                  >
+                    <span>{format(d, 'd')}</span>
+                    <div style={{ fontSize: '0.65rem', marginTop: '2px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {emoji}
+                    </div>
+                    {dTrades.length > 0 && (
+                       <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: pnlColor, position: 'absolute', bottom: '2px' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="glass" style={{ padding: 'var(--s5)' }}>
             <div className="chart-title"><span>Day Summary</span></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>

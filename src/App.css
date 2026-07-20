@@ -1455,5 +1455,379 @@ body.theme-minimal .chart-card-setup {
   line-height: 1.4;
 }
 
+/* Redesigned Dashboard Styles */
+
+.tz-week-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+
+.tz-week-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tz-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--s3);
+}
+
+@media (max-width: 992px) {
+  .tz-week-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .tz-week-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tz-week-day-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s3) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  transition: transform var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.tz-week-day-card:hover {
+  border-color: var(--border-mid);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tz-week-day-card.active {
+  border-color: var(--accent);
+  background: var(--bg-active);
+}
+
+.tz-week-day-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tz-week-day-label {
+  color: var(--text-secondary);
+}
+
+.tz-week-day-pnl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+}
+
+.tz-week-day-pnl.profit {
+  color: var(--profit);
+}
+
+.tz-week-day-pnl.loss {
+  color: var(--loss);
+}
+
+.tz-week-day-pnl.neutral {
+  color: var(--text-muted);
+}
+
+.tz-week-day-bottom {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* Top Dashboard Columns Grid */
+.tz-dashboard-grid-top {
+  display: grid;
+  grid-template-columns: 2.4fr 1.3fr 1.3fr;
+  gap: var(--s5);
+  margin-bottom: var(--s5);
+}
+
+@media (max-width: 1024px) {
+  .tz-dashboard-grid-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tz-grid-column-flex {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+
+.tz-balance-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  min-height: 288px;
+}
+
+.tz-balance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.tz-balance-badge {
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.tz-balance-badge.profit {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--profit);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.tz-balance-badge.loss {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--loss);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.tz-balance-badge.neutral {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+/* Asset Rows */
+.tz-asset-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.tz-asset-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tz-asset-bar-bg {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  width: 100%;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.tz-asset-bar-fill {
+  height: 100%;
+  background: var(--text-primary);
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+
+/* Outcome Rows */
+.tz-outcome-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin: 3px 0;
+}
+
+.tz-outcome-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 70px;
+  color: var(--text-secondary);
+}
+
+.tz-outcome-bar-bg {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 10px;
+  overflow: hidden;
+}
+
+.tz-outcome-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+
+/* Profit Factor Bars */
+.tz-pf-bars-container {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 22px;
+  margin: var(--s3) 0;
+}
+
+.tz-pf-bar {
+  flex: 1;
+  height: 100%;
+  border-radius: 1px;
+  transition: background 0.3s ease;
+}
+
+.tz-pf-bar.win {
+  background: var(--profit);
+}
+
+.tz-pf-bar.loss {
+  background: var(--loss);
+}
+
+.tz-pf-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: var(--s2);
+  margin-top: var(--s2);
+}
+
+.tz-pf-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+/* Bottom Grid Layout */
+.tz-dashboard-grid-bottom {
+  display: grid;
+  grid-template-columns: 1.25fr 0.85fr 1fr;
+  gap: var(--s5);
+  margin-top: var(--s2);
+}
+
+@media (max-width: 992px) {
+  .tz-dashboard-grid-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tz-trade-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  margin-top: var(--s2);
+}
+
+@media (max-width: 576px) {
+  .tz-trade-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tz-trade-mini-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  transition: transform var(--t-fast), border-color var(--t-fast);
+}
+
+.tz-trade-mini-card:hover {
+  border-color: var(--border-mid);
+  transform: translateY(-1px);
+}
+
+.tz-trade-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Economic News List */
+.tz-news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--s2);
+}
+
+.tz-news-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tz-news-row:last-child {
+  border-bottom: none;
+}
+
+.tz-news-info {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.tz-news-flag {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.tz-news-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tz-news-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  font-size: 0.72rem;
+}
+
+.tz-news-countdown {
+  color: var(--text-muted);
+}
+
+.tz-news-time {
+  background: var(--bg-primary);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.tz-news-stars {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+
+
 
 

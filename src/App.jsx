@@ -8,7 +8,7 @@ import {
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
   Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square,
-  ListTodo
+  ListTodo, Filter
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -16,6 +16,7 @@ import { TradeProvider, useTrades } from './contexts/TradeContext';
 import { JournalProvider } from './contexts/JournalContext';
 import LoginPage from './components/auth/LoginPage';
 import Settings from './pages/Settings';
+import Backup from './pages/Backup';
 import Journal from './pages/Journal';
 import Emotions from './pages/Emotions';
 import Analytics from './pages/Analytics';
@@ -35,7 +36,7 @@ import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
 import Mondays from './pages/Mondays';
 import TradingRules from './pages/TradingRules';
-import { ai as aiApi, publicApi, accounts as accountsApi, rules as rulesApi } from './services/api';
+import { ai as aiApi, publicApi, accounts as accountsApi, rules as rulesApi, news as newsApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -136,6 +137,76 @@ const getTradeR = (t) => {
   return t.pnl / risk;
 };
 
+/* ─── Helpers for Dashboard Redesign ──────────────── */
+const getCountdown = (eventDateStr) => {
+  try {
+    const eventDate = new Date(eventDateStr);
+    const now = new Date();
+    const diffMs = eventDate.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Passed';
+    
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    
+    return `${hours}h ${mins}m`;
+  } catch (e) {
+    return '—';
+  }
+};
+
+const getEventTime = (eventDateStr) => {
+  try {
+    const d = new Date(eventDateStr);
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  } catch {
+    return '--:--';
+  }
+};
+
+const isSameDay = (d1, d2) => {
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+};
+
+const getTradeDate = (t) => {
+  const timeStr = t.exitTime || t.exit_time || t.entryTime || t.entry_time;
+  return timeStr ? new Date(timeStr) : null;
+};
+
+const getFlagUrl = (countryCode) => {
+  const code = (countryCode || '').toLowerCase();
+  const mapping = {
+    'usd': 'us',
+    'cad': 'ca',
+    'eur': 'eu',
+    'gbp': 'gb',
+    'jpy': 'jp',
+    'aud': 'au',
+    'nzd': 'nz',
+    'chf': 'ch'
+  };
+  const flagCode = mapping[code] || code;
+  return `https://flagcdn.com/w40/${flagCode}.png`;
+};
+
+const getWeekDays = (refDate) => {
+  const current = new Date(refDate);
+  const day = current.getDay();
+  // Adjust so Monday is 1, Sunday is 0
+  const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(current.setDate(diff));
+  
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+};
+
 /* ─── Dashboard ─────────────────────────────────── */
 const Dashboard = () => {
   const { trades, fetchTrades, analytics, fetchAnalytics, loading } = useTrades();
@@ -153,6 +224,30 @@ const Dashboard = () => {
   const [selectedAccount, setSelectedAccount] = useState(accountIdFromUrl || 'All');
   const [accounts, setAccounts] = useState([]);
   const [showAiChat, setShowAiChat] = useState(false);
+
+  // Redesign state additions
+  const [pnlDisplayMode, setPnlDisplayMode] = useState(() => {
+    return localStorage.getItem('tz_pnl_display_mode') || 'percent';
+  });
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [newsEvents, setNewsEvents] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+
+  // Sync state between Header and Dashboard
+  useEffect(() => {
+    const handlePnlModeChange = (e) => {
+      setPnlDisplayMode(e.detail);
+    };
+    window.addEventListener('tz_pnl_display_mode_change', handlePnlModeChange);
+    return () => window.removeEventListener('tz_pnl_display_mode_change', handlePnlModeChange);
+  }, []);
+
+  const handlePnlModeToggle = () => {
+    const newVal = pnlDisplayMode === 'USD' ? 'percent' : 'USD';
+    setPnlDisplayMode(newVal);
+    localStorage.setItem('tz_pnl_display_mode', newVal);
+    window.dispatchEvent(new CustomEvent('tz_pnl_display_mode_change', { detail: newVal }));
+  };
 
   // Sync selectedAccount if URL parameter changes
   useEffect(() => {
@@ -262,6 +357,23 @@ const Dashboard = () => {
   useEffect(() => {
     fetchTrades({ limit: 200 });
     fetchAnalytics();
+  }, []);
+
+  // Fetch News Feed Monthly data when dashboard mounts
+  useEffect(() => {
+    const fetchNews = async () => {
+      setNewsLoading(true);
+      try {
+        const today = new Date();
+        const data = await newsApi.list({ year: today.getFullYear(), month: today.getMonth() });
+        setNewsEvents(data || []);
+      } catch (err) {
+        console.error('Failed to load news for dashboard:', err);
+      } finally {
+        setNewsLoading(false);
+      }
+    };
+    fetchNews();
   }, []);
   // Compute unique symbols & setups for filter dropdowns from all trades
   const uniqueSymbols = useMemo(() => {
@@ -602,6 +714,88 @@ const Dashboard = () => {
     });
   }, [filteredTrades]);
 
+  // Redesign memo additions
+  const weekDays = useMemo(() => {
+    const refDate = new Date();
+    refDate.setDate(refDate.getDate() + (weekOffset * 7));
+    return getWeekDays(refDate);
+  }, [weekOffset]);
+
+  const weekDaysData = useMemo(() => {
+    return weekDays.map(d => {
+      const tradesOnDay = filteredTrades.filter(t => {
+        const tDate = getTradeDate(t);
+        return tDate && isSameDay(tDate, d);
+      });
+      const dayPnl = tradesOnDay.reduce((sum, t) => sum + t.pnl, 0);
+      const dayPnlPct = startBalance > 0 ? (dayPnl / startBalance) * 100 : 0;
+      return {
+        date: d,
+        pnl: dayPnl,
+        pnlPct: dayPnlPct,
+        count: tradesOnDay.length
+      };
+    });
+  }, [weekDays, filteredTrades, startBalance]);
+
+  const todayHighImpactNews = useMemo(() => {
+    const today = new Date();
+    let result = newsEvents.filter(e => {
+      const isHigh = (e.impact || '').toLowerCase() === 'high';
+      const eventDate = new Date(e.date);
+      return isHigh && isSameDay(eventDate, today);
+    });
+    
+    if (result.length === 0) {
+      result = newsEvents
+        .filter(e => (e.impact || '').toLowerCase() === 'high')
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .filter(e => new Date(e.date) >= new Date(today.setHours(0, 0, 0, 0)));
+    }
+    
+    return result.slice(0, 4);
+  }, [newsEvents]);
+
+  const mostTradedAssets = useMemo(() => {
+    const counts = {};
+    filteredTrades.forEach(t => {
+      const sym = (t.symbol || '').toUpperCase();
+      if (!sym) return;
+      counts[sym] = (counts[sym] || 0) + 1;
+    });
+    const sorted = Object.entries(counts)
+      .map(([symbol, count]) => ({ symbol, count }))
+      .sort((a, b) => b.count - a.count);
+    while (sorted.length < 3) {
+      sorted.push({ symbol: '—', count: 0 });
+    }
+    return sorted.slice(0, 3);
+  }, [filteredTrades]);
+
+  const breakevenTradesCount = useMemo(() => {
+    return stats.totalTrades - stats.wins - stats.losses;
+  }, [stats]);
+
+  const pfBars = useMemo(() => {
+    const totalWinVal = filteredTrades.filter(t => t.pnl > 0).reduce((acc, t) => acc + t.pnl, 0);
+    const totalLossVal = Math.abs(filteredTrades.filter(t => t.pnl < 0).reduce((acc, t) => acc + t.pnl, 0));
+    let numGreenBars = 14;
+    if (totalWinVal + totalLossVal > 0) {
+      const ratio = totalWinVal / (totalWinVal + totalLossVal);
+      numGreenBars = Math.round(28 * ratio);
+    }
+    return {
+      green: numGreenBars,
+      red: 28 - numGreenBars,
+      totalWinVal,
+      totalLossVal
+    };
+  }, [filteredTrades]);
+
+  const recentTrades = useMemo(() => {
+    return [...filteredTrades].slice(0, 4);
+  }, [filteredTrades]);
+
   if (loading && !trades.length) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 'var(--s4)' }}>
@@ -637,13 +831,35 @@ const Dashboard = () => {
   const BarTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const v = payload[0].value;
-    const name = payload[0].payload.date;
+    const date = payload[0].payload.date;
     return (
       <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)' }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '2px' }}>{name}</div>
-        <span style={{ color: v >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-          {v >= 0 ? '+' : ''}${v.toFixed(2)}
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '2px' }}>{date}</div>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+          ${v.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </span>
+      </div>
+    );
+  };
+
+  const BalanceTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    const p = payload[0].payload;
+    return (
+      <div className="glass" style={{ padding: '8px 12px', fontSize: '0.75rem', border: '1px solid var(--border-strong)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Trade #{p.index} · {p.date}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s4)' }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Balance</span>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+            ${p.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', display: 'flex', justifyContent: 'space-between', gap: 'var(--s4)' }}>
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem' }}>Trade P&L:</span>
+          <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', color: p.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+            {p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}
+          </span>
+        </div>
       </div>
     );
   };
@@ -653,16 +869,21 @@ const Dashboard = () => {
       {/* Header Row */}
       <div className="tz-header">
         <div>
-          <h1 className="tz-title">Dashboard</h1>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '4px' }}>
-            "Focus on the process, not on the result"
+          <h1 className="tz-title">Welcome back, {user?.displayName || 'dharshan'}</h1>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'inherit' }}>
+            {format(new Date(), 'eee dd MMM, yyyy')}
           </p>
         </div>
         
         {/* Filters */}
         <div className="tz-filters">
-          <button className="tz-filter-btn" style={{ padding: '6px 10px' }}>
-            <span style={{ fontWeight: 700 }}>$</span>
+          <button 
+            className="tz-filter-btn" 
+            onClick={handlePnlModeToggle}
+            style={{ padding: '6px 10px', minWidth: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title={pnlDisplayMode === 'USD' ? 'Switch to Percentage Mode' : 'Switch to Dollar Mode'}
+          >
+            <span style={{ fontWeight: 700 }}>{pnlDisplayMode === 'USD' ? '$' : '%'}</span>
           </button>
           
           {(dateRange !== 'all' || selectedSymbol !== 'All' || selectedSetup !== 'All' || selectedType !== 'All' || selectedAccount !== 'All') && (
@@ -685,45 +906,6 @@ const Dashboard = () => {
             </select>
           </div>
 
-          {dateRange === 'custom' && (
-            <>
-              <div className="tz-filter-btn" style={{ padding: '4px 10px' }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>From:</span>
-                <input 
-                  type="date" 
-                  value={customStartDate} 
-                  onChange={e => setCustomStartDate(e.target.value)} 
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.72rem',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer'
-                  }}
-                />
-              </div>
-              <div className="tz-filter-btn" style={{ padding: '4px 10px' }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>To:</span>
-                <input 
-                  type="date" 
-                  value={customEndDate} 
-                  onChange={e => setCustomEndDate(e.target.value)} 
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.72rem',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer'
-                  }}
-                />
-              </div>
-            </>
-          )}
-
           <div className="tz-filter-btn">
             <select value={selectedAccount} onChange={e => handleAccountChange(e.target.value)}>
               <option value="All">All accounts</option>
@@ -733,24 +915,6 @@ const Dashboard = () => {
             </select>
           </div>
           
-          <div className="tz-filter-btn">
-            <select value={selectedSymbol} onChange={e => setSelectedSymbol(e.target.value)}>
-              <option value="All">All symbols</option>
-              {uniqueSymbols.map(sym => (
-                <option key={sym} value={sym}>{sym}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="tz-filter-btn">
-            <select value={selectedSetup} onChange={e => setSelectedSetup(e.target.value)}>
-              <option value="All">All setups</option>
-              {uniqueSetups.map(s => (
-                <option key={s} value={s}>{s || 'Untagged'}</option>
-              ))}
-            </select>
-          </div>
-
           <button className="tz-filter-btn" onClick={() => setShowAiChat(true)} style={{ background: 'var(--accent-soft)', borderColor: 'var(--border-accent)', color: 'var(--text-primary)', fontWeight: 600 }}>
             <Brain size={13} style={{ color: 'var(--accent)' }} /> DTG AI
           </button>
@@ -768,287 +932,277 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* KPI cards */}
-      <div className="tz-kpi-grid">
-        {/* Card 1: Net P&L */}
-        <div className="tz-kpi-card">
-          <div className="tz-kpi-header">
-            <div className="tz-kpi-label">
-              Net P&L <Activity size={12} style={{ opacity: 0.6 }} />
-            </div>
-            <span style={{ background: 'var(--border)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.62rem' }}>
-              {stats.totalTrades}
+      {/* Weekly Performance Row (New Template) */}
+      <div className="tz-card" style={{ padding: '16px', marginBottom: 'var(--s5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+            <CalendarDays size={14} /> <span style={{ fontFamily: 'Georgia, serif' }}>Weekly Performance</span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button 
+              onClick={() => setWeekOffset(prev => prev - 1)}
+              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+            >
+              &lt;
+            </button>
+            <span style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : weekOffset === 1 ? 'Next Week' : `Week ${weekOffset > 0 ? '+' : ''}${weekOffset}`}
             </span>
-          </div>
-          <div className="tz-kpi-body">
-            <div className="tz-kpi-val" style={{ color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-              {stats.totalPnL >= 0 ? '+' : ''}${stats.totalPnL.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-            </div>
-            <div>
-              <TrendingUp size={24} style={{ color: stats.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)', opacity: 0.8 }} />
-            </div>
+            <button 
+              onClick={() => setWeekOffset(prev => prev + 1)}
+              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+            >
+              &gt;
+            </button>
           </div>
         </div>
 
-        {/* Card 2: Win Rate */}
-        <div className="tz-kpi-card">
-          <div className="tz-kpi-header">
-            <div className="tz-kpi-label">
-              Win Rate <Zap size={12} style={{ opacity: 0.6 }} />
-            </div>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+          {/* Summary Card */}
+          <div style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: '1px solid var(--text-primary)', borderRadius: 'var(--r-md)', padding: '10px 12px', flex: 1, minWidth: '85px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <span style={{ fontSize: '0.55rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px', fontWeight: 600 }}>This</span>
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'Georgia, serif' }}>Week</span>
           </div>
-          <div className="tz-kpi-body">
-            <div className="tz-kpi-val">{stats.winRate.toFixed(0)}%</div>
-            <div className="tz-kpi-gauge">
-              <svg viewBox="0 0 100 50" style={{ width: '58px', height: '29px' }}>
-                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--border-strong)" strokeWidth="8" strokeLinecap="round" />
-                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--profit)" strokeWidth="8" strokeLinecap="round"
-                      strokeDasharray="125.66" strokeDashoffset={125.66 * (1 - stats.winRate / 100)} />
-              </svg>
-            </div>
-          </div>
-          <div className="tz-kpi-subtext">
-            <span style={{ color: 'var(--profit)' }}>{stats.wins} W</span>
-            <span style={{ color: 'var(--loss)' }}>{stats.losses} L</span>
-            <span>{stats.totalTrades - stats.wins - stats.losses} S</span>
-          </div>
-        </div>
-
-        {/* Card 3: Profit factor */}
-        <div className="tz-kpi-card">
-          <div className="tz-kpi-header">
-            <div className="tz-kpi-label">
-              Profit factor <BarChart2 size={12} style={{ opacity: 0.6 }} />
-            </div>
-          </div>
-          <div className="tz-kpi-body">
-            <div className="tz-kpi-val">{stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}</div>
-            <div className="tz-kpi-gauge">
-              <svg width="32" height="32" viewBox="0 0 32 32">
-                <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
-                <circle cx="16" cy="16" r="12" fill="none"
-                        stroke={parseFloat(stats.profitFactor) >= 1.5 ? 'var(--profit)' : 'var(--loss)'}
-                        strokeWidth="3"
-                        strokeDasharray="75.4"
-                        strokeDashoffset={stats.profitFactor === 'Infinity' ? 0 : 75.4 * (1 - Math.min(1, (parseFloat(stats.profitFactor) || 0) / 3))}
-                        transform="rotate(-90 16 16)" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Consistency */}
-        <div className="tz-kpi-card">
-          <div className="tz-kpi-header">
-            <div className="tz-kpi-label">
-              Consistency <Shield size={12} style={{ opacity: 0.6 }} />
-            </div>
-          </div>
-          <div className="tz-kpi-body">
-            <div className="tz-kpi-val">{consistencyScore.toFixed(0)}%</div>
-            <div className="tz-kpi-gauge">
-              <svg viewBox="0 0 100 50" style={{ width: '58px', height: '29px' }}>
-                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--border-strong)" strokeWidth="8" strokeLinecap="round" />
-                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--profit)" strokeWidth="8" strokeLinecap="round"
-                      strokeDasharray="125.66" strokeDashoffset={125.66 * (1 - consistencyScore / 100)} />
-              </svg>
-            </div>
-          </div>
-          <div className="tz-kpi-subtext" style={{ color: 'var(--text-muted)' }}>
-            Max loss streak: <span style={{ color: 'var(--loss)', fontWeight: 600 }}>{stats.maxLossStreak}</span>
-          </div>
-        </div>
-
-        {/* Card 5: Avg win/loss trade */}
-        <div className="tz-kpi-card">
-          <div className="tz-kpi-header">
-            <div className="tz-kpi-label">
-              Avg win/loss trade <BarChart2 size={12} style={{ opacity: 0.6 }} />
-            </div>
-          </div>
-          <div className="tz-kpi-body" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-            <div className="tz-kpi-val" style={{ fontSize: '1.2rem', fontFamily: 'JetBrains Mono' }}>
-              ${stats.avgWin} / -${stats.avgLoss}
-            </div>
-            <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: 'var(--border-strong)' }}>
-              <div style={{
-                width: `${parseFloat(stats.avgWin) + parseFloat(stats.avgLoss) > 0 ? (parseFloat(stats.avgWin) / (parseFloat(stats.avgWin) + parseFloat(stats.avgLoss)) * 100) : 50}%`,
-                background: 'var(--profit)'
-              }} />
-              <div style={{ flex: 1, background: 'var(--loss)' }} />
-            </div>
-          </div>
+          
+          {/* Days Cards */}
+          {weekDaysData.map((day, idx) => {
+            const isTodayDay = isSameDay(day.date, new Date());
+            
+            return (
+              <div key={idx} style={{ background: isTodayDay ? 'var(--bg-active)' : 'var(--bg-primary)', border: `1px solid ${isTodayDay ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 'var(--r-md)', padding: '10px 12px', flex: 1, minWidth: '85px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}>
+                <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', fontWeight: 600 }}>{format(day.date, 'EEEE')}</span>
+                
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '2px', fontFamily: 'Georgia, serif', color: day.count > 0 ? (day.pnl > 0 ? 'var(--profit)' : day.pnl < 0 ? 'var(--loss)' : 'var(--text-primary)') : 'var(--text-primary)' }}>
+                  {day.count > 0 ? (
+                    pnlDisplayMode === 'percent' ? (
+                      `${day.pnlPct >= 0 ? '+' : ''}${day.pnlPct.toFixed(1)}%`
+                    ) : (
+                      `${day.pnl >= 0 ? '+' : ''}$${day.pnl.toFixed(0)}`
+                    )
+                  ) : format(day.date, 'MMM d')}
+                </span>
+                
+                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                  {day.count === 0 ? 'No trades' : `${day.count} trade${day.count !== 1 ? 's' : ''}`}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Mid Section Grid */}
-      <div className="tz-mid-grid">
-        {/* Score */}
-        <div className="tz-card">
-          <div className="tz-card-header">
-            <div className="tz-card-title">
-              <Brain size={14} /> Score
+      {/* Redesigned Metrics Top Grid */}
+      <div className="tz-dashboard-grid-top">
+        {/* Column 1: Account Balance */}
+        <div className="tz-balance-card">
+          <div className="tz-balance-header">
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Account Balance</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+                ${(startBalance + stats.totalPnL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Last 30 Days</div>
+            </div>
+            <div className={`tz-balance-badge ${stats.totalPnL > 0 ? 'profit' : stats.totalPnL < 0 ? 'loss' : 'neutral'}`}>
+              {startBalance > 0 ? (stats.totalPnL >= 0 ? '+' : '') : ''}
+              {(startBalance > 0 ? (stats.totalPnL / startBalance) * 100 : 0).toFixed(2)}%
             </div>
           </div>
-          <div className="tz-radar-container">
-            {filteredTrades.length > 0 ? (
-              <ResponsiveContainer width="100%" height={160}>
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="var(--border-mid)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 8 }} />
-                  <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                Log trades to view score
-              </div>
-            )}
-            
-            <div className="tz-score-display">
-              <div className="tz-score-label">Your Score</div>
-              <div className="tz-score-value">{scoreValue}</div>
-              
-              <div className="tz-score-bar-wrapper">
-                <div className="tz-score-bar-gradient" />
-                <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
-              </div>
-              
-              <div className="tz-score-bar-ticks">
-                <span>0</span>
-                <span>20</span>
-                <span>40</span>
-                <span>60</span>
-                <span>80</span>
-                <span>100</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cumulative R */}
-        <div className="tz-card">
-          <div className="tz-card-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
-            <div className="tz-card-title">
-              <TrendingUp size={14} /> Cumulative R
-            </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              R multiple built up over time
-            </div>
-          </div>
-          {filteredTrades.length > 0 ? (
-            <div style={{ position: 'relative', width: '100%', height: '230px', overflow: 'hidden' }}>
-              {/* Peak Badge */}
-              <div style={{
-                position: 'absolute',
-                top: '12px',
-                left: '12px',
-                zIndex: 10,
-                background: 'rgba(52, 211, 153, 0.15)',
-                color: 'var(--profit)',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
-                borderRadius: '9999px',
-                padding: '2px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                fontFamily: 'JetBrains Mono, monospace',
-                pointerEvents: 'none'
-              }}>
-                {chartsData.maxR >= 0 ? '+' : ''}{chartsData.maxR.toFixed(1)}R
-              </div>
-              
-              {/* Trough Badge */}
-              <div style={{
-                position: 'absolute',
-                bottom: '30px',
-                left: '12px',
-                zIndex: 10,
-                background: 'rgba(252, 165, 165, 0.15)',
-                color: 'var(--loss)',
-                border: '1px solid rgba(252, 165, 165, 0.3)',
-                borderRadius: '9999px',
-                padding: '2px 8px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                fontFamily: 'JetBrains Mono, monospace',
-                pointerEvents: 'none'
-              }}>
-                {chartsData.minR >= 0 ? '+' : ''}{chartsData.minR.toFixed(1)}R
-              </div>
-
+          
+          <div style={{ width: '100%', height: '170px', overflow: 'hidden', marginTop: '16px' }}>
+            {balanceData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartsData.equityCurve} margin={{ top: 10, right: 10, bottom: 0, left: 10 }}>
+                <AreaChart data={balanceData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
                   <defs>
-                    <linearGradient id="tzEquityGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.25}/>
+                    <linearGradient id="tzBalanceRedesignGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.12}/>
                       <stop offset="95%" stopColor="var(--profit)" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                  <YAxis hide={true} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="equity" stroke="var(--profit)" strokeWidth={2} fill="url(#tzEquityGrad)" />
+                  <Area type="monotone" dataKey="balance" stroke="var(--profit)" strokeWidth={2.2} fill="url(#tzBalanceRedesignGrad)" />
+                  <Tooltip content={<BalanceTooltip />} />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
-          ) : (
-            <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-              No trade data available
-            </div>
-          )}
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                No balance log history
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Net Daily P&L */}
-        <div className="tz-card">
-          <div className="tz-card-header">
-            <div className="tz-card-title">
-              <BarChart2 size={14} /> Net Daily P&L
+        {/* Column 2: Most Traded Assets & Trade Winrate */}
+        <div className="tz-grid-column-flex">
+          {/* Avg Win/Loss & Consistency */}
+          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '136px' }}>
+            {/* Avg win/loss trade */}
+            <div className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '16px' }}>
+              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '1.4' }}>
+                <div>
+                  AVG<br/>WIN/LOSS
+                </div>
+                <BarChart2 size={14} style={{ opacity: 0.6, marginTop: '2px' }} />
+              </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                <div>{stats.avgWin > 0 ? '$'+parseFloat(stats.avgWin).toFixed(2) : '$0.00'} /</div>
+                <div>{stats.avgLoss > 0 ? '$'+parseFloat(stats.avgLoss).toFixed(2) : '$0.00'}</div>
+              </div>
+            </div>
+
+            {/* Consistency */}
+            <div className="tz-card tz-hoverable" style={{ flex: 0.9, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '16px' }}>
+              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span>CONSISTENCY</span>
+                <Shield size={14} style={{ opacity: 0.6 }} />
+              </div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
+                {Math.round(consistencyScore)}%
+              </div>
             </div>
           </div>
-          {dailyPnlData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart data={dailyPnlData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
-                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <Tooltip content={<BarTooltip />} />
-                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                  {dailyPnlData.map((entry, index) => (
-                    <Cell key={`tz-pnl-${index}`} fill={entry.pnl >= 0 ? 'var(--profit)' : 'var(--loss)'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-              No daily logs available
+
+          {/* Trade Winrate */}
+          <div className="tz-card" style={{ flex: 1, minHeight: '136px', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trade Winrate</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+                  {stats.winRate.toFixed(0)}%
+                </div>
+              </div>
+              <div>
+                <svg width="48" height="48" viewBox="0 0 32 32">
+                  <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
+                  <circle cx="16" cy="16" r="12" fill="none"
+                          stroke="var(--profit)"
+                          strokeWidth="3"
+                          strokeDasharray="75.4"
+                          strokeDashoffset={75.4 * (1 - stats.winRate / 100)}
+                          transform="rotate(-90 16 16)" />
+                </svg>
+              </div>
             </div>
-          )}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '12px' }}>
+              <div>Losing trades <strong style={{ color: 'var(--text-secondary)' }}>{stats.losses}</strong></div>
+              <div>Winning trades <strong style={{ color: 'var(--profit)' }}>{stats.wins}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3: Total Trades & Profit Factor */}
+        <div className="tz-grid-column-flex">
+          {/* Total Trades */}
+          <div className="tz-card" style={{ flex: 1, minHeight: '136px', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Trades</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+                {stats.totalTrades}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+              {/* Winning Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--profit)', marginRight: '6px' }} />
+                  Winning
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.wins / stats.totalTrades) * 100 : 0}%`, background: 'var(--profit)' }} />
+                </div>
+                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.wins}</span>
+              </div>
+              
+              {/* Breakeven Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', marginRight: '6px' }} />
+                  Breakeven
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (breakevenTradesCount / stats.totalTrades) * 100 : 0}%`, background: 'var(--text-muted)' }} />
+                </div>
+                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{breakevenTradesCount}</span>
+              </div>
+
+              {/* Losing Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--loss)', marginRight: '6px' }} />
+                  Losing
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%`, background: 'var(--loss)' }} />
+                </div>
+                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.losses}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Profit Factor Card */}
+          <div className="tz-card" style={{ flex: 1, minHeight: '136px', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Profit Factor</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+                {stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}
+              </div>
+            </div>
+            
+            {/* Proportional vertical bars visualization */}
+            <div className="tz-pf-bars-container">
+              {[...Array(28)].map((_, idx) => {
+                const isWin = idx < pfBars.green;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="tz-pf-stats">
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total profit</span>
+                <span style={{ color: 'var(--profit)', fontWeight: 700 }}>
+                  +{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total loss</span>
+                <span style={{ color: 'var(--loss)', fontWeight: 700 }}>
+                  -{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Bottom Grid */}
-      <div className="tz-bottom-grid">
+      {/* Bottom Grid: Recent Trades & High Impact News */}
+      <div className="tz-dashboard-grid-bottom">
         {/* Recent Trades Table */}
         <div className="tz-card">
           <div className="tz-card-header">
             <div className="tz-card-title">
-              <Activity size={14} /> Recent Trades
+              <Activity size={14} /> RECENT TRADES
             </div>
           </div>
           
           <div className="tz-table-wrapper">
-            {filteredTrades.length > 0 ? (
+            {recentTrades.length > 0 ? (
               <table className="tz-table">
                 <thead>
                   <tr>
-                    <th>Symbol</th>
-                    <th>Close Date</th>
-                    <th style={{ textAlign: 'right' }}>Net P&L</th>
+                    <th>SYMBOL</th>
+                    <th>CLOSE DATE</th>
+                    <th style={{ textAlign: 'right' }}>NET P&L</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTrades.slice(0, 5).map((t, idx) => (
+                  {recentTrades.map((t, idx) => (
                     <tr key={t.id || idx}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1089,61 +1243,94 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Account Balance Chart */}
+        {/* Score */}
         <div className="tz-card">
           <div className="tz-card-header">
             <div className="tz-card-title">
-              <TrendingUp size={14} /> Account Balance
+              <Brain size={14} /> SCORE
             </div>
           </div>
-          {balanceData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={balanceData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
-                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} domain={['dataMin - 500', 'dataMax + 500']} axisLine={false} tickLine={false}/>
-                <Tooltip />
-                <Line type="monotone" dataKey="balance" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-              No balance logs available
+          <div className="tz-radar-container">
+            {filteredTrades.length > 0 ? (
+              <ResponsiveContainer width="100%" height={160}>
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                  <PolarGrid stroke="var(--border-mid)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 8 }} />
+                  <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                Log trades to view score
+              </div>
+            )}
+            
+            <div className="tz-score-display">
+              <div className="tz-score-label">YOUR SCORE</div>
+              <div className="tz-score-value">{scoreValue}</div>
+              
+              <div className="tz-score-bar-wrapper">
+                <div className="tz-score-bar-gradient" />
+                <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
+              </div>
+              
+              <div className="tz-score-bar-ticks">
+                <span>0</span>
+                <span>20</span>
+                <span>40</span>
+                <span>60</span>
+                <span>80</span>
+                <span>100</span>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Drawdown Chart */}
-        <div className="tz-card">
-          <div className="tz-card-header">
-            <div className="tz-card-title">
-              <TrendingDown size={14} /> Drawdown
+        {/* High Impact News Feed Panel */}
+        <div className="tz-card" style={{ minHeight: '340px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+            <div>
+              <div className="tz-card-title" style={{ fontSize: '0.85rem' }}>High Impact News</div>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Today's upcoming high impact news</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ opacity: 0.8, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', cursor: 'pointer' }} title="Filter news">
+                <Filter size={14} />
+              </span>
+              <Link to="/news" style={{ fontSize: '0.72rem', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                See all &rarr;
+              </Link>
             </div>
           </div>
-          {stats.maxDrawdown > 0 && drawdownData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={drawdownData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="tzDrawdownGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--loss)" stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor="var(--loss)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
-                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false}/>
-                <Tooltip />
-                <Area type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fill="url(#tzDrawdownGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          
+          {newsLoading ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+              Loading economic news...
+            </div>
+          ) : todayHighImpactNews.length > 0 ? (
+            <div className="tz-news-list">
+              {todayHighImpactNews.map((event, idx) => (
+                <div key={event.id || idx} className="tz-news-row">
+                  <div className="tz-news-info">
+                    <img 
+                      src={getFlagUrl(event.country)} 
+                      alt={event.country} 
+                      className="tz-news-flag"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <span className="tz-news-title">{event.title}</span>
+                  </div>
+                  <div className="tz-news-meta">
+                    <span className="tz-news-countdown">{getCountdown(event.date)}</span>
+                    <span className="tz-news-time">{getEventTime(event.date)}</span>
+                    <span className="tz-news-stars">★★★</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="tz-sleeping-cloud-container" style={{ padding: 'var(--s4) var(--s2)' }}>
-              <svg className="tz-sleeping-cloud" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M46.5 37.5C48.9853 37.5 51 35.4853 51 33C51 30.5147 48.9853 28.5 46.5 28.5C45.8906 28.5 45.313 28.6212 44.7865 28.8406C43.8344 24.8727 40.2796 22 36 22C34.1843 22 32.5085 22.5273 31.0967 23.4357C29.625 21.3283 27.2246 20 24.5 20C19.8056 20 16 23.8056 16 28.5C16 28.8415 16.0201 29.1783 16.0592 29.5093C13.167 30.2974 11 32.9022 11 36C11 39.59 13.91 42.5 17.5 42.5H46.5" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M38 14L41 11M41 11H37M41 11V15" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M47 8L49 6M49 6H46M49 6V9" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <div className="tz-sleeping-text">0% Drawdown. Peak Performance!</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '32px 0' }}>
+              No upcoming high impact news today
             </div>
           )}
         </div>
@@ -1200,56 +1387,62 @@ const Dashboard = () => {
                   <Brain size={16} color="#fff" />
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    DTG AI <span className="status-dot live" style={{ width: '6px', height: '6px' }} />
-                  </div>
-                  <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    NVIDIA Llama-3.1-Nemotron-70B
-                  </div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>DTG AI Coach</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Nemotron-70B Active</div>
                 </div>
               </div>
               <button 
                 onClick={() => setShowAiChat(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
               >
-                <span style={{ fontSize: '1.2rem', fontWeight: 300, lineHeight: 1 }}>×</span>
+                <X size={16} />
               </button>
             </div>
-
-            {/* Scrollable message content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            {/* Chat Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-primary)' }}>
               {messages.map((msg, idx) => (
                 <div 
                   key={idx}
                   style={{
                     alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                     maxWidth: '85%',
-                    background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-primary)',
-                    color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                    borderRadius: msg.role === 'user' ? '14px 14px 0 14px' : '0 14px 14px 14px',
-                    padding: '10px 14px',
-                    fontSize: '0.78rem',
-                    boxShadow: 'var(--shadow-sm)',
-                    border: msg.role === 'user' ? 'none' : '1px solid var(--border)'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    gap: '4px'
                   }}
                 >
-                  <div style={{ fontSize: '0.62rem', color: msg.role === 'user' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
-                    {msg.role === 'user' ? 'YOU' : 'DTG AI'}
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {msg.role === 'user' ? 'You' : 'DTG AI Coach'}
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>
-                    {msg.role === 'user' ? msg.content : formatMessageContent(msg.content)}
+                  <div 
+                    className="glass"
+                    style={{
+                      background: msg.role === 'user' ? 'var(--accent-soft)' : 'var(--bg-secondary)',
+                      border: msg.role === 'user' ? '1px solid var(--border-accent)' : '1px solid var(--border)',
+                      borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                      padding: '10px 14px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.78rem',
+                      lineHeight: 1.5,
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    {formatMessageContent(msg.content)}
                   </div>
                 </div>
               ))}
-              
               {aiLoading && (
-                <div style={{ alignSelf: 'flex-start', background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '12px 16px', borderRadius: '0 14px 14px 14px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-sm)' }}>
-                  <div style={{ display: 'flex', gap: '3px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
+                <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600 }}>DTG AI Coach</div>
+                  <div className="glass" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px 12px 12px 2px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div className="spinner-dots" style={{ display: 'flex', gap: '4px' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: 'bounce-dot 1.4s infinite ease-in-out both' }} />
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: 'bounce-dot 1.4s infinite ease-in-out both 0.2s' }} />
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: 'bounce-dot 1.4s infinite ease-in-out both 0.4s' }} />
+                    </div>
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>Nemotron-70B is thinking...</span>
                 </div>
               )}
               <div ref={chatBottomRef} />
@@ -1257,8 +1450,8 @@ const Dashboard = () => {
 
             {/* Suggestions Block */}
             <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Quick Diagnostics
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Sparkles size={11} style={{ color: 'var(--accent)' }} /> Suggested Prompts
               </div>
               <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
                 {[
@@ -1290,10 +1483,11 @@ const Dashboard = () => {
             {/* Input Form */}
             <form onSubmit={handleSendAiMessage} style={{ display: 'flex', borderTop: '1px solid var(--border)', padding: '12px 20px', background: 'var(--bg-primary)', gap: '8px', alignItems: 'center' }}>
               <input 
-                type="text"
+                type="text" 
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
-                placeholder="Ask DTG AI Coach..."
+                placeholder="Ask DTG AI coach about your trades..."
+                disabled={aiLoading}
                 style={{
                   flex: 1,
                   background: 'var(--bg-secondary)',
@@ -1436,6 +1630,14 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
               <SettingsIcon size={16}/>
               <span>Settings</span>
             </MotionLink>
+            <MotionLink
+              to="/backup"
+              className={`nav-item ${location.pathname === '/backup' ? 'active' : ''}`}
+              variants={sidebarItemVariants}
+            >
+              <Database size={16}/>
+              <span>Backup</span>
+            </MotionLink>
           </div>
         </motion.div>
 
@@ -1468,6 +1670,60 @@ const Header = ({ onMenuToggle }) => {
   const [time, setTime] = useState(new Date());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isLocal, setIsLocal] = useState(false);
+  const [searchParams] = useSearchParams();
+  const accountId = searchParams.get('accountId');
+  const [accountName, setAccountName] = useState('');
+  const [pnlDisplayMode, setPnlDisplayMode] = useState(() => {
+    return localStorage.getItem('tz_pnl_display_mode') || 'percent';
+  });
+
+  useEffect(() => {
+    const handlePnlModeChange = (e) => {
+      setPnlDisplayMode(e.detail);
+    };
+    window.addEventListener('tz_pnl_display_mode_change', handlePnlModeChange);
+    return () => window.removeEventListener('tz_pnl_display_mode_change', handlePnlModeChange);
+  }, []);
+
+  const togglePnlMode = () => {
+    const newVal = pnlDisplayMode === 'USD' ? 'percent' : 'USD';
+    setPnlDisplayMode(newVal);
+    localStorage.setItem('tz_pnl_display_mode', newVal);
+    window.dispatchEvent(new CustomEvent('tz_pnl_display_mode_change', { detail: newVal }));
+  };
+
+  useEffect(() => {
+    const fetchAccountName = async () => {
+      if (!accountId) {
+        setAccountName('');
+        return;
+      }
+      try {
+        if (user?.isGuest) {
+          if (String(accountId) === '1') {
+            setAccountName('25K Funded Futures Family');
+          } else if (String(accountId) === '2') {
+            setAccountName('50K Apex Challenge Passed');
+          } else if (String(accountId) === '3') {
+            setAccountName('10K MyForexFunds Failed');
+          } else {
+            setAccountName(`Account ${accountId}`);
+          }
+        } else {
+          const data = await accountsApi.list();
+          const acc = data?.find(a => String(a.id) === String(accountId));
+          if (acc) {
+            setAccountName(acc.accountName);
+          } else {
+            setAccountName(`Account ${accountId}`);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load account in header:', err);
+      }
+    };
+    fetchAccountName();
+  }, [accountId, user]);
 
   useEffect(() => {
     const checkMode = () => {
@@ -1522,11 +1778,33 @@ const Header = ({ onMenuToggle }) => {
         <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
           <Menu size={18} />
         </button>
-        <span>Trading Journal</span>
-        <span className="header-sep">/</span>
+        <span>{accountName || 'Trading Journal'}</span>
+        <span className="header-sep">&gt;</span>
         <strong>{pageNames[location.pathname] || 'Page'}</strong>
       </div>
       <div className="header-right" style={{ gap: 'var(--s3)', position: 'relative', alignItems: 'center' }}>
+        {/* Dollar vs Percentage display mode toggle */}
+        <button
+          onClick={togglePnlMode}
+          style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: 'var(--r-sm)',
+            border: '1px solid var(--border)',
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            fontSize: '0.75rem'
+          }}
+          title={pnlDisplayMode === 'USD' ? 'Switch to Percentage Mode' : 'Switch to Dollar Mode'}
+        >
+          {pnlDisplayMode === 'USD' ? '$' : '%'}
+        </button>
+
         {/* Connection status indicator */}
         <div 
           onClick={() => {
@@ -1811,6 +2089,7 @@ function AppContent() {
             <Route path="/charts" element={<Charts />} />
             <Route path="/mondays" element={<Mondays />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/backup" element={<Backup />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>

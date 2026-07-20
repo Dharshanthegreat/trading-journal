@@ -1065,6 +1065,56 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
     };
   }
 
+  if (url === '/analyze-week' && method === 'POST') {
+    const { weekData } = body;
+    const trades = weekData.trades || [];
+    const metrics = calculateLocalMetrics(trades);
+    const geminiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+
+    if (geminiKey) {
+      try {
+        const prompt = `Analyze this week's trading performance as an expert trading coach.
+Trades: ${metrics.tradeCount}
+Win Rate: ${metrics.winRate}%
+Net P&L: $${metrics.totalPnL.toFixed(2)}
+Profit Factor: ${metrics.profitFactor}
+Avg Win/Loss: $${metrics.avgWin} / -$${metrics.avgLoss}
+Best Setup: ${metrics.bestSetup}
+
+Provide a concise, encouraging weekly review with actionable advice on risk management and psychology. Use Markdown.`;
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        if (response.ok) {
+          const apiResult = await response.json();
+          const responseContent = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || 'No analysis generated.';
+          return { content: responseContent };
+        }
+      } catch (err) {
+        console.error('Failed to contact Gemini API:', err);
+      }
+    }
+
+    // Fallback if no key or API call failed
+    const content = `🤖 **[AI Weekly Analysis Fallback]**
+
+This week you took **${metrics.tradeCount} trades** with a win rate of **${metrics.winRate}%**, resulting in a net P&L of **$${metrics.totalPnL.toFixed(2)}**.
+
+**Key Metrics**:
+- Profit Factor: ${metrics.profitFactor}
+- Avg Win / Loss: $${metrics.avgWin} / -$${metrics.avgLoss}
+- Best Setup: "${metrics.bestSetup}"
+
+**Coach's Note**: Keep monitoring your edge. Please set your Gemini API key in Settings for full analysis.`;
+    return { content };
+  }
+
   throw { status: 404, message: 'Not Found' };
 };
 
