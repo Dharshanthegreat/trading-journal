@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTrades } from '../contexts/TradeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { accounts as accountsApi, rules as rulesApi, ai as aiApi } from '../services/api';
 import { format } from 'date-fns';
 import {
@@ -25,6 +26,7 @@ const defaultForm = () => ({
 });
 
 const Journal = () => {
+  const { user } = useAuth();
   const { trades, loading, addTrade, updateTrade, deleteTrade, fetchTrades, shareTrade, unshareTrade } = useTrades();
   const manuallyEditedRef = useRef({});
   const [autoFeatures, setAutoFeatures] = useState(true);
@@ -493,9 +495,11 @@ const Journal = () => {
           <div className="page-title">Trade Journal</div>
           <div className="page-subtitle">{filtered.length} trades · Net P&L: <span style={{ color: totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{totalPnL >= 0 ? '+' : ''}${Math.abs(totalPnL).toFixed(2)}</span></div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-          <Plus size={15}/> Add Trade
-        </button>
+        {!user?.isGuest && (
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+            <Plus size={15}/> Add Trade
+          </button>
+        )}
       </div>
 
       <div className="journal-toolbar" style={{ marginBottom: 0 }}>
@@ -602,11 +606,13 @@ const Journal = () => {
                       {t.notes || '—'}
                     </td>
                     <td onClick={e => e.stopPropagation()}>
-                      <div className="trade-row-actions">
-                        <button className="icon-btn" onClick={() => setDeleteConfirm(t.id)} title="Delete" style={{ color: 'var(--loss)' }}>
-                          <Trash2 size={13}/>
-                        </button>
-                      </div>
+                      {!user?.isGuest && (
+                        <div className="trade-row-actions">
+                          <button className="icon-btn" onClick={() => setDeleteConfirm(t.id)} title="Delete" style={{ color: 'var(--loss)' }}>
+                            <Trash2 size={13}/>
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -1090,14 +1096,16 @@ const Journal = () => {
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost"
-                  onClick={() => startEditTrade(currentSelectedTrade)}
-                  style={{ gap: '4px', padding: '4px 8px', fontSize: '0.72rem', height: 28 }}
-                >
-                  Edit Trade
-                </button>
+                {!user?.isGuest && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => startEditTrade(currentSelectedTrade)}
+                    style={{ gap: '4px', padding: '4px 8px', fontSize: '0.72rem', height: 28 }}
+                  >
+                    Edit Trade
+                  </button>
+                )}
                 <button className="modal-close" onClick={() => setSelectedTrade(null)} style={{ margin: 0 }}><X size={18}/></button>
               </div>
             </div>
@@ -1295,67 +1303,68 @@ const Journal = () => {
                   </div>
                 </div>
 
-                {/* Sharing Dashboard */}
-                <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid rgba(167,139,250,0.15)', background: 'linear-gradient(135deg, rgba(167,139,250,0.02) 0%, var(--surface) 100%)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 'var(--s3)' }}>
-                    <Share2 size={13} style={{ color: 'var(--accent)' }}/>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>Share Trade</span>
+                {!user?.isGuest && (
+                  <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid rgba(167,139,250,0.15)', background: 'linear-gradient(135deg, rgba(167,139,250,0.02) 0%, var(--surface) 100%)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 'var(--s3)' }}>
+                      <Share2 size={13} style={{ color: 'var(--accent)' }}/>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>Share Trade</span>
+                    </div>
+
+                    {currentSelectedTrade.shareToken ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+                        <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+                          <input
+                            readOnly
+                            className="input"
+                            style={{ fontSize: '0.72rem', height: 32, flex: 1, textOverflow: 'ellipsis', background: 'rgba(0,0,0,0.2)' }}
+                            value={`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`}
+                            onClick={e => e.target.select()}
+                          />
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            style={{ height: 32, width: 36, padding: 0 }}
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`);
+                              setCopySuccess(true);
+                              setTimeout(() => setCopySuccess(false), 2000);
+                            }}
+                            title="Copy to Clipboard"
+                          >
+                            {copySuccess ? <Check size={14} style={{ color: 'var(--profit)' }}/> : <Copy size={14}/>}
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+                          <a
+                            href={`#/shared/trade/${currentSelectedTrade.shareToken}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-sm btn-ghost"
+                            style={{ fontSize: '0.72rem', flex: 1, gap: '4px', height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            View Public Page <ExternalLink size={11}/>
+                          </a>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            style={{ fontSize: '0.72rem', flex: 1, height: 30 }}
+                            onClick={handleUnshare}
+                          >
+                            Make Private
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 'var(--s3)' }}>
+                          Generate a secure public link to share this trade report with others. You can revoke it at any time.
+                        </p>
+                        <button className="btn btn-sm btn-primary" style={{ width: '100%', fontSize: '0.72rem', height: 32 }} onClick={handleShare}>
+                          Create Shareable Link
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  {currentSelectedTrade.shareToken ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-                      <div style={{ display: 'flex', gap: 'var(--s2)' }}>
-                        <input
-                          readOnly
-                          className="input"
-                          style={{ fontSize: '0.72rem', height: 32, flex: 1, textOverflow: 'ellipsis', background: 'rgba(0,0,0,0.2)' }}
-                          value={`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`}
-                          onClick={e => e.target.select()}
-                        />
-                        <button
-                          className="btn btn-sm btn-ghost"
-                          style={{ height: 32, width: 36, padding: 0 }}
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`);
-                            setCopySuccess(true);
-                            setTimeout(() => setCopySuccess(false), 2000);
-                          }}
-                          title="Copy to Clipboard"
-                        >
-                          {copySuccess ? <Check size={14} style={{ color: 'var(--profit)' }}/> : <Copy size={14}/>}
-                        </button>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 'var(--s2)' }}>
-                        <a
-                          href={`#/shared/trade/${currentSelectedTrade.shareToken}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-ghost"
-                          style={{ fontSize: '0.72rem', flex: 1, gap: '4px', height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          View Public Page <ExternalLink size={11}/>
-                        </a>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          style={{ fontSize: '0.72rem', flex: 1, height: 30 }}
-                          onClick={handleUnshare}
-                        >
-                          Make Private
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 'var(--s3)' }}>
-                        Generate a secure public link to share this trade report with others. You can revoke it at any time.
-                      </p>
-                      <button className="btn btn-sm btn-primary" style={{ width: '100%', fontSize: '0.72rem', height: 32 }} onClick={handleShare}>
-                        Create Shareable Link
-                      </button>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>

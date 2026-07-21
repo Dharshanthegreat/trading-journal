@@ -922,15 +922,23 @@ const Dashboard = () => {
       </div>
       
       {/* Resync Bar */}
-      <div className="tz-resync-bar">
-        <div>
-          Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
-          <span className="tz-resync-link" onClick={() => fetchTrades({ limit: 200 })}>Resync</span>
+      {!user?.isGuest ? (
+        <div className="tz-resync-bar">
+          <div>
+            Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
+            <span className="tz-resync-link" onClick={() => fetchTrades({ limit: 200 })}>Resync</span>
+          </div>
+          <button className="tz-btn-primary" onClick={() => fetchTrades({ limit: 200 })}>
+            <Zap size={14} /> Start my day
+          </button>
         </div>
-        <button className="tz-btn-primary" onClick={() => fetchTrades({ limit: 200 })}>
-          <Zap size={14} /> Start my day
-        </button>
-      </div>
+      ) : (
+        <div className="tz-resync-bar" style={{ justifyContent: 'flex-start' }}>
+          <div>
+            Last updated: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
+          </div>
+        </div>
+      )}
 
       {/* Weekly Performance Row (New Template) */}
       <div className="tz-card" style={{ padding: '16px', marginBottom: 'var(--s5)' }}>
@@ -1576,6 +1584,14 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/charts',        icon: <ImageIcon size={16}/>,       label: 'Charts' },
   ];
 
+  const allowedPaths = user?.isGuest
+    ? ['/dashboard', '/journal', '/calendar', '/analytics']
+    : null;
+
+  const filteredNav = allowedPaths
+    ? nav.filter(item => allowedPaths.includes(item.path))
+    : nav;
+
   const initials = user?.displayName?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'T';
 
   return (
@@ -1607,7 +1623,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
         >
           <div className="nav-section-label">Navigation</div>
           <nav className="nav-links">
-            {nav.map(item => (
+            {filteredNav.map(item => (
               <MotionLink
                 key={item.path}
                 to={item.path}
@@ -1620,25 +1636,27 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
             ))}
           </nav>
 
-          <div style={{ marginTop: 'var(--s4)' }}>
-            <div className="nav-section-label">System</div>
-            <MotionLink
-              to="/settings"
-              className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
-              variants={sidebarItemVariants}
-            >
-              <SettingsIcon size={16}/>
-              <span>Settings</span>
-            </MotionLink>
-            <MotionLink
-              to="/backup"
-              className={`nav-item ${location.pathname === '/backup' ? 'active' : ''}`}
-              variants={sidebarItemVariants}
-            >
-              <DatabaseIcon size={16}/>
-              <span>Backup</span>
-            </MotionLink>
-          </div>
+          {!user?.isGuest && (
+            <div style={{ marginTop: 'var(--s4)' }}>
+              <div className="nav-section-label">System</div>
+              <MotionLink
+                to="/settings"
+                className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
+                variants={sidebarItemVariants}
+              >
+                <SettingsIcon size={16}/>
+                <span>Settings</span>
+              </MotionLink>
+              <MotionLink
+                to="/backup"
+                className={`nav-item ${location.pathname === '/backup' ? 'active' : ''}`}
+                variants={sidebarItemVariants}
+              >
+                <DatabaseIcon size={16}/>
+                <span>Backup</span>
+              </MotionLink>
+            </div>
+          )}
         </motion.div>
 
         <div className="sidebar-footer">
@@ -2070,26 +2088,38 @@ function AppContent() {
         <Header onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
         <div className="page-container">
           <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/shared/dashboard/:token" element={<Dashboard />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/news" element={<News />} />
-            <Route path="/stoic" element={<Stoic />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/psychology" element={<Emotions />} />
-            <Route path="/ai-coach" element={<AiCoach />} />
-            <Route path="/tradingview" element={<TradingViewPage />} />
-            <Route path="/mt5-connect" element={<MT5Connect />} />
-            <Route path="/tradovate" element={<TradovateConnect />} />
-            <Route path="/accounts" element={<Accounts />} />
-            <Route path="/achievements" element={<Achievements />} />
-            <Route path="/rules" element={<TradingRules />} />
-            <Route path="/daily-journal" element={<DailyJournal />} />
-            <Route path="/charts" element={<Charts />} />
-            <Route path="/mondays" element={<Mondays />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/backup" element={<Backup />} />
+            {user?.isGuest ? (
+              <>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/shared/dashboard/:token" element={<Dashboard />} />
+                <Route path="/journal" element={<Journal />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/analytics" element={<Analytics />} />
+              </>
+            ) : (
+              <>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/shared/dashboard/:token" element={<Dashboard />} />
+                <Route path="/journal" element={<Journal />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/news" element={<News />} />
+                <Route path="/stoic" element={<Stoic />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/psychology" element={<Emotions />} />
+                <Route path="/ai-coach" element={<AiCoach />} />
+                <Route path="/tradingview" element={<TradingViewPage />} />
+                <Route path="/mt5-connect" element={<MT5Connect />} />
+                <Route path="/tradovate" element={<TradovateConnect />} />
+                <Route path="/accounts" element={<Accounts />} />
+                <Route path="/achievements" element={<Achievements />} />
+                <Route path="/rules" element={<TradingRules />} />
+                <Route path="/daily-journal" element={<DailyJournal />} />
+                <Route path="/charts" element={<Charts />} />
+                <Route path="/mondays" element={<Mondays />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/backup" element={<Backup />} />
+              </>
+            )}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
