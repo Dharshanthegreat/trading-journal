@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, ArrowRight, ArrowUpRight, BarChart2, Brain, Database, Sparkles, ShieldAlert, TrendingUp } from 'lucide-react';
+import { Activity, ArrowRight, ArrowUpRight, BarChart2, Brain, Database as DatabaseIcon, Sparkles, ShieldAlert, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 /* ═══════════════════════════════════════════════════════
@@ -1089,7 +1089,7 @@ const LandingPage = () => {
                 desc: 'Get personalized insights from an AI coach trained on professional trading psychology and risk management.',
               },
               {
-                icon: <Database size={20} />,
+                icon: <DatabaseIcon size={20} />,
                 title: 'Dual Database Control',
                 desc: 'Toggle between cloud PostgreSQL and offline browser storage. Export unified JSON backups with zero data lock-in.',
               },

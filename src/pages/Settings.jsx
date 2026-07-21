@@ -6,7 +6,7 @@ import { auth as authApi } from '../services/api';
 import { parseMT5CSV } from '../utils/mt5Parser';
 import {
   Upload, CheckCircle, AlertTriangle, Loader,
-  Settings as SettingsIcon, User, Database,
+  Settings as SettingsIcon, User, Database as DatabaseIcon,
   DollarSign, Shield, Palette, Moon, SunDim,
   Paintbrush, Eye, EyeOff, ExternalLink, Share2, Sparkles, AlertCircle
 } from 'lucide-react';
@@ -549,7 +549,7 @@ const Settings = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '32px', alignItems: 'start' }}>
         <div>
           <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Database size={14} style={{ color: 'var(--text-muted)' }}/> MT5 Trade Import
+            <DatabaseIcon size={14} style={{ color: 'var(--text-muted)' }}/> MT5 Trade Import
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Import your trade history from MetaTrader 5. To export: MT5 → Terminal → History → Right Click → Report → Open as CSV

@@ -8,7 +8,7 @@ import {
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
   Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square,
-  ListTodo, Filter, Database
+  ListTodo, Filter, Database as DatabaseIcon
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -1635,7 +1635,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
               className={`nav-item ${location.pathname === '/backup' ? 'active' : ''}`}
               variants={sidebarItemVariants}
             >
-              <Database size={16}/>
+              <DatabaseIcon size={16}/>
               <span>Backup</span>
             </MotionLink>
           </div>

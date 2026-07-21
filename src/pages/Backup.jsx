@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useJournal } from '../contexts/JournalContext';
 import { backup as backupApi, accounts as accountsApi } from '../services/api';
 import {
-  Database, Download, RefreshCw, AlertTriangle, Loader,
+  Database as DatabaseIcon, Download, RefreshCw, AlertTriangle, Loader,
   FileJson, Check, History, Trash2, Shield, RotateCcw, Wallet
 } from 'lucide-react';
 
@@ -247,7 +247,7 @@ const Backup = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', maxWidth: 900, paddingBottom: '60px' }}>
       <div className="page-header">
-        <div className="page-title"><Database size={18} style={{ opacity: 0.6 }}/> Backup & Restore</div>
+        <div className="page-title"><DatabaseIcon size={18} style={{ opacity: 0.6 }}/> Backup & Restore</div>
         <div className="page-subtitle">Manage your journal backups, export your data, or restore your database.</div>
       </div>
 
@@ -256,7 +256,7 @@ const Backup = () => {
         {/* Pro Max Animated Gradient Header Badge */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
           <div className="settings-section-title" style={{ margin: 0, borderBottom: 'none', padding: 0 }}>
-            <Database size={12} style={{ marginRight: 6 }}/> Data Control Center
+            <DatabaseIcon size={12} style={{ marginRight: 6 }}/> Data Control Center
           </div>
           <span className="badge" style={{
             background: 'linear-gradient(135deg, #f59e0b, #ec4899, #8b5cf6)',
