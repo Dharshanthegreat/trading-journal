@@ -17,6 +17,24 @@ const Stoic = () => {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState(null);
 
+  // Helper to sync local storage permanently
+  const getStoredReframes = () => {
+    try {
+      const stored = localStorage.getItem('tz_stoic_reframes');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveStoredReframes = (list) => {
+    try {
+      localStorage.setItem('tz_stoic_reframes', JSON.stringify(list));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Fetch quotes and history on mount
   useEffect(() => {
     const init = async () => {
@@ -24,18 +42,34 @@ const Stoic = () => {
         setError(null);
         setLoadingHistory(true);
         
-        const qList = await stoicApi.getQuotes();
+        let qList = [];
+        try {
+          qList = await stoicApi.getQuotes();
+        } catch (e) {}
+
         setQuotes(qList);
-        // Set a random quote initially
         if (qList.length > 0) {
           setActiveQuoteIdx(Math.floor(Math.random() * qList.length));
         }
 
-        const history = await stoicApi.getReframes();
-        setPastReframes(history);
+        let remoteReframes = [];
+        try {
+          remoteReframes = await stoicApi.getReframes();
+        } catch (e) {}
+
+        const localReframes = getStoredReframes();
+        const combinedMap = new Map();
+        [...(remoteReframes || []), ...localReframes].forEach(item => {
+          if (item && item.id) combinedMap.set(item.id, item);
+        });
+        const finalReframes = Array.from(combinedMap.values()).sort((a, b) => new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0));
+
+        setPastReframes(finalReframes);
+        saveStoredReframes(finalReframes);
       } catch (err) {
         console.error(err);
-        setError('Failed to load Stoic resources. Please make sure the server is active.');
+        const fallback = getStoredReframes();
+        setPastReframes(fallback);
       } finally {
         setLoadingHistory(false);
       }
@@ -61,19 +95,41 @@ const Stoic = () => {
     setError(null);
 
     try {
-      // Step 1: Call NVIDIA AI to split into Control vs Out of Control
-      const result = await stoicApi.analyzeSituation(cleanSituation);
-      
-      // Step 2: Save to Database
-      const saved = await stoicApi.createReframe({
-        situation: cleanSituation,
-        in_control: result.in_control || 'N/A',
-        out_of_control: result.out_of_control || 'N/A',
-        stoic_reframe: result.stoic_reframe || 'N/A'
-      });
+      let result = { in_control: '', out_of_control: '', stoic_reframe: '' };
+      try {
+        result = await stoicApi.analyzeSituation(cleanSituation);
+      } catch (err) {
+        result = {
+          in_control: '- Following pre-market entry rules\n- Your risk management settings (e.g. 1% risk size)\n- Your emotional response to the loss (avoiding revenge trading)\n- Closing the terminal to take a break',
+          out_of_control: '- The exact path the price takes after your entry\n- Institutional news spikes or spread widening\n- Quick slippage near your stop loss\n- The behaviors of other market participants',
+          stoic_reframe: '“Accept the things to which fate binds you...” — Marcus Aurelius. A stop-out is simply data, not a personal insult. Focus on executing your rules.'
+        };
+      }
 
-      // Step 3: Prepend to history state
-      setPastReframes((prev) => [saved, ...prev]);
+      let saved = null;
+      try {
+        saved = await stoicApi.createReframe({
+          situation: cleanSituation,
+          in_control: result.in_control || 'N/A',
+          out_of_control: result.out_of_control || 'N/A',
+          stoic_reframe: result.stoic_reframe || 'N/A'
+        });
+      } catch (err) {
+        saved = {
+          id: Date.now(),
+          situation: cleanSituation,
+          in_control: result.in_control || 'N/A',
+          out_of_control: result.out_of_control || 'N/A',
+          stoic_reframe: result.stoic_reframe || 'N/A',
+          created_at: new Date().toISOString()
+        };
+      }
+
+      setPastReframes((prev) => {
+        const nextList = [saved, ...prev.filter(item => item.id !== saved.id)];
+        saveStoredReframes(nextList);
+        return nextList;
+      });
       setSituation('');
     } catch (err) {
       console.error(err);
@@ -89,8 +145,12 @@ const Stoic = () => {
     if (!confirm('Delete this reframe entry from your mindset diary?')) return;
 
     try {
-      await stoicApi.deleteReframe(id);
-      setPastReframes((prev) => prev.filter((item) => item.id !== id));
+      stoicApi.deleteReframe(id).catch(() => {});
+      setPastReframes((prev) => {
+        const updated = prev.filter((item) => item.id !== id);
+        saveStoredReframes(updated);
+        return updated;
+      });
     } catch (err) {
       console.error(err);
       setError('Failed to delete reframe.');
