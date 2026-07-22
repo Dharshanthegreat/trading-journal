@@ -306,7 +306,6 @@ const Accounts = () => {
             });
             setShowForm(true);
           }} 
-          disabled={user?.isGuest}
         >
           <Plus size={15} /> Add Account
         </button>
@@ -601,7 +600,6 @@ const Accounts = () => {
                         onClick={() => startEditAccount(acc)}
                         className="btn-action-round"
                         title="Edit Account"
-                        disabled={user?.isGuest}
                       >
                         <Edit2 size={12} />
                       </button>
@@ -609,7 +607,6 @@ const Accounts = () => {
                         onClick={() => setDeleteConfirm(acc)}
                         className="btn-action-round"
                         title="Delete Account"
-                        disabled={user?.isGuest}
                       >
                         <Trash2 size={12} className="trash-icon" />
                       </button>
@@ -892,7 +889,6 @@ const Accounts = () => {
                         style={{ width: '22px', height: '22px' }}
                         onClick={() => startEditLink(acc)}
                         title="Edit Notion Link"
-                        disabled={user?.isGuest}
                       >
                         <Edit2 size={10} />
                       </button>
@@ -924,7 +920,6 @@ const Accounts = () => {
                         style={{ width: '20px', height: '20px' }}
                         onClick={() => startEditNotes(acc)}
                         title="Edit Account Notes"
-                        disabled={user?.isGuest}
                       >
                         <Edit2 size={9} />
                       </button>
