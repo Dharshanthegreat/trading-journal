@@ -780,7 +780,7 @@ const Accounts = () => {
                               ${Math.round(mll).toLocaleString()}
                             </div>
                             <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>
-                              {acc.useTrailingDrawdown ? 'MLL (Trailing)' : 'MLL'}
+                              {acc.useTrailingDrawdown ? 'MLL (Trailing)' : 'MLL (Static)'}
                             </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
@@ -1080,27 +1080,37 @@ const Accounts = () => {
                       </div>
                     </div>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '4px' }}>
-                      <input
-                        type="checkbox"
-                        id="useTrailingDrawdown"
-                        checked={formData.useTrailingDrawdown || false}
-                        onChange={e => setFormData({ ...formData, useTrailingDrawdown: e.target.checked })}
-                        style={{
-                          width: '14px',
-                          height: '14px',
-                          accentColor: 'var(--accent)',
-                          cursor: 'pointer',
-                          margin: 0
-                        }}
-                      />
-                      <label htmlFor="useTrailingDrawdown" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}>
-                        Use Trailing Drawdown (Apex/prop-firm style dynamic MLL floor)
-                      </label>
+                    <div className="form-field" style={{ marginTop: '12px' }}>
+                      <label className="form-label">Drawdown Calculation Type</label>
+                      <select
+                        className="input"
+                        value={formData.useTrailingDrawdown ? 'trailing' : 'static'}
+                        onChange={e => setFormData({ ...formData, useTrailingDrawdown: e.target.value === 'trailing' })}
+                      >
+                        <option value="static">🔒 Static Drawdown (FTMO / Funding Pips — Fixed Floor)</option>
+                        <option value="trailing">📈 Trailing Drawdown (Apex / Topstep — Dynamic Peak Floor)</option>
+                      </select>
                     </div>
 
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Leave blank or 0 to disable. Profit Target = profit needed to pass. Max Loss = max drawdown from starting balance (trails dynamically if Trailing Drawdown is checked). Consistency = max % of total profit from a single day.
+                    <div style={{
+                      fontSize: '0.68rem',
+                      color: 'var(--text-secondary)',
+                      marginTop: '8px',
+                      padding: '8px 10px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      lineHeight: 1.4
+                    }}>
+                      {formData.useTrailingDrawdown ? (
+                        <span>📈 <strong>Trailing Drawdown:</strong> Your Minimum Loss Level (MLL) trails upward dynamically as peak account equity increases until it reaches starting balance.</span>
+                      ) : (
+                        <span>🔒 <strong>Static Drawdown:</strong> Your Minimum Loss Level (MLL) remains permanently fixed at <strong>${Math.max(0, (parseFloat(formData.balance) || 0) - (parseFloat(formData.maxLossLimit) || 0)).toLocaleString()}</strong> (Starting Balance - Max Loss Limit).</span>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      Leave blank or 0 to disable rules. Profit Target = profit required. Max Loss = maximum loss allowed from starting balance. Consistency = maximum % of total profit allowed from a single day.
                     </div>
                   </div>
                 )}
