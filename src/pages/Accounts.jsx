@@ -450,16 +450,6 @@ const Accounts = () => {
         })}
       </div>
 
-      {/* Deleted Accounts Archive Info Banner */}
-      {statusFilter === 'Deleted' && (
-        <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--warn-border)', background: 'var(--warn-soft)', display: 'flex', alignItems: 'center', gap: 'var(--s3)', fontSize: '0.78rem', color: 'var(--warn)' }}>
-          <Info size={18} style={{ flexShrink: 0 }} />
-          <span>
-            <strong>Deleted Accounts Archive:</strong> All account configurations, balances, targets, notes, and trade logs are safely stored here. You can restore any deleted account back to your active list at any time.
-          </span>
-        </div>
-      )}
-
       {/* Accounts List / Empty States */}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s4)' }}>
