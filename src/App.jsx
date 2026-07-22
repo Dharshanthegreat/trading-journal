@@ -24,7 +24,6 @@ import Charts from './pages/Charts';
 import CalendarPage from './pages/Calendar';
 import DailyJournal from './pages/DailyJournal';
 import SharedTrade from './pages/SharedTrade';
-import AiCoach from './pages/AiCoach';
 import TradingViewPage from './pages/TradingView';
 import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
@@ -1752,7 +1751,6 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/asset-allocation', icon: <PieChart size={16}/>,     label: 'Asset Allocation' },
     { path: '/psychology',    icon: <Brain size={16}/>,           label: 'Psychology' },
     { path: '/stoic',         icon: <Shield size={16}/>,          label: 'Stoic Mindset' },
-    { path: '/ai-coach',      icon: <MessageSquare size={16}/>,   label: 'AI Coach' },
     { path: '/tradingview',   icon: <TrendingUp size={16}/>,      label: 'TV Analysis' },
     { path: '/mt5-connect',   icon: <Wifi size={16}/>,             label: 'MT5 Connect' },
     { path: '/tradovate',     icon: <Zap size={16}/>,             label: 'Tradovate Sync' },
@@ -1948,7 +1946,7 @@ const Header = ({ onMenuToggle }) => {
     '/news': 'News Feed', '/stoic': 'Stoic Mindset',
     '/analytics': 'Analytics', '/asset-allocation': 'Asset Allocation', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
-    '/tradingview': 'TradingView Analysis', '/ai-coach': 'AI Coach',
+    '/tradingview': 'TradingView Analysis',
     '/mt5-connect': 'MT5 Connect',
     '/tradovate': 'Tradovate Connect',
     '/accounts': 'Trading Accounts',
@@ -2284,7 +2282,6 @@ function AppContent() {
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/asset-allocation" element={<AssetAllocation />} />
                 <Route path="/psychology" element={<Emotions />} />
-                <Route path="/ai-coach" element={<AiCoach />} />
                 <Route path="/tradingview" element={<TradingViewPage />} />
                 <Route path="/mt5-connect" element={<MT5Connect />} />
                 <Route path="/tradovate" element={<TradovateConnect />} />
