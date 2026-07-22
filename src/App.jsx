@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, BarChart2, Brain,
   Image as ImageIcon, Settings as SettingsIcon,
   LogOut, Activity, TrendingUp, TrendingDown,
-  Zap, CalendarDays, NotebookPen, Sun, Moon,
+  Zap, CalendarDays, Calendar, NotebookPen, Sun, Moon,
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
   Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square,
@@ -896,7 +896,7 @@ const Dashboard = () => {
             </div>
           )}
           
-          <div className="tz-filter-btn">
+          <div className="tz-filter-btn" style={{ position: 'relative' }}>
             <select value={dateRange} onChange={e => setDateRange(e.target.value)}>
               <option value="all">Date range</option>
               <option value="7d">Last 7 Days</option>
@@ -906,6 +906,27 @@ const Dashboard = () => {
               <option value="custom">Custom Date</option>
             </select>
           </div>
+
+          {dateRange === 'custom' && (
+            <div className="tz-filter-btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px' }}>
+              <Calendar size={13} style={{ color: 'var(--accent)' }} />
+              <input 
+                type="date" 
+                value={customStartDate} 
+                onChange={e => setCustomStartDate(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                title="Start Date"
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 600 }}>to</span>
+              <input 
+                type="date" 
+                value={customEndDate} 
+                onChange={e => setCustomEndDate(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                title="End Date"
+              />
+            </div>
+          )}
 
           <div className="tz-filter-btn">
             <select value={selectedAccount} onChange={e => handleAccountChange(e.target.value)}>
@@ -1041,19 +1062,34 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Column 2: Performance Metrics (Winrate, Profit Factor, Avg Win/Loss, Consistency) */}
+        {/* Column 2: Performance Metrics (Winrate, Consistency, Avg Win/Loss, Profit Factor) */}
         <div className="tz-grid-column-flex">
-          {/* Avg Win/Loss & Consistency */}
-          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '125px' }}>
-            {/* Avg win/loss trade */}
+          {/* Top Row: Winrate & Consistency */}
+          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '120px' }}>
+            {/* Trade Winrate */}
             <div className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
-              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '1.4' }}>
-                <div>AVG WIN/LOSS</div>
-                <BarChart2 size={13} style={{ opacity: 0.6 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trade Winrate</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
+                    {stats.winRate.toFixed(0)}%
+                  </div>
+                </div>
+                <div>
+                  <svg width="40" height="40" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
+                    <circle cx="16" cy="16" r="12" fill="none"
+                            stroke="var(--profit)"
+                            strokeWidth="3"
+                            strokeDasharray="75.4"
+                            strokeDashoffset={75.4 * (1 - stats.winRate / 100)}
+                            transform="rotate(-90 16 16)" />
+                  </svg>
+                </div>
               </div>
-              <div style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', lineHeight: '1.3' }}>
-                <div>{stats.avgWin > 0 ? '$'+parseFloat(stats.avgWin).toFixed(2) : '$0.00'} /</div>
-                <div>{stats.avgLoss > 0 ? '$'+parseFloat(stats.avgLoss).toFixed(2) : '$0.00'}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '4px', marginTop: '6px' }}>
+                <div>Losses <strong style={{ color: 'var(--text-secondary)' }}>{stats.losses}</strong></div>
+                <div>Wins <strong style={{ color: 'var(--profit)' }}>{stats.wins}</strong></div>
               </div>
             </div>
 
@@ -1069,31 +1105,34 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Trade Winrate */}
-          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trade Winrate</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
-                  {stats.winRate.toFixed(0)}%
-                </div>
-              </div>
-              <div>
-                <svg width="44" height="44" viewBox="0 0 32 32">
-                  <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
-                  <circle cx="16" cy="16" r="12" fill="none"
-                          stroke="var(--profit)"
-                          strokeWidth="3"
-                          strokeDasharray="75.4"
-                          strokeDashoffset={75.4 * (1 - stats.winRate / 100)}
-                          transform="rotate(-90 16 16)" />
-                </svg>
-              </div>
+          {/* Full-width Dedicated AVG WIN / LOSS Card */}
+          <div className="tz-card" style={{ flex: 1.1, minHeight: '120px', justifyContent: 'space-between', padding: '14px 16px' }}>
+            <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span>AVG WIN / LOSS</span>
+              <BarChart2 size={13} style={{ opacity: 0.6 }} />
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '8px' }}>
-              <div>Losing trades <strong style={{ color: 'var(--text-secondary)' }}>{stats.losses}</strong></div>
-              <div>Winning trades <strong style={{ color: 'var(--profit)' }}>{stats.wins}</strong></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', margin: '4px 0' }}>
+              <div style={{ background: 'rgba(52, 211, 153, 0.06)', border: '1px solid rgba(52, 211, 153, 0.15)', borderRadius: 'var(--r-md)', padding: '6px 10px' }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>AVG WIN</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '1px' }}>
+                  {stats.avgWin > 0 ? '+$'+parseFloat(stats.avgWin).toFixed(2) : '$0.00'}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(248, 113, 113, 0.06)', border: '1px solid rgba(248, 113, 113, 0.15)', borderRadius: 'var(--r-md)', padding: '6px 10px' }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>AVG LOSS</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--loss)', marginTop: '1px' }}>
+                  {stats.avgLoss > 0 ? '-$'+parseFloat(stats.avgLoss).toFixed(2) : '$0.00'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
+              <span>Payoff Ratio (Avg Win / Avg Loss)</span>
+              <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
+                {stats.avgLoss > 0 ? (stats.avgWin / stats.avgLoss).toFixed(2) + 'x' : '—'}
+              </strong>
             </div>
           </div>
 
