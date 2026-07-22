@@ -9,12 +9,20 @@ import {
   AreaChart, Area
 } from 'recharts';
 import { format } from 'date-fns';
-import { Brain, Zap, Activity, ArrowRight, TrendingUp, TrendingDown, Target, Plus } from 'lucide-react';
+import { Brain, Zap, Activity, ArrowRight, TrendingUp, TrendingDown, Target, Plus, Filter, RotateCcw, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const EMOTION_COLORS = {
   Calm: '#818cf8', Confident: '#34d399', Anxious: '#fbbf24',
   Fearful: '#fca5a5', Greedy: '#f97316', FOMO: '#f87171',
   Disciplined: '#60a5fa', Revenge: '#ef4444',
+};
+
+// Helper to format currency values cleanly with sign, dollar sign, and 2 decimal places
+const formatCurrency = (val) => {
+  const num = Number(val) || 0;
+  const isNegative = num < 0;
+  const absVal = Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return isNegative ? `-$${absVal}` : `+$${absVal}`;
 };
 
 // Classify trade entry time into London, New York, or Asian session
@@ -28,7 +36,7 @@ const getTradeSession = (t) => {
   if (!t.entryTime) return 'Asia';
   try {
     const date = new Date(t.entryTime);
-    const hour = date.getHours();
+    const hour = date.getUTCHours();
     if (hour >= 7 && hour < 13) return 'London';
     if (hour >= 13 && hour < 21) return 'New York';
     return 'Asia';
@@ -55,7 +63,7 @@ const Emotions = () => {
   const [selectedAccount, setSelectedAccount] = useState('All');
   const [accounts, setAccounts] = useState([]);
 
-  // Fetch accounts list (only if not guest user)
+  // Fetch accounts list
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
@@ -71,7 +79,7 @@ const Emotions = () => {
     fetchAccounts();
   }, [user, fetchTrades]);
 
-  // Compute accounts list dynamically (combining live and guest mock accounts)
+  // Accounts list
   const accountsList = useMemo(() => {
     if (user?.isGuest) {
       const accIds = [...new Set((trades || []).map(t => t.accountId || t.account_id || 1))];
@@ -107,7 +115,6 @@ const Emotions = () => {
     }
   }, [selectedAccount, accountsList, user]);
 
-  // Extract unique symbol/pair and setup list dynamically
   const uniquePairs = useMemo(() => {
     const pairs = tradesList.map(t => t.symbol?.toUpperCase()).filter(Boolean);
     return [...new Set(pairs)].sort();
@@ -133,7 +140,6 @@ const Emotions = () => {
   // Filter trades list client-side
   const filteredTrades = useMemo(() => {
     return tradesList.filter(t => {
-      // 1. Date Range
       if (startDate) {
         const entryDateStr = t.entryTime || t.entry_time;
         if (entryDateStr && entryDateStr.split('T')[0] < startDate) return false;
@@ -142,46 +148,31 @@ const Emotions = () => {
         const entryDateStr = t.entryTime || t.entry_time;
         if (entryDateStr && entryDateStr.split('T')[0] > endDate) return false;
       }
-
-      // 1.5. Account
       if (selectedAccount !== 'All') {
         const accId = t.accountId || t.account_id || 1;
         if (String(accId) !== String(selectedAccount)) return false;
       }
-
-      // 2. Pair
       if (selectedPair !== 'All') {
         if (t.symbol?.toUpperCase() !== selectedPair.toUpperCase()) return false;
       }
-
-      // 3. Session
       if (selectedSession !== 'All') {
         const session = getTradeSession(t);
         if (session !== selectedSession) return false;
       }
-
-      // 4. Setup
       if (selectedSetup !== 'All') {
         if (t.setup !== selectedSetup) return false;
       }
-
-      // 5. Direction
       if (selectedDirection !== 'All') {
         if (t.type !== selectedDirection) return false;
       }
-
-      // 6. Result
       if (selectedResult !== 'All') {
         if (selectedResult === 'Win' && t.pnl <= 0) return false;
         if (selectedResult === 'Loss' && t.pnl >= 0) return false;
         if (selectedResult === 'Breakeven' && t.pnl !== 0) return false;
       }
-
-      // 7. Grade
       if (selectedGrade !== 'All') {
         if (t.grade !== selectedGrade) return false;
       }
-
       return true;
     });
   }, [tradesList, startDate, endDate, selectedPair, selectedSession, selectedSetup, selectedDirection, selectedResult, selectedGrade, selectedAccount]);
@@ -250,7 +241,7 @@ const Emotions = () => {
       return a + (isNaN(c) ? 5 : c);
     }, 0) / filteredTrades.length).toFixed(1);
 
-    // Compute Discipline Index Score (Discipline = Avg of (10 - fomo)/9 + (conf - 1)/9 per trade)
+    // Discipline Index Score
     let totalScore = 0;
     filteredTrades.forEach(t => {
       const fomoVal = parseFloat(t.fomoLevel);
@@ -313,7 +304,7 @@ const Emotions = () => {
       const drawdownPct = peak > 0 ? parseFloat((((peak - currentEquity) / peak) * 100).toFixed(2)) : 0;
       data.push({
         index: idx + 1,
-        date: t.entryTime ? format(new Date(t.entryTime), 'MMM d, yy') : '',
+        date: t.entryTime ? format(new Date(t.entryTime), 'MMM d, yy') : `#${idx + 1}`,
         equity: currentEquity,
         baseline: startBalance,
         pnl: t.pnl,
@@ -329,34 +320,8 @@ const Emotions = () => {
     return parseFloat(filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0).toFixed(2));
   }, [filteredTrades]);
 
-  // Equity curve color logic — adapts to P&L state
+  // Equity curve color logic
   const eqCurveColor = netPnL >= 0 ? 'var(--profit)' : 'var(--loss)';
-  const eqCurveColorDim = netPnL >= 0 ? 'var(--profit)' : 'var(--loss)';
-
-  // Max drawdown for badges
-  const maxDrawdown = useMemo(() => {
-    const chronoTrades = [...filteredTrades].sort((a, b) => new Date(a.entryTime || a.entry_time) - new Date(b.entryTime || b.entry_time));
-    let running = 0, peak = 0, maxDD = 0;
-    chronoTrades.forEach(t => {
-      running += t.pnl || 0;
-      if (running > peak) peak = running;
-      const dd = peak - running;
-      if (dd > maxDD) maxDD = dd;
-    });
-    return parseFloat(maxDD.toFixed(2));
-  }, [filteredTrades]);
-
-  // High/low equity markers
-  const equityExtremes = useMemo(() => {
-    if (equityCurveData.length <= 1) return { high: startBalance, low: startBalance, highDate: '', lowDate: '' };
-    const dataOnly = equityCurveData.slice(1);
-    let high = -Infinity, low = Infinity, highDate = '', lowDate = '';
-    dataOnly.forEach(d => {
-      if (d.equity > high) { high = d.equity; highDate = d.date; }
-      if (d.equity < low) { low = d.equity; lowDate = d.date; }
-    });
-    return { high, low, highDate, lowDate };
-  }, [equityCurveData, startBalance]);
 
   // Custom Equity Tooltip
   const EquityTooltip = ({ active, payload }) => {
@@ -433,13 +398,17 @@ const Emotions = () => {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '60px' }}>
+      
+      {/* ═══ PAGE HEADER ═══ */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Psychology</h1>
-          <p className="page-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Understand how your mindset affects performance</p>
+          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Trading Psychology</h1>
+          <p className="page-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0, marginTop: 2 }}>
+            Analyze how emotional discipline, FOMO control, and confidence directly impact your P&L performance.
+          </p>
         </div>
+
         <button 
           className="btn btn-primary" 
           onClick={() => navigate('/journal')} 
@@ -447,99 +416,112 @@ const Emotions = () => {
             display: 'flex', 
             alignItems: 'center', 
             gap: '6px',
-            background: 'var(--accent)',
-            borderColor: 'var(--accent)',
+            background: 'linear-gradient(135deg, var(--accent), #6366f1)',
             fontWeight: 700,
             borderRadius: 'var(--r-md)',
             padding: '8px 16px',
-            fontSize: '0.78rem'
+            fontSize: '0.78rem',
+            cursor: 'pointer'
           }}
         >
           <Plus size={14} /> New Trade
         </button>
       </div>
 
-      {/* Filters Row */}
-      <div className="glass" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-        <input 
-          type="date" 
-          className="input" 
-          style={{ width: 'auto', flex: '1 1 130px', fontSize: '0.78rem', height: '36px', minWidth: '130px' }} 
-          value={startDate} 
-          onChange={e => setStartDate(e.target.value)} 
-          placeholder="dd/mm/yyyy"
-        />
-        <input 
-          type="date" 
-          className="input" 
-          style={{ width: 'auto', flex: '1 1 130px', fontSize: '0.78rem', height: '36px', minWidth: '130px' }} 
-          value={endDate} 
-          onChange={e => setEndDate(e.target.value)} 
-          placeholder="dd/mm/yyyy"
-        />
-        
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
-          <option value="All">Account: All accounts</option>
-          {accountsList.map(acc => <option key={acc.id} value={acc.id}>{acc.accountName}</option>)}
-        </select>
+      {/* ═══ SLEEK CLEAN FILTERS BAR ═══ */}
+      <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <Filter size={14} style={{ color: 'var(--accent)' }} />
+          Psychology Filters & Scope
+        </div>
 
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedPair} onChange={e => setSelectedPair(e.target.value)}>
-          <option value="All">Pair: All</option>
-          {uniquePairs.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input 
+            type="date" 
+            className="input" 
+            style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '34px', minWidth: '120px' }} 
+            value={startDate} 
+            onChange={e => setStartDate(e.target.value)} 
+            placeholder="From Date"
+          />
+          <input 
+            type="date" 
+            className="input" 
+            style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '34px', minWidth: '120px' }} 
+            value={endDate} 
+            onChange={e => setEndDate(e.target.value)} 
+            placeholder="To Date"
+          />
+          
+          <select className="input" style={{ width: 'auto', flex: '1 1 130px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
+            <option value="All">Account: All accounts</option>
+            {accountsList.map(acc => <option key={acc.id} value={acc.id}>{acc.accountName}</option>)}
+          </select>
 
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
-          <option value="All">Session: All</option>
-          <option value="London">London</option>
-          <option value="New York">New York</option>
-          <option value="Asia">Asia</option>
-        </select>
+          <select className="input" style={{ width: 'auto', flex: '1 1 110px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedPair} onChange={e => setSelectedPair(e.target.value)}>
+            <option value="All">Pair: All</option>
+            {uniquePairs.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
 
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedSetup} onChange={e => setSelectedSetup(e.target.value)}>
-          <option value="All">Setup: All</option>
-          {uniqueSetups.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+          <select className="input" style={{ width: 'auto', flex: '1 1 110px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
+            <option value="All">Session: All</option>
+            <option value="London">London</option>
+            <option value="New York">New York</option>
+            <option value="Asia">Asia</option>
+          </select>
 
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedDirection} onChange={e => setSelectedDirection(e.target.value)}>
-          <option value="All">Direction: All</option>
-          <option value="Long">Long</option>
-          <option value="Short">Short</option>
-        </select>
+          <select className="input" style={{ width: 'auto', flex: '1 1 110px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedSetup} onChange={e => setSelectedSetup(e.target.value)}>
+            <option value="All">Setup: All</option>
+            {uniqueSetups.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
 
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedResult} onChange={e => setSelectedResult(e.target.value)}>
-          <option value="All">Result: All</option>
-          <option value="Win">Win</option>
-          <option value="Loss">Loss</option>
-          <option value="Breakeven">Breakeven</option>
-        </select>
+          <select className="input" style={{ width: 'auto', flex: '1 1 110px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedDirection} onChange={e => setSelectedDirection(e.target.value)}>
+            <option value="All">Direction: All</option>
+            <option value="Long">Long</option>
+            <option value="Short">Short</option>
+          </select>
 
-        <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
-          <option value="All">Grade: All</option>
-          {['A+', 'A', 'B', 'C', 'D', 'F'].map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
+          <select className="input" style={{ width: 'auto', flex: '1 1 110px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedResult} onChange={e => setSelectedResult(e.target.value)}>
+            <option value="All">Result: All</option>
+            <option value="Win">Win</option>
+            <option value="Loss">Loss</option>
+            <option value="Breakeven">Breakeven</option>
+          </select>
 
-        <button className="btn btn-ghost" style={{ height: '36px', padding: '0 16px', fontSize: '0.78rem' }} onClick={handleClearFilters}>
-          Clear
-        </button>
+          <select className="input" style={{ width: 'auto', flex: '1 1 90px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
+            <option value="All">Grade: All</option>
+            {['A+', 'A', 'B', 'C', 'D', 'F'].map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+
+          <button className="btn btn-ghost" style={{ height: '34px', padding: '0 14px', fontSize: '0.75rem', gap: 4, cursor: 'pointer' }} onClick={handleClearFilters}>
+            <RotateCcw size={12} /> Clear
+          </button>
+        </div>
       </div>
 
       {!analytics ? (
-        <div className="glass empty-state" style={{ padding: 'var(--s12)' }}>
-          <Brain size={32} style={{ opacity: 0.3 }}/>
-          <div className="empty-title">No psychology data yet</div>
-          <div className="empty-desc">Log trades with emotion tags, FOMO, and Confidence ratings to unlock analysis.</div>
+        <div className="glass empty-state" style={{ padding: 'var(--s12)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s3)' }}>
+          <Brain size={42} style={{ opacity: 0.3, color: 'var(--accent)' }}/>
+          <div className="empty-title" style={{ fontSize: '1.1rem', fontWeight: 700 }}>No psychology data available</div>
+          <div className="empty-desc" style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Log trade entries with emotion tags, FOMO rating (1-10), and Confidence rating (1-10) to unlock psychology analytics.
+          </div>
         </div>
       ) : (
         <>
-          {/* Circular Discipline Gauge Card */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--s4)' }}>
-            <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+          {/* ═══ DISCIPLINE INDEX & MINDSET PROFILE ROW ═══ */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
+            
+            {/* Discipline Index Gauge Card */}
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
               <div>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Discipline Index</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>A 0-100 gauge reflecting emotional management based on FOMO & confidence</p>
+                <h3 style={{ fontSize: '0.92rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Discipline Index</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', margin: 0, marginTop: 2 }}>A 0-100 gauge reflecting emotional management based on FOMO & confidence</p>
               </div>
-              <div style={{ display: 'flex', gap: 'var(--s5)', flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '120px', position: 'relative', margin: '0 auto' }}>
+
+              <div style={{ display: 'flex', gap: 'var(--s5)', alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+                {/* SVG Gauge */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '120px', position: 'relative' }}>
                   <svg width="110" height="110" viewBox="0 0 110 110">
                     <defs>
                       <linearGradient id="purpleMindsetGrad" x1="0" y1="0" x2="1" y2="1">
@@ -575,11 +557,11 @@ const Emotions = () => {
                   </div>
                 </div>
 
-                <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* FOMO Level Indicator */}
+                {/* Progress Indicators */}
+                <div style={{ flex: 1, minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>FOMO Resistance</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>FOMO Resistance</span>
                       <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{(10 - analytics.avgFomo).toFixed(1)}/10</span>
                     </div>
                     <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -593,10 +575,9 @@ const Emotions = () => {
                     </div>
                   </div>
 
-                  {/* Confidence Level Indicator */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Average Confidence</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Average Confidence</span>
                       <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{analytics.avgConf.toFixed(1)}/10</span>
                     </div>
                     <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -610,19 +591,21 @@ const Emotions = () => {
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
 
-            {/* General Mindset Notes */}
-            <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+            {/* Mindset Profile Takeaways Card */}
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
               <div>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Mindset Profile</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Key takeaways based on your emotional logging</p>
+                <h3 style={{ fontSize: '0.92rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Mindset Profile Takeaways</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', margin: 0, marginTop: 2 }}>Key takeaways based on your emotional trade logging</p>
               </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', justifyContent: 'center', flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>🧘</span>
-                  <span>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>🧘</span>
+                  <span style={{ lineHeight: 1.4 }}>
                     {analytics.disciplineScore >= 80 
                       ? 'Excellent risk control. Your executions are aligned with low FOMO and optimal confidence levels.' 
                       : (analytics.disciplineScore >= 65 
@@ -630,61 +613,54 @@ const Emotions = () => {
                         : 'Significant emotional slippage. You are likely chasing trades or executing out of boredom.')}
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>📊</span>
-                  <span>
-                    {analytics.fomoCost < 0 
-                      ? `Chasing setups has cost you a net total of ` 
-                      : `Chasing setups has contributed a positive `}
-                    <strong style={{ color: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
-                      {analytics.fomoCost >= 0 ? '+' : ''}${analytics.fomoCost.toLocaleString()}
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>📊</span>
+                  <span style={{ lineHeight: 1.4 }}>
+                    Chasing setups has cost you a net total of{' '}
+                    <strong style={{ color: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontWeight: 800 }}>
+                      {formatCurrency(analytics.fomoCost)}
                     </strong>. Keep FOMO levels low to avoid capital leaks.
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>🔥</span>
-                  <span>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>🔥</span>
+                  <span style={{ lineHeight: 1.4 }}>
                     Disciplined trades (FOMO &le; 3, Conf &ge; 7) generated{' '}
-                    <strong style={{ color: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
-                      {analytics.disciplinedPnL >= 0 ? '+' : ''}${analytics.disciplinedPnL.toLocaleString()}
+                    <strong style={{ color: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontWeight: 800 }}>
+                      {formatCurrency(analytics.disciplinedPnL)}
                     </strong>. Focus on standardizing this execution model.
                   </span>
                 </div>
               </div>
             </div>
+
           </div>
 
-          {/* Performance Over Time — Equity Growth Curve */}
-          <div className="glass" style={{ padding: 'var(--s5)', position: 'relative', overflow: 'hidden' }}>
-            {/* Subtle ambient glow behind the chart — dynamic color */}
-            <div style={{
-              position: 'absolute', top: '20%', left: '15%', width: '70%', height: '60%',
-              background: netPnL >= 0
-                ? 'radial-gradient(ellipse at center, rgba(52, 211, 153, 0.10) 0%, transparent 70%)'
-                : 'radial-gradient(ellipse at center, rgba(248, 113, 113, 0.10) 0%, transparent 70%)',
-              pointerEvents: 'none', zIndex: 0
-            }} />
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: 'var(--s4)', position: 'relative', zIndex: 1 }}>
+          {/* ═══ ACCOUNT EQUITY CURVE CARD ═══ */}
+          <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: 'var(--s4)' }}>
               <div>
-                <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0 }}>
                   ACCOUNT EQUITY
                 </h3>
-                <p style={{ color: 'var(--text-tertiary)', fontSize: '0.68rem' }}>
-                  Balance growth from a ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting point (filtered trades)
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.68rem', margin: 0, marginTop: 2 }}>
+                  Balance growth trajectory from ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting balance
                 </p>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px', lineHeight: 1 }}>
-                  ${(hoveredPoint !== null ? hoveredPoint : (startBalance + netPnL)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '6px', lineHeight: 1, fontFamily: 'JetBrains Mono' }}>
+                  ${(hoveredPoint !== null ? hoveredPoint : (startBalance + netPnL)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', lineHeight: 1 }}>
-                  ${(startBalance + netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+                <span className="badge" style={{ background: netPnL >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', color: netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', border: `1px solid ${netPnL >= 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, fontSize: '0.78rem', padding: '6px 14px', borderRadius: 'var(--r-full)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                  {formatCurrency(netPnL)} Total P&L
+                </span>
               </div>
             </div>
             
-            <div style={{ width: '100%', height: 260, position: 'relative', zIndex: 1 }}>
+            <div style={{ width: '100%', height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart 
                   data={equityCurveData} 
@@ -704,12 +680,11 @@ const Emotions = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
-                  <XAxis dataKey="date" {...axisProps} tick={{ fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' }} />
+                  <XAxis dataKey="date" {...axisProps} />
                   <YAxis 
                     {...axisProps} 
                     domain={['auto', 'auto']}
                     tickFormatter={(val) => `$${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                    tick={{ fill: 'var(--text-muted)', fontSize: 9, fontFamily: 'Inter' }}
                   />
                   <ReferenceLine 
                     y={startBalance} 
@@ -719,7 +694,6 @@ const Emotions = () => {
                     label={{ value: 'Start', position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 9, dy: -10, dx: 10 }} 
                   />
                   <Tooltip content={<EquityTooltip />} />
-                  {/* Main equity line with gradient fill */}
                   <Area 
                     type="monotone" 
                     dataKey="equity" 
@@ -734,36 +708,37 @@ const Emotions = () => {
             </div>
           </div>
 
-          {/* Psychology KPI Row */}
-          <div className="analytics-kpi-row-1" style={{ marginTop: '4px' }}>
+          {/* ═══ PSYCHOLOGY KPI METRIC GRID ═══ */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--s3)' }}>
             {[
               { label: 'AVG FOMO', val: `${analytics.avgFomo}/10`, col: analytics.avgFomo <= 4 ? 'var(--profit)' : (analytics.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)'), sub: 'Lower is better' },
               { label: 'AVG CONFIDENCE', val: `${analytics.avgConf}/10`, col: 'var(--accent)', sub: 'Ideal is 6-8' },
-              { label: 'WIN CONFIDENCE', val: `${analytics.avgWinConf}/10`, col: 'var(--profit)', sub: 'On green days' },
-              { label: 'LOSS CONFIDENCE', val: `${analytics.avgLossConf}/10`, col: 'var(--loss)', sub: 'On red days' },
+              { label: 'WIN CONFIDENCE', val: `${analytics.avgWinConf}/10`, col: 'var(--profit)', sub: 'On winning trades' },
+              { label: 'LOSS CONFIDENCE', val: `${analytics.avgLossConf}/10`, col: 'var(--loss)', sub: 'On losing trades' },
               { label: 'REVENGE TRADES', val: `${analytics.revengeCount}`, col: analytics.revengeCount > 0 ? 'var(--loss)' : 'var(--text-secondary)', sub: 'Over-trading count' },
-              { label: 'FOMO PNL COST', val: `${analytics.fomoCost >= 0 ? '+' : ''}$${analytics.fomoCost.toLocaleString()}`, col: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'On FOMO >= 7' },
-              { label: 'DISCIPLINED PNL', val: `${analytics.disciplinedPnL >= 0 ? '+' : ''}$${analytics.disciplinedPnL.toLocaleString()}`, col: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'FOMO <=3, Conf >=7' }
+              { label: 'FOMO PNL COST', val: formatCurrency(analytics.fomoCost), col: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'On FOMO >= 7' },
+              { label: 'DISCIPLINED PNL', val: formatCurrency(analytics.disciplinedPnL), col: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'FOMO <=3, Conf >=7' }
             ].map((k, i) => (
-              <div key={i} className="glass stat-card" style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-tertiary)' }}>{k.label}</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', wordBreak: 'break-word', lineHeight: 1.2 }}>{k.val}</div>
-                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>{k.sub}</div>
+              <div key={i} className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{k.label}</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', lineHeight: 1.2 }}>{k.val}</div>
+                <div style={{ fontSize: '0.64rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>{k.sub}</div>
               </div>
             ))}
           </div>
 
-          {/* Charts Grid */}
-          <div className="analytics-grid">
+          {/* ═══ PSYCHOLOGY SCATTER & BAR CHARTS GRID ═══ */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
+            
             {/* P&L vs FOMO (Scatter) */}
-            <div className="glass chart-panel anim-fade-up delay-2">
-              <div className="chart-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>P&L vs FOMO Level</span>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>Bubble colors: trade result</span>
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>P&L vs FOMO Level</span>
+                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>Bubble colors: trade result</span>
               </div>
-              <ResponsiveContainer width="100%" height={230}>
+              <ResponsiveContainer width="100%" height={220}>
                 <ScatterChart margin={{ top: 15, right: 15, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} vertical={false}/>
                   <XAxis type="number" dataKey="fomo" domain={[0, 10]} name="FOMO" {...axisProps}/>
                   <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps} tickFormatter={(val) => `$${val}`}/>
                   <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
@@ -778,14 +753,14 @@ const Emotions = () => {
             </div>
 
             {/* P&L vs Confidence (Scatter) */}
-            <div className="glass chart-panel anim-fade-up delay-3">
-              <div className="chart-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>P&L vs Confidence</span>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>Bubble colors: trade result</span>
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>P&L vs Confidence</span>
+                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>Bubble colors: trade result</span>
               </div>
-              <ResponsiveContainer width="100%" height={230}>
+              <ResponsiveContainer width="100%" height={220}>
                 <ScatterChart margin={{ top: 15, right: 15, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} vertical={false}/>
                   <XAxis type="number" dataKey="confidence" domain={[0, 10]} name="Confidence" {...axisProps}/>
                   <YAxis type="number" dataKey="pnl" name="P&L" {...axisProps} tickFormatter={(val) => `$${val}`}/>
                   <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
@@ -800,11 +775,13 @@ const Emotions = () => {
             </div>
 
             {/* Avg P&L by FOMO */}
-            <div className="glass chart-panel anim-fade-up delay-4">
-              <div className="chart-title"><span>Avg P&L by FOMO Level</span></div>
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s3)' }}>
+                Avg P&L by FOMO Level
+              </div>
+              <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={analytics.fomoBar} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} vertical={false}/>
                   <XAxis dataKey="name" {...axisProps}/>
                   <YAxis {...axisProps} tickFormatter={(val) => `$${val}`}/>
                   <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
@@ -819,11 +796,13 @@ const Emotions = () => {
             </div>
 
             {/* Avg P&L by Confidence */}
-            <div className="glass chart-panel anim-fade-up delay-5">
-              <div className="chart-title"><span>Avg P&L by Confidence Level</span></div>
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s3)' }}>
+                Avg P&L by Confidence Level
+              </div>
+              <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={analytics.confBar} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} vertical={false}/>
                   <XAxis dataKey="name" {...axisProps}/>
                   <YAxis {...axisProps} tickFormatter={(val) => `$${val}`}/>
                   <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3"/>
@@ -839,19 +818,19 @@ const Emotions = () => {
 
             {/* Emotion Frequency Wide Panel */}
             {analytics.topTags.length > 0 && (
-              <div className="glass chart-panel analytics-wide anim-fade-up delay-6" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-                <div className="chart-title" style={{ margin: 0 }}><span>Emotion Frequency</span></div>
+              <div className="glass" style={{ gridColumn: 'span 2', padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>Logged Emotion Frequency</div>
                 <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
                   {analytics.topTags.map(([tag, count]) => (
                     <div key={tag} style={{
                       display: 'flex', alignItems: 'center', gap: 'var(--s2)',
                       padding: '6px 14px', background: `${EMOTION_COLORS[tag] || '#818cf8'}12`,
                       border: `1px solid ${EMOTION_COLORS[tag] || '#818cf8'}30`,
-                      borderRadius: 'var(--r-full)', fontSize: '0.72rem',
+                      borderRadius: 'var(--r-full)', fontSize: '0.75rem',
                       color: EMOTION_COLORS[tag] || '#818cf8', fontWeight: 600,
                     }}>
                       {tag}
-                      <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-full)', padding: '1px 6px', fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{count}</span>
+                      <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-full)', padding: '1px 7px', fontSize: '0.62rem', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>{count}</span>
                     </div>
                   ))}
                 </div>
