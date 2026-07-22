@@ -22,8 +22,7 @@ const AssetAllocation = () => {
   const { user } = useAuth();
 
   // Navigation & Sub-Tabs State
-  const [activeSubTab, setActiveSubTab] = useState('assets'); // 'assets'|'return_risk'|'strategy'|'correlation'|'signal'
-  const [dataMode, setDataMode] = useState('live'); // 'live' | 'demo'
+  const [activeSubTab, setActiveSubTab] = useState('assets'); // 'assets'|'return_risk'|'strategy'|'correlation'
   const [allocationMode, setAllocationMode] = useState('family'); // 'family' | 'asset'
   const [timeframe, setTimeframe] = useState('ALL'); // 'YTD'|'1W'|'1M'|'3M'|'6M'|'1Y'|'2Y'|'ALL'
   const [selectedAccountId, setSelectedAccountId] = useState('all');
@@ -185,7 +184,7 @@ const AssetAllocation = () => {
 
   // Compute Allocation Data Breakdown
   const allocationData = useMemo(() => {
-    if (dataMode === 'demo' || filteredTrades.length === 0) {
+    if (filteredTrades.length === 0) {
       if (allocationMode === 'family') {
         return [
           { name: 'Commodity CFDs', count: 1240, percent: 48.3, winners: 68.4, returnPnl: 14250.50, returnPct: 14.25, avgWin: 240, avgLoss: 110, volume: 185.4 },
@@ -257,7 +256,7 @@ const AssetAllocation = () => {
         volume: Number(g.volume.toFixed(1)),
       };
     }).sort((a, b) => b.count - a.count);
-  }, [dataMode, filteredTrades, allocationMode, initialCapital]);
+  }, [filteredTrades, allocationMode, initialCapital]);
 
   // Selected item highlight or default to top item
   const activeFocusItem = selectedItem || allocationData[0] || {};
@@ -334,26 +333,7 @@ const AssetAllocation = () => {
           </select>
         </div>
 
-        {/* Live vs Demo Data Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Data Source:</span>
-          <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-tertiary)', padding: '3px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-            <button
-              onClick={() => setDataMode('live')}
-              className={`btn btn-sm ${dataMode === 'live' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.7rem', padding: '3px 10px', height: 'auto' }}
-            >
-              <Activity size={12} /> Live Website Data
-            </button>
-            <button
-              onClick={() => setDataMode('demo')}
-              className={`btn btn-sm ${dataMode === 'demo' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.7rem', padding: '3px 10px', height: 'auto' }}
-            >
-              Demo Benchmark
-            </button>
-          </div>
-        </div>
+
 
       </div>
 
@@ -384,10 +364,9 @@ const AssetAllocation = () => {
               </div>
 
               <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)' }}>
-                <span style={{ color: 'var(--loss)', fontWeight: 800 }}>{dataMode === 'live' ? liveStats.tier.rank : '2,788th'}</span>{' '}
+                <span style={{ color: 'var(--loss)', fontWeight: 800 }}>{liveStats.tier.rank}</span>{' '}
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(May 2026)</span>
               </div>
-
 
             </div>
 
@@ -410,9 +389,9 @@ const AssetAllocation = () => {
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Return (since inception)
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: (dataMode === 'live' ? liveStats.returnPct : 21.32) >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  {(dataMode === 'live' ? liveStats.returnPct : 21.32) >= 0 ? '+' : ''}
-                  {dataMode === 'live' ? liveStats.returnPct : 21.32}%
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: liveStats.returnPct >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
+                  {liveStats.returnPct >= 0 ? '+' : ''}
+                  {liveStats.returnPct}%
                 </div>
               </div>
 
@@ -421,7 +400,7 @@ const AssetAllocation = () => {
                   Max. drawdown
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  -{dataMode === 'live' ? liveStats.maxDdPct : 12.22}%
+                  -{liveStats.maxDdPct}%
                 </div>
               </div>
 
@@ -429,9 +408,9 @@ const AssetAllocation = () => {
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Return (last 6 months)
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: (dataMode === 'live' ? liveStats.return6mPct : 7.03) >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  {(dataMode === 'live' ? liveStats.return6mPct : 7.03) >= 0 ? '+' : ''}
-                  {dataMode === 'live' ? liveStats.return6mPct : 7.03}%
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: liveStats.return6mPct >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
+                  {liveStats.return6mPct >= 0 ? '+' : ''}
+                  {liveStats.return6mPct}%
                 </div>
               </div>
 
@@ -440,7 +419,7 @@ const AssetAllocation = () => {
                   Assets under management
                 </div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                  ${(dataMode === 'live' ? liveStats.currentAum : 215000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${liveStats.currentAum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
 
@@ -453,11 +432,11 @@ const AssetAllocation = () => {
             <div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Quote</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', lineHeight: 1.1, marginTop: 2 }}>
-                {dataMode === 'live' ? liveStats.currentQuote : '121.32'}
+                {liveStats.currentQuote}
               </div>
-              <div style={{ fontSize: '0.72rem', color: (dataMode === 'live' ? liveStats.todayPnl : 0.90) >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                {(dataMode === 'live' ? liveStats.todayPnl : 0.90) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {dataMode === 'live' ? `${liveStats.todayPnl >= 0 ? '+' : ''}$${liveStats.todayPnl} (${liveStats.todayPct}%)` : '0.90 (0.75%) ↑'} today
+              <div style={{ fontSize: '0.72rem', color: liveStats.todayPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                {liveStats.todayPnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {liveStats.todayPnl >= 0 ? '+' : ''}${liveStats.todayPnl} ({liveStats.todayPct}%) today
               </div>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
                 {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
