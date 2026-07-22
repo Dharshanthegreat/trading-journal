@@ -4,20 +4,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { accounts as accountsApi } from '../services/api';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar
+  AreaChart, Area, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import {
   PieChart as PieIcon, Layers, TrendingUp, TrendingDown,
-  ShieldCheck, Award, Info, ExternalLink, User,
-  DollarSign, Percent, BarChart2, Clock, Activity, CheckCircle,
-  Wallet, RefreshCw, X, HelpCircle, Sliders, Target, ArrowUpRight, Calendar
+  Info, BarChart2, Activity, Wallet, X, ChevronRight, AlertCircle, CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#d946ef', '#06b6d4', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const AssetAllocation = () => {
-  const { trades, fetchTrades, loading } = useTrades();
+  const { trades, fetchTrades } = useTrades();
   const { user } = useAuth();
 
   // Navigation & Sub-Tabs State
@@ -30,8 +28,6 @@ const AssetAllocation = () => {
 
   // Modals State
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [expandedFaq, setExpandedFaq] = useState(null);
 
   // Fetch trades and user accounts on mount
   useEffect(() => {
@@ -113,7 +109,7 @@ const AssetAllocation = () => {
     if (activeAccountObj && activeAccountObj.accountBalance) {
       return Number(activeAccountObj.accountBalance);
     }
-    return Number(user?.accountSize) || 25000;
+    return Number(user?.accountSize) || 10000;
   }, [user, activeAccountObj]);
 
   // Dynamic KPI Stats computed strictly from user trades
@@ -122,7 +118,7 @@ const AssetAllocation = () => {
     const returnPct = initialCapital > 0 ? (totalPnl / initialCapital) * 100 : 0;
     const currentAum = initialCapital + totalPnl;
 
-    // Calculate Peak Drawdown
+    // Calculate Peak Drawdown Depth
     let peak = initialCapital;
     let runningEquity = initialCapital;
     let maxDdPct = 0;
@@ -137,13 +133,6 @@ const AssetAllocation = () => {
         if (dd > maxDdPct) maxDdPct = dd;
       }
     });
-
-    // Calculate 6-Month Return
-    const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-    const sixMonthsTrades = filteredTrades.filter(t => new Date(t.date || t.entryTime || t.createdAt) >= sixMonthsAgo);
-    const sixMonthsPnl = sixMonthsTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
-    const return6mPct = initialCapital > 0 ? (sixMonthsPnl / initialCapital) * 100 : 0;
 
     // Calculate Win Rate & Risk Metrics
     const winningTrades = filteredTrades.filter(t => Number(t.pnl) > 0);
@@ -173,7 +162,6 @@ const AssetAllocation = () => {
       totalPnl,
       returnPct: Number(returnPct.toFixed(2)),
       maxDdPct: Number(maxDdPct.toFixed(2)),
-      return6mPct: Number(return6mPct.toFixed(2)),
       currentAum,
       winRate: Number(winRate.toFixed(1)),
       totalTrades: filteredTrades.length,
@@ -186,13 +174,9 @@ const AssetAllocation = () => {
     };
   }, [filteredTrades, initialCapital]);
 
-  // Dynamic Allocation Breakdown by Family or Symbol
+  // Dynamic Allocation Breakdown strictly from user trades
   const allocationData = useMemo(() => {
-    if (filteredTrades.length === 0) {
-      return [
-        { name: 'Indices CFDs', count: 0, percent: 100, winners: 0, returnPnl: 0, returnPct: 0, avgWin: 0, avgLoss: 0, volume: 0 }
-      ];
-    }
+    if (filteredTrades.length === 0) return [];
 
     const groups = {};
     let totalCount = 0;
@@ -248,12 +232,11 @@ const AssetAllocation = () => {
     }).sort((a, b) => b.count - a.count);
   }, [filteredTrades, allocationMode, initialCapital]);
 
-  // Selected item highlight or top item default
+  // Selected item highlight
   const activeFocusItem = selectedItem || allocationData[0] || {};
 
-  // Equity Growth & Drawdown Curve Data
+  // Equity Growth & Drawdown Curve Data (With Dual Axis Scaling)
   const equityCurveData = useMemo(() => {
-    let cumulativePnl = 0;
     const sorted = [...filteredTrades].sort((a, b) => new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt));
     
     if (sorted.length === 0) {
@@ -277,7 +260,7 @@ const AssetAllocation = () => {
     });
   }, [filteredTrades, initialCapital]);
 
-  // Strategy Direction (Long vs Short) breakdown
+  // Strategy Direction & Session Analysis
   const strategyStats = useMemo(() => {
     const longs = filteredTrades.filter(t => {
       const dir = (t.direction || t.type || '').toUpperCase();
@@ -297,20 +280,105 @@ const AssetAllocation = () => {
     const longPnl = longs.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
     const shortPnl = shorts.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
 
+    // Session breakdown from timestamps
+    let ny = { count: 0, pnl: 0, wins: 0 };
+    let london = { count: 0, pnl: 0, wins: 0 };
+    let asia = { count: 0, pnl: 0, wins: 0 };
+
+    filteredTrades.forEach(t => {
+      const timeStr = t.entryTime || t.date || t.createdAt;
+      if (!timeStr) return;
+      const hour = new Date(timeStr).getUTCHours();
+      const pnl = Number(t.pnl) || 0;
+      const isWin = pnl > 0;
+
+      if (hour >= 13 && hour < 21) {
+        ny.count++;
+        ny.pnl += pnl;
+        if (isWin) ny.wins++;
+      } else if (hour >= 7 && hour < 13) {
+        london.count++;
+        london.pnl += pnl;
+        if (isWin) london.wins++;
+      } else {
+        asia.count++;
+        asia.pnl += pnl;
+        if (isWin) asia.wins++;
+      }
+    });
+
     return {
       longCount: longs.length,
       shortCount: shorts.length,
       longWinRate: Number(longWinRate.toFixed(1)),
       shortWinRate: Number(shortWinRate.toFixed(1)),
       longPnl: Number(longPnl.toFixed(2)),
-      shortPnl: Number(shortPnl.toFixed(2))
+      shortPnl: Number(shortPnl.toFixed(2)),
+      sessions: {
+        ny: { ...ny, winRate: ny.count > 0 ? Number(((ny.wins / ny.count) * 100).toFixed(1)) : 0, pnl: Number(ny.pnl.toFixed(2)) },
+        london: { ...london, winRate: london.count > 0 ? Number(((london.wins / london.count) * 100).toFixed(1)) : 0, pnl: Number(london.pnl.toFixed(2)) },
+        asia: { ...asia, winRate: asia.count > 0 ? Number(((asia.wins / asia.count) * 100).toFixed(1)) : 0, pnl: Number(asia.pnl.toFixed(2)) }
+      }
     };
   }, [filteredTrades]);
+
+  // Dynamic Cross-Asset Correlation calculation strictly from user trades
+  const correlationData = useMemo(() => {
+    const uniqueAssets = Array.from(new Set(filteredTrades.map(t => 
+      allocationMode === 'family' ? getAssetFamily(t.symbol) : (t.symbol ? t.symbol.toUpperCase() : 'OTHER')
+    )));
+
+    if (uniqueAssets.length <= 1) {
+      return { isSingle: true, singleAsset: uniqueAssets[0] || 'Indices CFDs', matrix: [] };
+    }
+
+    const dates = Array.from(new Set(filteredTrades.map(t => (t.date || t.entryTime || t.createdAt || '').split('T')[0]))).filter(Boolean);
+
+    const assetDailyPnL = {};
+    uniqueAssets.forEach(ast => {
+      assetDailyPnL[ast] = {};
+      dates.forEach(d => { assetDailyPnL[ast][d] = 0; });
+    });
+
+    filteredTrades.forEach(t => {
+      const ast = allocationMode === 'family' ? getAssetFamily(t.symbol) : (t.symbol ? t.symbol.toUpperCase() : 'OTHER');
+      const d = (t.date || t.entryTime || t.createdAt || '').split('T')[0];
+      if (d && assetDailyPnL[ast]) {
+        assetDailyPnL[ast][d] += Number(t.pnl) || 0;
+      }
+    });
+
+    const matrix = uniqueAssets.map(ast1 => {
+      const row = { name: ast1 };
+      uniqueAssets.forEach(ast2 => {
+        if (ast1 === ast2) {
+          row[ast2] = 1.00;
+        } else {
+          const x = dates.map(d => assetDailyPnL[ast1][d]);
+          const y = dates.map(d => assetDailyPnL[ast2][d]);
+          const n = dates.length;
+          const sumX = x.reduce((a, b) => a + b, 0);
+          const sumY = y.reduce((a, b) => a + b, 0);
+          const sumXY = x.reduce((sum, val, idx) => sum + val * y[idx], 0);
+          const sumX2 = x.reduce((sum, val) => sum + val * val, 0);
+          const sumY2 = y.reduce((sum, val) => sum + val * val, 0);
+
+          const num = n * sumXY - sumX * sumY;
+          const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+          const r = den > 0 ? num / den : 0;
+          row[ast2] = Number(r.toFixed(2));
+        }
+      });
+      return row;
+    });
+
+    return { isSingle: false, assets: uniqueAssets, matrix };
+  }, [filteredTrades, allocationMode]);
 
   return (
     <div className="asset-allocation-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '80px' }}>
       
-      {/* ═══ TOP CONTROL & PROFILE HEADER CARD (REARRANGED & CLEAN) ═══ */}
+      {/* ═══ TOP CONTROL & PROFILE HEADER CARD ═══ */}
       <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
           
@@ -521,7 +589,7 @@ const AssetAllocation = () => {
             </div>
           </div>
 
-          {/* Donut Chart & Focused Metric Cards Row (Balanced 50/50 Layout) */}
+          {/* Donut Chart & Focused Metric Cards Row */}
           <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s6)', alignItems: 'center' }}>
             
             {/* Donut Allocation Chart */}
@@ -568,28 +636,31 @@ const AssetAllocation = () => {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                    No trades recorded for selected filter
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.78rem', gap: 6 }}>
+                    <Info size={24} />
+                    <span>No trades recorded for this account filter</span>
                   </div>
                 )}
 
                 {/* Center Ring Stats */}
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'none'
-                }}>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                    {activeFocusItem?.percent ? `${activeFocusItem.percent}%` : '100%'}
+                {allocationData.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {activeFocusItem?.percent ? `${activeFocusItem.percent}%` : '100%'}
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {activeFocusItem?.name || 'Asset Class'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {activeFocusItem?.name || 'Asset Class'}
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Chart Legend */}
@@ -708,43 +779,51 @@ const AssetAllocation = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {allocationData.map((item, idx) => (
-                    <tr
-                      key={item.name}
-                      onClick={() => setSelectedItem(item)}
-                      style={{
-                        borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer',
-                        background: activeFocusItem?.name === item.name ? 'var(--bg-active)' : 'transparent',
-                        transition: 'background var(--t-fast)'
-                      }}
-                    >
-                      <td style={{ padding: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length] }} />
-                        {item.name}
-                      </td>
-                      <td style={{ padding: '12px', width: '200px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${item.percent}%`, background: COLORS[idx % COLORS.length], borderRadius: 3 }} />
+                  {allocationData.length > 0 ? (
+                    allocationData.map((item, idx) => (
+                      <tr
+                        key={item.name}
+                        onClick={() => setSelectedItem(item)}
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          cursor: 'pointer',
+                          background: activeFocusItem?.name === item.name ? 'var(--bg-active)' : 'transparent',
+                          transition: 'background var(--t-fast)'
+                        }}
+                      >
+                        <td style={{ padding: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length] }} />
+                          {item.name}
+                        </td>
+                        <td style={{ padding: '12px', width: '200px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${item.percent}%`, background: COLORS[idx % COLORS.length], borderRadius: 3 }} />
+                            </div>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{item.percent}%</span>
                           </div>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{item.percent}%</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        {item.count}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.winners >= 50 ? 'var(--profit)' : 'var(--loss)' }}>
-                        {item.winners}%
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                        <span style={{ color: 'var(--profit)' }}>${item.avgWin}</span> / <span style={{ color: 'var(--loss)' }}>${item.avgLoss}</span>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.returnPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                        {item.returnPnl >= 0 ? '+' : ''}${item.returnPnl.toLocaleString()} ({item.returnPct}%)
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          {item.count}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.winners >= 50 ? 'var(--profit)' : 'var(--loss)' }}>
+                          {item.winners}%
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                          <span style={{ color: 'var(--profit)' }}>${item.avgWin}</span> / <span style={{ color: 'var(--loss)' }}>${item.avgLoss}</span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.returnPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                          {item.returnPnl >= 0 ? '+' : ''}${item.returnPnl.toLocaleString()} ({item.returnPct}%)
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No trade data recorded for this filter.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -775,15 +854,15 @@ const AssetAllocation = () => {
             ))}
           </div>
 
-          {/* Equity & Drawdown Area Chart */}
+          {/* Equity & Drawdown Area Chart (With Dual Y-Axes) */}
           <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
               <div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  Cumulative Equity Growth & Drawdown Depth
+                  Cumulative Equity Growth & Peak Drawdown Depth
                 </h3>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Realized account equity trajectory calculated from chronological trades
+                  Realized account equity trajectory alongside drawdown percentage from trade history
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 'var(--s4)', fontSize: '0.72rem' }}>
@@ -796,7 +875,7 @@ const AssetAllocation = () => {
               </div>
             </div>
 
-            <div style={{ width: '100%', height: 280 }}>
+            <div style={{ width: '100%', height: 290 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={equityCurveData}>
                   <defs>
@@ -811,10 +890,11 @@ const AssetAllocation = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                   <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={11} />
-                  <YAxis stroke="var(--text-muted)" fontSize={11} domain={['auto', 'auto']} />
+                  <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={11} domain={['auto', 'auto']} tickFormatter={(v) => `$${v}`} />
+                  <YAxis yAxisId="right" orientation="right" stroke="var(--loss)" fontSize={11} domain={['auto', 0]} tickFormatter={(v) => `${v}%`} />
                   <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', color: 'var(--text-primary)' }} />
-                  <Area type="monotone" dataKey="equity" stroke="var(--accent)" strokeWidth={2} fillOpacity={1} fill="url(#eqGrad)" name="Equity ($)" />
-                  <Area type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fillOpacity={1} fill="url(#ddGrad)" name="Drawdown %" />
+                  <Area yAxisId="left" type="monotone" dataKey="equity" stroke="var(--accent)" strokeWidth={2} fillOpacity={1} fill="url(#eqGrad)" name="Net Equity ($)" />
+                  <Area yAxisId="right" type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fillOpacity={1} fill="url(#ddGrad)" name="Drawdown Depth (%)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -860,22 +940,26 @@ const AssetAllocation = () => {
             </div>
           </div>
 
-          {/* Asset Allocation Weight Breakdown */}
+          {/* Trading Session Performance Breakdown */}
           <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
-              Top Symbol Volume Concentration
+              Trading Session Breakdown (UTC)
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-              {allocationData.slice(0, 4).map(item => (
-                <div key={item.name} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3) var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+              {[
+                { name: 'New York Session (13:00 - 21:00 UTC)', stats: strategyStats.sessions.ny },
+                { name: 'London Session (07:00 - 13:00 UTC)', stats: strategyStats.sessions.london },
+                { name: 'Asian Session (21:00 - 07:00 UTC)', stats: strategyStats.sessions.asia },
+              ].map(s => (
+                <div key={s.name} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3) var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-                    <span>{item.name}</span>
-                    <span style={{ color: item.returnPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                      {item.returnPnl >= 0 ? '+' : ''}${item.returnPnl.toLocaleString()} ({item.percent}%)
+                    <span>{s.name} ({s.stats.count} trades)</span>
+                    <span style={{ color: s.stats.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                      {s.stats.pnl >= 0 ? '+' : ''}${s.stats.pnl.toLocaleString()} ({s.stats.winRate}% win)
                     </span>
                   </div>
                   <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${item.percent}%`, background: 'var(--accent)', borderRadius: 3 }} />
+                    <div style={{ height: '100%', width: `${Math.min(100, liveStats.totalTrades > 0 ? (s.stats.count / liveStats.totalTrades) * 100 : 0)}%`, background: 'var(--accent)', borderRadius: 3 }} />
                   </div>
                 </div>
               ))}
@@ -885,55 +969,91 @@ const AssetAllocation = () => {
         </div>
       )}
 
-      {/* ═══ TAB 4: ASSET CORRELATION MATRIX ═══ */}
+      {/* ═══ TAB 4: ASSET CORRELATION MATRIX (DYNMICALLY CALCULATED) ═══ */}
       {activeSubTab === 'correlation' && (
         <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s5)' }}>
-            <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                Asset Class Correlation Matrix
+          
+          {correlationData.isSingle ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--s6)', textAlign: 'center', gap: 'var(--s3)' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                <Layers size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                Single Asset Concentration ({correlationData.singleAsset})
               </h3>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Inter-asset price sensitivity coefficient heatmap (-1.0 to +1.0)
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: 520, lineHeight: 1.5, margin: 0 }}>
+                All {filteredTrades.length} trades recorded for this filter are concentrated in <strong>{correlationData.singleAsset}</strong> (100% weight). Cross-asset correlation coefficients require trades executed across 2 or more distinct asset classes (e.g. Commodities, Forex, Stocks).
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s4)', width: '100%', maxWidth: 600, marginTop: 'var(--s3)' }}>
+                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Asset Class</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent)', marginTop: 2 }}>{correlationData.singleAsset}</div>
+                </div>
+
+                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Realized P&L</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: liveStats.totalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', marginTop: 2 }}>
+                    {liveStats.totalPnl >= 0 ? '+' : ''}${liveStats.totalPnl.toLocaleString()}
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Win Rate</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: liveStats.winRate >= 50 ? 'var(--profit)' : 'var(--loss)', marginTop: 2 }}>
+                    {liveStats.winRate}%
+                  </div>
+                </div>
               </div>
             </div>
-            <span className="badge" style={{ background: 'var(--profit-soft)', color: 'var(--profit)', border: '1px solid var(--profit-border)', fontSize: '0.72rem', padding: '4px 12px', borderRadius: 'var(--r-full)', fontWeight: 700 }}>
-              Diversification Index: Optimal Risk Spread
-            </span>
-          </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s5)' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                    Cross-Asset Correlation Matrix
+                  </h3>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Statistically calculated Pearson correlation coefficient heatmap between your traded assets (-1.0 to +1.0)
+                  </div>
+                </div>
+                <span className="badge" style={{ background: 'var(--profit-soft)', color: 'var(--profit)', border: '1px solid var(--profit-border)', fontSize: '0.72rem', padding: '4px 12px', borderRadius: 'var(--r-full)', fontWeight: 700 }}>
+                  Active Portfolio Correlation ({correlationData.assets.length} Asset Classes)
+                </span>
+              </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Asset Class</th>
-                  <th style={{ padding: '12px' }}>Indices CFDs</th>
-                  <th style={{ padding: '12px' }}>Commodity CFDs</th>
-                  <th style={{ padding: '12px' }}>Forex Pairs</th>
-                  <th style={{ padding: '12px' }}>Crypto Assets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { name: 'Indices CFDs', c1: '1.00', c2: '0.12', c3: '-0.32', c4: '0.64' },
-                  { name: 'Commodity CFDs', c1: '0.12', c2: '1.00', c3: '-0.45', c4: '0.28' },
-                  { name: 'Forex Pairs', c1: '-0.32', c2: '-0.45', c3: '1.00', c4: '-0.15' },
-                  { name: 'Crypto Assets', c1: '0.64', c2: '0.28', c3: '-0.15', c4: '1.00' },
-                ].map(r => (
-                  <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'left' }}>{r.name}</td>
-                    {[r.c1, r.c2, r.c3, r.c4].map((val, idx) => (
-                      <td key={idx} style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: val === '1.00' ? 'var(--text-muted)' : (Number(val) < 0 ? 'var(--profit)' : 'var(--warn)') }}>
-                        <span style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', background: val === '1.00' ? 'var(--bg-tertiary)' : (Number(val) < 0 ? 'var(--profit-soft)' : 'var(--warn-soft)') }}>
-                          {val}
-                        </span>
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Asset</th>
+                      {correlationData.assets.map(ast => (
+                        <th key={ast} style={{ padding: '12px' }}>{ast}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {correlationData.matrix.map(r => (
+                      <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'left' }}>{r.name}</td>
+                        {correlationData.assets.map((ast, idx) => {
+                          const val = r[ast];
+                          return (
+                            <td key={idx} style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                              <span style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', background: val === 1.00 ? 'var(--bg-tertiary)' : (val < 0 ? 'var(--profit-soft)' : 'var(--warn-soft)'), color: val === 1.00 ? 'var(--text-muted)' : (val < 0 ? 'var(--profit)' : 'var(--warn)') }}>
+                                {val > 0 ? `+${val}` : val}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
