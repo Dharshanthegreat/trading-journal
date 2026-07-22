@@ -971,6 +971,187 @@ const Accounts = () => {
         </div>
       )}
 
+      {/* ═══ ADD / EDIT ACCOUNT FORM MODAL ═══ */}
+      {showForm && (
+        <div className="modal-overlay" onClick={handleCloseForm}>
+          <div className="glass-deep modal-panel" style={{ width: 440, padding: 'var(--s8)' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: 'var(--s6)' }}>
+              <div className="modal-title">{editingAccount ? 'Edit Account' : 'Add Trading Account'}</div>
+              <button className="modal-close" onClick={handleCloseForm}><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+                <div className="form-field">
+                  <label className="form-label">Account Name *</label>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="e.g. Apex 50k #1"
+                    value={formData.accountName}
+                    onChange={e => setFormData({ ...formData, accountName: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Account Type</label>
+                  <select
+                    className="input"
+                    value={formData.accountType}
+                    onChange={e => setFormData({ ...formData, accountType: e.target.value })}
+                  >
+                    <option value="Simulated">Simulation Challenge</option>
+                    <option value="Live">Live Brokerage</option>
+                    <option value="Prop Challenge">Prop Firm Evaluation</option>
+                    <option value="Prop Funded">Prop Firm Funded Account</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Starting Balance ($)</label>
+                  <input
+                    className="input"
+                    type="number"
+                    placeholder="50000"
+                    value={formData.balance}
+                    onChange={e => setFormData({ ...formData, balance: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Notion Page Link (Optional)</label>
+                  <input
+                    className="input"
+                    type="url"
+                    placeholder="e.g. https://notion.so/my-playbook"
+                    value={formData.notionLink}
+                    onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Notes (Optional)</label>
+                  <textarea
+                    className="input"
+                    style={{ minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.78rem' }}
+                    placeholder="e.g. Trading plan, rules, daily limits..."
+                    value={formData.notes}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
+
+                {/* Challenge / Prop Firm Settings */}
+                {formData.accountType !== 'Live' && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s2)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--s3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Target size={13} style={{ color: 'var(--accent)' }} />
+                      Challenge / Prop Firm Rules
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s3)' }}>
+                      <div className="form-field">
+                        <label className="form-label">Profit Target ($)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="e.g. 1250"
+                          value={formData.profitTarget}
+                          onChange={e => setFormData({ ...formData, profitTarget: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Max Loss Limit ($)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="e.g. 1500"
+                          value={formData.maxLossLimit}
+                          onChange={e => setFormData({ ...formData, maxLossLimit: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Consistency (%)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="e.g. 30"
+                          value={formData.consistencyRule}
+                          onChange={e => setFormData({ ...formData, consistencyRule: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '4px' }}>
+                      <input
+                        type="checkbox"
+                        id="useTrailingDrawdown"
+                        checked={formData.useTrailingDrawdown || false}
+                        onChange={e => setFormData({ ...formData, useTrailingDrawdown: e.target.checked })}
+                        style={{
+                          width: '14px',
+                          height: '14px',
+                          accentColor: 'var(--accent)',
+                          cursor: 'pointer',
+                          margin: 0
+                        }}
+                      />
+                      <label htmlFor="useTrailingDrawdown" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}>
+                        Use Trailing Drawdown (Apex/prop-firm style dynamic MLL floor)
+                      </label>
+                    </div>
+
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Leave blank or 0 to disable. Profit Target = profit needed to pass. Max Loss = max drawdown from starting balance (trails dynamically if Trailing Drawdown is checked). Consistency = max % of total profit from a single day.
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                  <div className="form-field">
+                    <label className="form-label">Currency</label>
+                    <select
+                      className="input"
+                      value={formData.currency}
+                      onChange={e => setFormData({ ...formData, currency: e.target.value })}
+                    >
+                      {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Status</label>
+                    <select
+                      className="input"
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Passed">Passed</option>
+                      <option value="Failed">Failed</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div style={{
+                  padding: '8px 12px', borderRadius: 'var(--r-md)',
+                  background: 'var(--loss-soft)', border: '1px solid var(--loss-border)',
+                  fontSize: '0.72rem', color: 'var(--loss)', marginTop: 'var(--s4)'
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <div className="form-actions" style={{ marginTop: 'var(--s6)' }}>
+                <button type="button" className="btn btn-ghost" onClick={handleCloseForm}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? (editingAccount ? 'Saving...' : 'Creating...') : (editingAccount ? 'Save Changes' : '+ Create Account')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ═══ SOFT DELETE CONFIRMATION MODAL ═══ */}
       {deleteConfirm && (
         <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
