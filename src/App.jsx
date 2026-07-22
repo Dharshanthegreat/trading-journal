@@ -219,6 +219,8 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(new Date());
   const [selectedSymbol, setSelectedSymbol] = useState('All');
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
@@ -452,7 +454,37 @@ const Dashboard = () => {
     setSelectedAccount('All');
     setCustomStartDate('');
     setCustomEndDate('');
+    setShowCustomDatePicker(false);
   };
+
+  const handleDateSelectInPicker = (dateStr) => {
+    if (!customStartDate || (customStartDate && customEndDate)) {
+      setCustomStartDate(dateStr);
+      setCustomEndDate('');
+    } else if (dateStr < customStartDate) {
+      setCustomStartDate(dateStr);
+    } else {
+      setCustomEndDate(dateStr);
+    }
+  };
+
+  const daysInMonthGrid = useMemo(() => {
+    const year = pickerMonth.getFullYear();
+    const month = pickerMonth.getMonth();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(null);
+    }
+    for (let d = 1; d <= totalDays; d++) {
+      const monthStr = String(month + 1).padStart(2, '0');
+      const dayStr = String(d).padStart(2, '0');
+      days.push(`${year}-${monthStr}-${dayStr}`);
+    }
+    return days;
+  }, [pickerMonth]);
 
   // Recalculate stats dynamically based on filtered trades
   const stats = useMemo(() => {
@@ -897,34 +929,151 @@ const Dashboard = () => {
           )}
           
           <div className="tz-filter-btn" style={{ position: 'relative' }}>
-            <select value={dateRange} onChange={e => setDateRange(e.target.value)}>
+            <select 
+              value={dateRange} 
+              onChange={e => {
+                const val = e.target.value;
+                setDateRange(val);
+                if (val === 'custom' || val === 'ytd') {
+                  setShowCustomDatePicker(true);
+                } else {
+                  setShowCustomDatePicker(false);
+                }
+              }}
+            >
               <option value="all">Date range</option>
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
               <option value="90d">Last 90 Days</option>
-              <option value="ytd">Year to Date</option>
-              <option value="custom">Custom Date</option>
+              <option value="ytd">Year to Date (YTD)</option>
+              <option value="custom">Custom Date Range</option>
             </select>
           </div>
 
-          {dateRange === 'custom' && (
-            <div className="tz-filter-btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px' }}>
-              <Calendar size={13} style={{ color: 'var(--accent)' }} />
-              <input 
-                type="date" 
-                value={customStartDate} 
-                onChange={e => setCustomStartDate(e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
-                title="Start Date"
-              />
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 600 }}>to</span>
-              <input 
-                type="date" 
-                value={customEndDate} 
-                onChange={e => setCustomEndDate(e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
-                title="End Date"
-              />
+          {(dateRange === 'custom' || dateRange === 'ytd' || customStartDate) && (
+            <div style={{ position: 'relative' }}>
+              <button 
+                className="tz-filter-btn" 
+                onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  cursor: 'pointer', 
+                  background: showCustomDatePicker ? 'var(--bg-active)' : 'var(--bg-secondary)', 
+                  borderColor: showCustomDatePicker ? 'var(--accent)' : 'var(--border)',
+                  padding: '5px 12px'
+                }}
+              >
+                <Calendar size={13} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontWeight: 600, fontSize: '0.72rem', color: 'var(--text-primary)' }}>
+                  {customStartDate && customEndDate 
+                    ? `${customStartDate} to ${customEndDate}` 
+                    : dateRange === 'ytd' 
+                      ? `YTD (Jan 1 - Present)` 
+                      : customStartDate 
+                        ? `From ${customStartDate}` 
+                        : 'Select Calendar Range'}
+                </span>
+              </button>
+
+              {/* Custom Interactive Visual Calendar Popover */}
+              {showCustomDatePicker && (
+                <div style={{
+                  position: 'absolute',
+                  top: '38px',
+                  left: '0',
+                  zIndex: 1000,
+                  width: '280px',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--r-lg)',
+                  padding: '14px',
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(16px)'
+                }}>
+                  {/* Calendar Header: Month + Prev/Next */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <button 
+                      onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() - 1, 1))}
+                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 8px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}
+                    >
+                      &lt;
+                    </button>
+                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                      {format(pickerMonth, 'MMMM yyyy')}
+                    </span>
+                    <button 
+                      onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1, 1))}
+                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 8px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}
+                    >
+                      &gt;
+                    </button>
+                  </div>
+
+                  {/* Days Header */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                  </div>
+
+                  {/* Grid of Days */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' }}>
+                    {daysInMonthGrid.map((dayStr, idx) => {
+                      if (!dayStr) return <div key={idx} />;
+                      const dayNum = parseInt(dayStr.split('-')[2], 10);
+                      const isStart = dayStr === customStartDate;
+                      const isEnd = dayStr === customEndDate;
+                      const inRange = customStartDate && customEndDate && dayStr > customStartDate && dayStr < customEndDate;
+
+                      let bg = 'transparent';
+                      let color = 'var(--text-primary)';
+                      if (isStart || isEnd) {
+                        bg = 'var(--accent)';
+                        color = '#ffffff';
+                      } else if (inRange) {
+                        bg = 'var(--accent-soft)';
+                        color = 'var(--accent)';
+                      }
+
+                      return (
+                        <button
+                          key={dayStr}
+                          onClick={() => handleDateSelectInPicker(dayStr)}
+                          style={{
+                            background: bg,
+                            color,
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '6px 0',
+                            fontSize: '0.7rem',
+                            fontWeight: (isStart || isEnd) ? 700 : 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {dayNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer controls */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '8px' }}>
+                    <button 
+                      onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }} 
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.68rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Clear dates
+                    </button>
+                    <button 
+                      onClick={() => setShowCustomDatePicker(false)} 
+                      style={{ background: 'var(--accent)', border: 'none', borderRadius: '4px', padding: '4px 12px', color: '#fff', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
