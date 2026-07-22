@@ -2121,28 +2121,6 @@ body.theme-minimal .chart-card-setup {
   letter-spacing: 0.5px;
 }
 
-/* Universal Header Menu Option Button */
-.mobile-menu-toggle {
-  display: flex !important;
-  align-items: center;
-  gap: 5px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 5px 10px;
-  color: var(--text-primary);
-  cursor: pointer;
-  margin-right: 10px;
-  transition: all var(--t-fast);
-  font-family: inherit;
-}
-
-.mobile-menu-toggle:hover {
-  background: var(--bg-active);
-  border-color: var(--border-accent);
-  color: var(--accent);
-}
-
 
 
 

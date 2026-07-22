@@ -1797,25 +1797,8 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
               border: '1px solid rgba(255,255,255,0.05)'
             }} 
           />
-          <button 
-            className="tz-menu-btn" 
-            onClick={onClose} 
-            title="Toggle Menu"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '4px 8px',
-              borderRadius: 'var(--r-sm)',
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            <Menu size={14} /> Menu
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+            <X size={16} />
           </button>
         </div>
 
@@ -1997,9 +1980,8 @@ const Header = ({ onMenuToggle }) => {
   return (
     <header className="header">
       <div className="header-breadcrumb">
-        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Toggle menu" title="Toggle Navigation Menu">
-          <Menu size={15} />
-          <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Menu</span>
+        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
+          <Menu size={18} />
         </button>
         <span>{accountName || 'Trading Journal'}</span>
         <span className="header-sep">&gt;</span>
