@@ -219,8 +219,6 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
-  const [pickerMonth, setPickerMonth] = useState(new Date());
   const [selectedSymbol, setSelectedSymbol] = useState('All');
   const [selectedSetup, setSelectedSetup] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
@@ -454,37 +452,7 @@ const Dashboard = () => {
     setSelectedAccount('All');
     setCustomStartDate('');
     setCustomEndDate('');
-    setShowCustomDatePicker(false);
   };
-
-  const handleDateSelectInPicker = (dateStr) => {
-    if (!customStartDate || (customStartDate && customEndDate)) {
-      setCustomStartDate(dateStr);
-      setCustomEndDate('');
-    } else if (dateStr < customStartDate) {
-      setCustomStartDate(dateStr);
-    } else {
-      setCustomEndDate(dateStr);
-    }
-  };
-
-  const daysInMonthGrid = useMemo(() => {
-    const year = pickerMonth.getFullYear();
-    const month = pickerMonth.getMonth();
-    const firstDayIndex = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    
-    const days = [];
-    for (let i = 0; i < firstDayIndex; i++) {
-      days.push(null);
-    }
-    for (let d = 1; d <= totalDays; d++) {
-      const monthStr = String(month + 1).padStart(2, '0');
-      const dayStr = String(d).padStart(2, '0');
-      days.push(`${year}-${monthStr}-${dayStr}`);
-    }
-    return days;
-  }, [pickerMonth]);
 
   // Recalculate stats dynamically based on filtered trades
   const stats = useMemo(() => {
@@ -929,18 +897,7 @@ const Dashboard = () => {
           )}
           
           <div className="tz-filter-btn" style={{ position: 'relative' }}>
-            <select 
-              value={dateRange} 
-              onChange={e => {
-                const val = e.target.value;
-                setDateRange(val);
-                if (val === 'custom') {
-                  setShowCustomDatePicker(true);
-                } else {
-                  setShowCustomDatePicker(false);
-                }
-              }}
-            >
+            <select value={dateRange} onChange={e => setDateRange(e.target.value)}>
               <option value="all">Date range</option>
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
@@ -951,127 +908,23 @@ const Dashboard = () => {
           </div>
 
           {dateRange === 'custom' && (
-            <div style={{ position: 'relative' }}>
-              <button 
-                className="tz-filter-btn" 
-                onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  cursor: 'pointer', 
-                  background: showCustomDatePicker ? 'var(--bg-active)' : 'var(--bg-secondary)', 
-                  borderColor: showCustomDatePicker ? 'var(--accent)' : 'var(--border)',
-                  padding: '5px 12px'
-                }}
-              >
-                <Calendar size={13} style={{ color: 'var(--accent)' }} />
-                <span style={{ fontWeight: 600, fontSize: '0.72rem', color: 'var(--text-primary)' }}>
-                  {customStartDate && customEndDate 
-                    ? `${customStartDate} to ${customEndDate}` 
-                    : customStartDate 
-                      ? `From ${customStartDate}` 
-                      : 'Select Calendar Range'}
-                </span>
-              </button>
-
-              {/* Custom Interactive Visual Calendar Popover */}
-              {showCustomDatePicker && (
-                <div style={{
-                  position: 'absolute',
-                  top: '38px',
-                  left: '0',
-                  zIndex: 1000,
-                  width: '280px',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 'var(--r-lg)',
-                  padding: '14px',
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-                  backdropFilter: 'blur(16px)'
-                }}>
-                  {/* Calendar Header: Month + Prev/Next */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <button 
-                      onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() - 1, 1))}
-                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 8px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}
-                    >
-                      &lt;
-                    </button>
-                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                      {format(pickerMonth, 'MMMM yyyy')}
-                    </span>
-                    <button 
-                      onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1, 1))}
-                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 8px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}
-                    >
-                      &gt;
-                    </button>
-                  </div>
-
-                  {/* Days Header */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
-                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-                  </div>
-
-                  {/* Grid of Days */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' }}>
-                    {daysInMonthGrid.map((dayStr, idx) => {
-                      if (!dayStr) return <div key={idx} />;
-                      const dayNum = parseInt(dayStr.split('-')[2], 10);
-                      const isStart = dayStr === customStartDate;
-                      const isEnd = dayStr === customEndDate;
-                      const inRange = customStartDate && customEndDate && dayStr > customStartDate && dayStr < customEndDate;
-
-                      let bg = 'transparent';
-                      let color = 'var(--text-primary)';
-                      if (isStart || isEnd) {
-                        bg = 'var(--accent)';
-                        color = '#ffffff';
-                      } else if (inRange) {
-                        bg = 'var(--accent-soft)';
-                        color = 'var(--accent)';
-                      }
-
-                      return (
-                        <button
-                          key={dayStr}
-                          onClick={() => handleDateSelectInPicker(dayStr)}
-                          style={{
-                            background: bg,
-                            color,
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '6px 0',
-                            fontSize: '0.7rem',
-                            fontWeight: (isStart || isEnd) ? 700 : 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {dayNum}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Footer controls */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '8px' }}>
-                    <button 
-                      onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }} 
-                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.68rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Clear dates
-                    </button>
-                    <button 
-                      onClick={() => setShowCustomDatePicker(false)} 
-                      style={{ background: 'var(--accent)', border: 'none', borderRadius: '4px', padding: '4px 12px', color: '#fff', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div className="tz-filter-btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px' }}>
+              <Calendar size={13} style={{ color: 'var(--accent)' }} />
+              <input 
+                type="date" 
+                value={customStartDate} 
+                onChange={e => setCustomStartDate(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                title="Start Date"
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 600 }}>to</span>
+              <input 
+                type="date" 
+                value={customEndDate} 
+                onChange={e => setCustomEndDate(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                title="End Date"
+              />
             </div>
           )}
 
@@ -1083,6 +936,10 @@ const Dashboard = () => {
               ))}
             </select>
           </div>
+          
+          <button className="tz-filter-btn" onClick={() => setShowAiChat(true)} style={{ background: 'var(--accent-soft)', borderColor: 'var(--border-accent)', color: 'var(--text-primary)', fontWeight: 600 }}>
+            <Brain size={13} style={{ color: 'var(--accent)' }} /> DTG AI
+          </button>
         </div>
       </div>
       
@@ -1205,12 +1062,12 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Column 2: Performance Metrics (Winrate, Consistency, Avg Win/Loss) */}
+        {/* Column 2: Performance Metrics (Winrate, Consistency, Avg Win/Loss, Profit Factor) */}
         <div className="tz-grid-column-flex">
-          {/* Top Card: Winrate & Consistency */}
-          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '135px' }}>
+          {/* Top Row: Winrate & Consistency */}
+          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '120px' }}>
             {/* Trade Winrate */}
-            <div className="tz-card tz-hoverable" style={{ flex: 1.3, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
+            <div className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trade Winrate</div>
@@ -1248,14 +1105,14 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Bottom Card: Full-width Dedicated AVG WIN / LOSS Card */}
-          <div className="tz-card" style={{ flex: 1.1, minHeight: '135px', justifyContent: 'space-between', padding: '16px' }}>
-            <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {/* Full-width Dedicated AVG WIN / LOSS Card */}
+          <div className="tz-card" style={{ flex: 1.1, minHeight: '130px', justifyContent: 'space-between', padding: '16px' }}>
+            <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               <span>AVG WIN / LOSS</span>
               <BarChart2 size={14} style={{ opacity: 0.6 }} />
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'center', margin: '2px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'center', margin: '4px 0' }}>
               <div style={{ background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', borderRadius: 'var(--r-lg)', padding: '8px 12px' }}>
                 <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG WIN</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
@@ -1278,42 +1135,79 @@ const Dashboard = () => {
               </strong>
             </div>
           </div>
+
+          {/* Profit Factor Card */}
+          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Profit Factor</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
+                {stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}
+              </div>
+            </div>
+            
+            <div className="tz-pf-bars-container" style={{ margin: '6px 0' }}>
+              {[...Array(28)].map((_, idx) => {
+                const isWin = idx < pfBars.green;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="tz-pf-stats" style={{ paddingTop: '4px', marginTop: '4px' }}>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total profit</span>
+                <span style={{ color: 'var(--profit)', fontWeight: 700 }}>
+                  +{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total loss</span>
+                <span style={{ color: 'var(--loss)', fontWeight: 700 }}>
+                  -{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Column 3: SCORE & Total Trades / Profit Factor */}
+        {/* Column 3: SCORE & Total Trades */}
         <div className="tz-grid-column-flex">
-          {/* Top Card: SCORE */}
-          <div className="tz-card" style={{ flex: 1.3, minHeight: '135px' }}>
-            <div className="tz-card-header" style={{ marginBottom: '4px' }}>
+          {/* SCORE Card (Moved to Top) */}
+          <div className="tz-card" style={{ flex: 1.4 }}>
+            <div className="tz-card-header" style={{ marginBottom: '6px' }}>
               <div className="tz-card-title">
                 <Brain size={14} /> SCORE
               </div>
             </div>
             <div className="tz-radar-container">
               {filteredTrades.length > 0 ? (
-                <ResponsiveContainer width="100%" height={130}>
-                  <RadarChart cx="50%" cy="50%" outerRadius="66%" data={radarData}>
+                <ResponsiveContainer width="100%" height={140}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
                     <PolarGrid stroke="var(--border-mid)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 7 }} />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 7.5 }} />
                     <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
                   </RadarChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
                   Log trades to view score
                 </div>
               )}
               
-              <div className="tz-score-display" style={{ marginTop: '0px' }}>
-                <div className="tz-score-label" style={{ fontSize: '0.62rem' }}>YOUR SCORE</div>
-                <div className="tz-score-value" style={{ fontSize: '1.3rem', margin: '1px 0' }}>{scoreValue}</div>
+              <div className="tz-score-display" style={{ marginTop: '2px' }}>
+                <div className="tz-score-label">YOUR SCORE</div>
+                <div className="tz-score-value" style={{ fontSize: '1.4rem' }}>{scoreValue}</div>
                 
-                <div className="tz-score-bar-wrapper" style={{ marginTop: '2px' }}>
+                <div className="tz-score-bar-wrapper" style={{ marginTop: '4px' }}>
                   <div className="tz-score-bar-gradient" />
                   <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
                 </div>
                 
-                <div className="tz-score-bar-ticks" style={{ fontSize: '0.6rem' }}>
+                <div className="tz-score-bar-ticks">
                   <span>0</span>
                   <span>20</span>
                   <span>40</span>
@@ -1325,74 +1219,50 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Bottom Card: Total Trades & Profit Factor */}
-          <div className="tz-card" style={{ flex: 1.1, minHeight: '135px', justifyContent: 'space-between', padding: '14px 16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', height: '100%' }}>
-              {/* Total Trades */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Trades</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
-                    {stats.totalTrades}
-                  </div>
+          {/* Total Trades */}
+          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Trades</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
+                {stats.totalTrades}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '8px' }}>
+              {/* Winning Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--profit)', marginRight: '6px' }} />
+                  Winning
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.wins / stats.totalTrades) * 100 : 0}%`, background: 'var(--profit)' }} />
                 </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
-                  <div className="tz-outcome-row">
-                    <span className="tz-outcome-label" style={{ fontSize: '0.64rem' }}>
-                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--profit)', marginRight: '4px' }} />
-                      Winning
-                    </span>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.68rem' }}>{stats.wins}</span>
-                  </div>
-                  <div className="tz-outcome-row">
-                    <span className="tz-outcome-label" style={{ fontSize: '0.64rem' }}>
-                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--text-muted)', marginRight: '4px' }} />
-                      Breakeven
-                    </span>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.68rem' }}>{breakevenTradesCount}</span>
-                  </div>
-                  <div className="tz-outcome-row">
-                    <span className="tz-outcome-label" style={{ fontSize: '0.64rem' }}>
-                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--loss)', marginRight: '4px' }} />
-                      Losing
-                    </span>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.68rem' }}>{stats.losses}</span>
-                  </div>
+                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.wins}</span>
+              </div>
+              
+              {/* Breakeven Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', marginRight: '6px' }} />
+                  Breakeven
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (breakevenTradesCount / stats.totalTrades) * 100 : 0}%`, background: 'var(--text-muted)' }} />
                 </div>
+                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{breakevenTradesCount}</span>
               </div>
 
-              {/* Profit Factor */}
-              <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Profit Factor</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
-                    {stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}
-                  </div>
+              {/* Losing Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--loss)', marginRight: '6px' }} />
+                  Losing
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%`, background: 'var(--loss)' }} />
                 </div>
-
-                <div className="tz-pf-bars-container" style={{ margin: '4px 0', height: '16px' }}>
-                  {[...Array(18)].map((_, idx) => {
-                    const isWin = idx < Math.round((pfBars.green / 28) * 18);
-                    return (
-                      <div 
-                        key={idx} 
-                        className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
-                      />
-                    );
-                  })}
-                </div>
-
-                <div style={{ fontSize: '0.64rem', display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Profit</span>
-                    <span style={{ color: 'var(--profit)', fontWeight: 700 }}>+{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(1) : '0'}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Loss</span>
-                    <span style={{ color: 'var(--loss)', fontWeight: 700 }}>-{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(1) : '0'}%</span>
-                  </div>
-                </div>
+                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.losses}</span>
               </div>
             </div>
           </div>
@@ -1961,9 +1831,8 @@ const Header = ({ onMenuToggle }) => {
   return (
     <header className="header">
       <div className="header-breadcrumb">
-        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Toggle menu" title="Toggle Navigation Menu">
-          <Menu size={15} />
-          <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Menu</span>
+        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
+          <Menu size={18} />
         </button>
         <span>{accountName || 'Trading Journal'}</span>
         <span className="header-sep">&gt;</span>
