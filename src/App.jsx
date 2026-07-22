@@ -8,7 +8,7 @@ import {
   Leaf, Compass, SunDim, Check, Palette,
   MessageSquare, Wifi, Send, Newspaper, FileText, Shield,
   Trophy, Wallet, Menu, X, Sparkles, Paintbrush, Layers, Cpu, Grid, Droplet, Square,
-  ListTodo, Filter, Database as DatabaseIcon
+  ListTodo, Filter, Database as DatabaseIcon, PieChart
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -36,6 +36,7 @@ import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
 import Mondays from './pages/Mondays';
 import TradingRules from './pages/TradingRules';
+import AssetAllocation from './pages/AssetAllocation';
 import { ai as aiApi, publicApi, accounts as accountsApi, rules as rulesApi, news as newsApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
@@ -1574,6 +1575,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/news',          icon: <Newspaper size={16}/>,       label: 'News Feed' },
     { path: '/achievements',  icon: <Trophy size={16}/>,          label: 'Achievements' },
     { path: '/analytics',     icon: <BarChart2 size={16}/>,       label: 'Analytics' },
+    { path: '/asset-allocation', icon: <PieChart size={16}/>,     label: 'Asset Allocation' },
     { path: '/psychology',    icon: <Brain size={16}/>,           label: 'Psychology' },
     { path: '/stoic',         icon: <Shield size={16}/>,          label: 'Stoic Mindset' },
     { path: '/ai-coach',      icon: <MessageSquare size={16}/>,   label: 'AI Coach' },
@@ -1585,7 +1587,7 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
   ];
 
   const allowedPaths = user?.isGuest
-    ? ['/dashboard', '/journal', '/calendar', '/analytics']
+    ? ['/dashboard', '/journal', '/calendar', '/analytics', '/asset-allocation']
     : null;
 
   const filteredNav = allowedPaths
@@ -1770,7 +1772,7 @@ const Header = ({ onMenuToggle }) => {
     '/': 'Landing Page', '/dashboard': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
     '/mondays': "Monday's",
     '/news': 'News Feed', '/stoic': 'Stoic Mindset',
-    '/analytics': 'Analytics', '/psychology': 'Psychology',
+    '/analytics': 'Analytics', '/asset-allocation': 'Asset Allocation', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
     '/tradingview': 'TradingView Analysis', '/ai-coach': 'AI Coach',
     '/mt5-connect': 'MT5 Connect',
@@ -2095,6 +2097,7 @@ function AppContent() {
                 <Route path="/journal" element={<Journal />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/asset-allocation" element={<AssetAllocation />} />
               </>
             ) : (
               <>
@@ -2105,6 +2108,7 @@ function AppContent() {
                 <Route path="/news" element={<News />} />
                 <Route path="/stoic" element={<Stoic />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/asset-allocation" element={<AssetAllocation />} />
                 <Route path="/psychology" element={<Emotions />} />
                 <Route path="/ai-coach" element={<AiCoach />} />
                 <Route path="/tradingview" element={<TradingViewPage />} />
