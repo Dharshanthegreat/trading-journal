@@ -1237,8 +1237,8 @@ const Dashboard = () => {
                       <td style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
                         {t.exitTime || t.exit_time ? format(new Date(t.exitTime || t.exit_time), 'MM/dd/yyyy') : (t.entryTime || t.entry_time ? format(new Date(t.entryTime || t.entry_time), 'MM/dd/yyyy') : '—')}
                       </td>
-                      <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`} style={{ fontWeight: 700, textAlign: 'right' }}>
-                        {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}
+                      <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`} style={{ fontWeight: 700, textAlign: 'right', fontFamily: 'JetBrains Mono' }}>
+                        {t.pnl >= 0 ? '+' : '-'}${Math.abs(t.pnl).toFixed(2)}
                       </td>
                     </tr>
                   ))}

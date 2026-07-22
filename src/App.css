@@ -1840,9 +1840,9 @@ body.theme-minimal .chart-card-setup {
 /* Top Dashboard Columns Grid */
 .tz-dashboard-grid-top {
   display: grid;
-  grid-template-columns: 2.4fr 1.3fr 1.3fr;
-  gap: var(--s5);
-  margin-bottom: var(--s5);
+  grid-template-columns: 2.2fr 1.4fr 1.4fr;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 1024px) {
@@ -1854,7 +1854,7 @@ body.theme-minimal .chart-card-setup {
 .tz-grid-column-flex {
   display: flex;
   flex-direction: column;
-  gap: var(--s5);
+  gap: 20px;
 }
 
 .tz-balance-card {
@@ -2008,9 +2008,9 @@ body.theme-minimal .chart-card-setup {
 /* Bottom Grid Layout */
 .tz-dashboard-grid-bottom {
   display: grid;
-  grid-template-columns: 1.25fr 0.85fr 1fr;
-  gap: var(--s5);
-  margin-top: var(--s2);
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 20px;
+  margin-top: 6px;
 }
 
 @media (max-width: 992px) {
