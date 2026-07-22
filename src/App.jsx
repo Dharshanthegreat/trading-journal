@@ -1961,8 +1961,9 @@ const Header = ({ onMenuToggle }) => {
   return (
     <header className="header">
       <div className="header-breadcrumb">
-        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
-          <Menu size={18} />
+        <button className="mobile-menu-toggle" onClick={onMenuToggle} aria-label="Toggle menu" title="Toggle Navigation Menu">
+          <Menu size={15} />
+          <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Menu</span>
         </button>
         <span>{accountName || 'Trading Journal'}</span>
         <span className="header-sep">&gt;</span>
