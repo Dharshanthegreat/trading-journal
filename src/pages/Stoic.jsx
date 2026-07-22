@@ -15,6 +15,7 @@ const Stoic = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [pastReframes, setPastReframes] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [error, setError] = useState(null);
 
   // Fetch quotes and history on mount
   useEffect(() => {
