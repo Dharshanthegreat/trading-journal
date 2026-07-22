@@ -3,15 +3,14 @@ import db from '../db.js';
 
 const router = Router();
 
-// ─── Get All Accounts ──────────────────────────────────
+// ─── Get All Active Accounts ──────────────────────────
 router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
-    const accountsResult = await db.query('SELECT * FROM accounts WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+    const accountsResult = await db.query('SELECT * FROM accounts WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC', [userId]);
 
     // Compute live stats for each account
     const accountsWithStats = await Promise.all(accountsResult.rows.map(async (acc) => {
-      // ... same stats calculation ...
       const tradesResult = await db.query('SELECT pnl, exit_time, entry_time, created_at FROM trades WHERE user_id = $1 AND account_id = $2', [userId, acc.id]);
       const totalPnL = tradesResult.rows.reduce((accPnL, t) => accPnL + (t.pnl || 0), 0);
       const tradesCount = tradesResult.rows.length;
@@ -103,21 +102,54 @@ router.get('/', async (req, res) => {
 router.get('/deleted', async (req, res) => {
   try {
     const userId = req.user.id;
-    // Assuming we add a deleted_at column to accounts
-    // If not, we can catch error. But localDb handles this primarily anyway.
-    const result = await db.query('SELECT * FROM accounts WHERE user_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC', [userId]);
-    res.json(result.rows.map(acc => ({
+    const accountsResult = await db.query('SELECT * FROM accounts WHERE user_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC', [userId]);
+
+    const accountsWithStats = await Promise.all(accountsResult.rows.map(async (acc) => {
+      const tradesResult = await db.query('SELECT pnl, exit_time, entry_time, created_at FROM trades WHERE user_id = $1 AND account_id = $2', [userId, acc.id]);
+      const totalPnL = tradesResult.rows.reduce((accPnL, t) => accPnL + (t.pnl || 0), 0);
+      const tradesCount = tradesResult.rows.length;
+      const currentBalance = (acc.balance || 0) + totalPnL;
+
+      const tradingDaysSet = new Set();
+      tradesResult.rows.forEach(t => {
+        const tradeTime = t.exit_time || t.entry_time || t.created_at;
+        if (tradeTime) {
+          const dayStr = new Date(tradeTime).toISOString().split('T')[0];
+          tradingDaysSet.add(dayStr);
+        }
+      });
+      const tradingDays = tradingDaysSet.size;
+
+      const profitTarget = acc.profit_target || 0;
+      const maxLossLimit = acc.max_loss_limit || 0;
+      const consistencyRule = acc.consistency_rule || 0;
+
+      return {
         id: acc.id,
         accountName: acc.account_name,
         accountType: acc.account_type,
         startingBalance: acc.balance,
+        currentBalance,
+        totalPnL,
+        tradesCount,
+        tradingDays,
         currency: acc.currency || 'USD',
         status: acc.status || 'Active',
+        notionLink: acc.notion_link || '',
+        notes: acc.notes || '',
+        profitTarget,
+        maxLossLimit,
+        consistencyRule,
+        useTrailingDrawdown: acc.use_trailing_drawdown || false,
         createdAt: acc.created_at,
         deletedAt: acc.deleted_at
-    })));
+      };
+    }));
+
+    res.json(accountsWithStats);
   } catch (err) {
-    res.json([]); // Fail silently if column doesn't exist
+    console.error('Get deleted accounts error:', err);
+    res.json([]);
   }
 });
 

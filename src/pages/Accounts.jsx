@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { accounts as accountsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays, Coins, ExternalLink, FileText, Edit2, Target, Crosshair
+  Plus, X, Wallet, Award, Activity, AlertTriangle, Trash2, Globe, CalendarDays,
+  Coins, ExternalLink, FileText, Edit2, Target, Crosshair, RotateCcw, ShieldAlert, CheckCircle, Info
 } from 'lucide-react';
 
 const Accounts = () => {
@@ -19,12 +20,17 @@ const Accounts = () => {
       return dateStr;
     }
   };
+
   const [accounts, setAccounts] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [deletedAccounts, setDeletedAccounts] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Passed' | 'Failed' | 'Deleted'
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [hardDeleteConfirm, setHardDeleteConfirm] = useState(null);
+  const [restoreConfirm, setRestoreConfirm] = useState(null);
+
   const [formData, setFormData] = useState({
     accountName: '',
     accountType: 'Simulated',
@@ -35,8 +41,10 @@ const Accounts = () => {
     notes: '',
     profitTarget: '',
     maxLossLimit: '',
-    consistencyRule: ''
+    consistencyRule: '',
+    useTrailingDrawdown: false
   });
+
   const [editingLinkId, setEditingLinkId] = useState(null);
   const [tempLink, setTempLink] = useState('');
   const [editingNotesId, setEditingNotesId] = useState(null);
@@ -51,7 +59,15 @@ const Accounts = () => {
     try {
       setLoading(true);
       const data = await accountsApi.list();
-      setAccounts(data);
+      setAccounts(Array.isArray(data) ? data : []);
+
+      // Fetch soft-deleted accounts
+      try {
+        const deletedData = await accountsApi.getDeleted();
+        setDeletedAccounts(Array.isArray(deletedData) ? deletedData : []);
+      } catch (delErr) {
+        console.error('Failed to load deleted accounts:', delErr);
+      }
     } catch (err) {
       console.error('Failed to load accounts:', err);
     } finally {
@@ -216,6 +232,7 @@ const Accounts = () => {
     }
   };
 
+  // Soft Delete Action (Move to Deleted Accounts)
   const handleDelete = async (id) => {
     try {
       await accountsApi.delete(id);
@@ -226,26 +243,53 @@ const Accounts = () => {
     }
   };
 
+  // Restore Account Action
+  const handleRestore = async (id) => {
+    try {
+      await accountsApi.restore(id);
+      setRestoreConfirm(null);
+      fetchAccounts();
+    } catch (err) {
+      console.error('Failed to restore account:', err);
+    }
+  };
+
+  // Hard Delete Action (Permanently Erase)
+  const handleHardDelete = async (id) => {
+    try {
+      await accountsApi.hardDelete(id);
+      setHardDeleteConfirm(null);
+      fetchAccounts();
+    } catch (err) {
+      console.error('Failed to permanently delete account:', err);
+    }
+  };
+
   const accountsArray = Array.isArray(accounts) ? accounts : [];
+  const deletedArray = Array.isArray(deletedAccounts) ? deletedAccounts : [];
+
   const totalBalance = accountsArray
     .filter(a => a.status === 'Active')
     .reduce((acc, curr) => acc + (curr.currentBalance || 0), 0);
+
   const activeCount = accountsArray.filter(a => a.status === 'Active').length;
   const passedCount = accountsArray.filter(a => a.status === 'Passed').length;
   const failedCount = accountsArray.filter(a => a.status === 'Failed').length;
+  const deletedCount = deletedArray.length;
   
-  const filteredAccounts = accountsArray.filter(a => {
+  const filteredAccounts = statusFilter === 'Deleted' ? deletedArray : accountsArray.filter(a => {
     if (statusFilter === 'All') return true;
     return a.status === statusFilter;
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)', paddingBottom: '60px' }}>
+      
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <div className="page-title">Trading Accounts</div>
-          <div className="page-subtitle">Manage and track performance across multiple challenges and brokerage accounts</div>
+          <div className="page-subtitle">Manage and track performance across multiple challenges, live brokerage accounts, and archived records</div>
         </div>
         <button 
           className="btn btn-primary" 
@@ -261,7 +305,8 @@ const Accounts = () => {
               notes: '',
               profitTarget: '',
               maxLossLimit: '',
-              consistencyRule: ''
+              consistencyRule: '',
+              useTrailingDrawdown: false
             });
             setShowForm(true);
           }} 
@@ -350,15 +395,15 @@ const Accounts = () => {
         </div>
       </div>
 
-      {/* Filter Tabs / Option Pills */}
+      {/* Filter Tabs / Option Pills Bar (Including Deleted Accounts) */}
       <div style={{ 
         display: 'flex', 
         gap: '8px', 
         alignItems: 'center', 
-        background: 'rgba(255,255,255,0.02)', 
+        background: 'var(--bg-secondary)', 
         padding: '5px', 
         borderRadius: 'var(--r-lg)', 
-        border: '1px solid var(--border-mid)',
+        border: '1px solid var(--border)',
         width: 'fit-content',
         alignSelf: 'flex-start',
         marginTop: '-2px'
@@ -367,7 +412,8 @@ const Accounts = () => {
           { label: 'All Accounts', value: 'All', count: accountsArray.length, color: 'var(--text-primary)', activeBg: 'rgba(255,255,255,0.08)' },
           { label: 'Active', value: 'Active', count: activeCount, color: 'var(--accent)', activeBg: 'rgba(59, 130, 246, 0.1)' },
           { label: 'Passed', value: 'Passed', count: passedCount, color: 'var(--profit)', activeBg: 'rgba(52, 211, 153, 0.1)' },
-          { label: 'Failed', value: 'Failed', count: failedCount, color: 'var(--loss)', activeBg: 'rgba(248, 113, 113, 0.1)' }
+          { label: 'Failed', value: 'Failed', count: failedCount, color: 'var(--loss)', activeBg: 'rgba(248, 113, 113, 0.1)' },
+          { label: 'Deleted Accounts', value: 'Deleted', count: deletedCount, color: 'var(--warn)', activeBg: 'rgba(245, 158, 11, 0.12)' },
         ].map(tab => {
           const isActive = statusFilter === tab.value;
           return (
@@ -399,7 +445,7 @@ const Accounts = () => {
                 padding: '1px 5px', 
                 borderRadius: '6px',
                 color: isActive ? tab.color : 'var(--text-tertiary)',
-                border: '1px solid var(--border-mid)'
+                border: '1px solid var(--border)'
               }}>
                 {tab.count}
               </span>
@@ -408,6 +454,16 @@ const Accounts = () => {
         })}
       </div>
 
+      {/* Deleted Accounts Archive Info Banner */}
+      {statusFilter === 'Deleted' && (
+        <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--warn-border)', background: 'var(--warn-soft)', display: 'flex', alignItems: 'center', gap: 'var(--s3)', fontSize: '0.78rem', color: 'var(--warn)' }}>
+          <Info size={18} style={{ flexShrink: 0 }} />
+          <span>
+            <strong>Deleted Accounts Archive:</strong> All account configurations, balances, targets, notes, and trade logs are safely stored here. You can restore any deleted account back to your active list at any time.
+          </span>
+        </div>
+      )}
+
       {/* Accounts List / Empty States */}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s4)' }}>
@@ -415,7 +471,7 @@ const Accounts = () => {
             <div key={i} className="glass skeleton" style={{ height: '220px', borderRadius: 'var(--r-lg)' }} />
           ))}
         </div>
-      ) : accountsArray.length === 0 ? (
+      ) : statusFilter !== 'Deleted' && accountsArray.length === 0 ? (
         <div className="glass empty-state" style={{ padding: 'var(--s12)' }}>
           <Wallet size={32} style={{ opacity: 0.3 }} />
           <div className="empty-title">No trading accounts logged</div>
@@ -425,7 +481,9 @@ const Accounts = () => {
         <div className="glass empty-state" style={{ padding: 'var(--s12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--s3)' }}>
           <Wallet size={32} style={{ opacity: 0.3 }} />
           <div className="empty-title">No {statusFilter.toLowerCase()} accounts found</div>
-          <div className="empty-desc">There are no trading accounts with status "{statusFilter}" currently logged.</div>
+          <div className="empty-desc">
+            {statusFilter === 'Deleted' ? 'No accounts have been deleted yet.' : `There are no trading accounts with status "${statusFilter}" currently logged.`}
+          </div>
           <button className="btn btn-sm btn-ghost" onClick={() => setStatusFilter('All')}>Clear Filter</button>
         </div>
       ) : (
@@ -486,66 +544,66 @@ const Accounts = () => {
             .btn-action-round:hover .trash-icon {
               color: var(--loss) !important;
             }
-            .notion-link-premium {
-              display: flex !important;
-              align-items: center !important;
-              justify-content: space-between !important;
-              padding: 8px 12px !important;
-              background: var(--surface-glass) !important;
-              border-radius: 10px !important;
-              border: 1px solid var(--border) !important;
-              transition: all 0.2s ease !important;
-            }
-            .notion-link-premium:hover {
-              background: var(--surface-glass-h) !important;
-              border-color: var(--border-mid) !important;
-            }
-            .notes-preview-premium {
-              background: var(--surface-glass) !important;
-              border-radius: 10px !important;
-              padding: 10px 12px !important;
-              border: 1px solid var(--border) !important;
-              display: flex !important;
-              flex-direction: column !important;
-              gap: 6px !important;
-            }
           `}</style>
           {filteredAccounts.map(acc => {
             const isProfit = (acc.totalPnL || 0) >= 0;
+            const isDeletedView = statusFilter === 'Deleted' || Boolean(acc.deletedAt);
+
             return (
               <div
                 key={acc.id}
                 className="account-card-premium"
                 style={{
-                  borderColor: acc.status === 'Passed'
-                    ? 'var(--profit)'
-                    : (acc.status === 'Failed' ? 'var(--loss)' : 'var(--border)'),
-                  boxShadow: acc.status === 'Passed'
-                    ? '0 6px 20px var(--profit-soft)'
-                    : (acc.status === 'Failed' ? '0 6px 20px var(--loss-soft)' : 'var(--shadow-sm)')
+                  borderColor: isDeletedView
+                    ? 'var(--warn-border)'
+                    : (acc.status === 'Passed' ? 'var(--profit)' : (acc.status === 'Failed' ? 'var(--loss)' : 'var(--border)')),
+                  opacity: isDeletedView ? 0.95 : 1
                 }}
               >
-                {/* Action buttons (Edit & Delete) */}
+                {/* Action buttons */}
                 <div style={{
                   position: 'absolute', top: 16, right: 16,
                   display: 'flex', gap: '8px', alignItems: 'center'
                 }}>
-                  <button
-                    onClick={() => startEditAccount(acc)}
-                    className="btn-action-round"
-                    title="Edit Account"
-                    disabled={user?.isGuest}
-                  >
-                    <Edit2 size={12} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm(acc.id)}
-                    className="btn-action-round"
-                    title="Delete Account"
-                    disabled={user?.isGuest}
-                  >
-                    <Trash2 size={12} className="trash-icon" />
-                  </button>
+                  {isDeletedView ? (
+                    <>
+                      <button
+                        onClick={() => setRestoreConfirm(acc)}
+                        className="btn-action-round"
+                        title="Restore Account"
+                        style={{ color: 'var(--profit)' }}
+                      >
+                        <RotateCcw size={13} />
+                      </button>
+                      <button
+                        onClick={() => setHardDeleteConfirm(acc)}
+                        className="btn-action-round"
+                        title="Permanently Erase"
+                        style={{ color: 'var(--loss)' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => startEditAccount(acc)}
+                        className="btn-action-round"
+                        title="Edit Account"
+                        disabled={user?.isGuest}
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(acc)}
+                        className="btn-action-round"
+                        title="Delete Account"
+                        disabled={user?.isGuest}
+                      >
+                        <Trash2 size={12} className="trash-icon" />
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Account Details Header */}
@@ -555,13 +613,16 @@ const Accounts = () => {
                       {acc.accountName}
                     </h3>
                     <span className={`badge ${
-                      acc.status === 'Passed' ? 'badge-profit' : (acc.status === 'Failed' ? 'badge-loss' : 'badge-accent')
+                      isDeletedView ? 'badge-warn' : (acc.status === 'Passed' ? 'badge-profit' : (acc.status === 'Failed' ? 'badge-loss' : 'badge-accent'))
                     }`} style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      {acc.status}
+                      {isDeletedView ? 'DELETED' : acc.status}
                     </span>
                   </div>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
                     Type: <strong style={{ color: 'var(--text-secondary)' }}>{acc.accountType}</strong>
+                    {acc.deletedAt && (
+                      <span style={{ marginLeft: 8, color: 'var(--warn)' }}>• Deleted {formatDate(acc.deletedAt)}</span>
+                    )}
                   </span>
                 </div>
 
@@ -609,522 +670,103 @@ const Accounts = () => {
                   )}
                 </div>
 
-                {/* Consistency + Progress Bar (only when challenge fields are set) */}
-                {(acc.profitTarget > 0 || acc.maxLossLimit > 0) && (() => {
-                  const mll = acc.mllValue || ((acc.startingBalance || 0) - (acc.maxLossLimit || 0));
-                  const target = acc.targetValue || ((acc.startingBalance || 0) + (acc.profitTarget || 0));
-                  const current = acc.currentBalance || 0;
-                  const range = target - mll;
-                  const progressPct = range > 0 ? Math.max(0, Math.min(100, ((current - mll) / range) * 100)) : 0;
-                  const startPct = range > 0 ? Math.max(0, Math.min(100, (((acc.startingBalance || 0) - mll) / range) * 100)) : 0;
-
-                  const isHigher = current >= (acc.startingBalance || 0);
-                  const fillLeft = isHigher ? startPct : progressPct;
-                  const fillWidth = isHigher ? (progressPct - startPct) : (startPct - progressPct);
-                  const fillBackground = isHigher
-                    ? 'linear-gradient(90deg, var(--profit-border), var(--profit))'
-                    : 'linear-gradient(90deg, var(--loss), var(--loss-border))';
-
-                  return (
-                    <div style={{ display: 'grid', gridTemplateColumns: acc.consistencyRule > 0 ? '1.1fr 2.9fr' : '1fr', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '14px' }}>
-                      {/* Consistency */}
-                      {acc.consistencyRule > 0 && (
-                        <div className="account-stat-block-new" style={{ justifyContent: 'center' }}>
-                          <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Consistency</span>
-                          <div style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.consistencyScore || 0) <= acc.consistencyRule ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
-                            {(acc.consistencyScore || 0).toFixed(1)}%
-                          </div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                            Limit: {acc.consistencyRule}%
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Progress Bar Container */}
-                      <div className="progress-bar-container-custom" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.015)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '12px 14px' }}>
-                        {/* START Label */}
-                        <div style={{ position: 'relative', marginBottom: '4px', height: '12px' }}>
-                          <span style={{
-                            position: 'absolute',
-                            left: `${startPct}%`,
-                            transform: 'translateX(-50%)',
-                            fontSize: '0.52rem',
-                            color: 'var(--text-muted)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.6px',
-                            fontWeight: 700
-                          }}>START</span>
-                        </div>
-
-                        {/* Progress Track */}
-                        <div style={{
-                          position: 'relative',
-                          height: '6px',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          borderRadius: '4px',
-                        }}>
-                          {/* Glow fill bar */}
-                          <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: `${fillLeft}%`,
-                            width: `${fillWidth}%`,
-                            height: '100%',
-                            background: fillBackground,
-                            borderRadius: '4px',
-                            transition: 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                            boxShadow: `0 0 8px ${isHigher ? 'rgba(52, 211, 153, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
-                          }} />
-
-                          {/* Start Tick */}
-                          <div style={{
-                            position: 'absolute',
-                            top: '-2px',
-                            left: `${startPct}%`,
-                            transform: 'translateX(-50%)',
-                            width: '2px',
-                            height: '10px',
-                            background: 'rgba(255, 255, 255, 0.25)',
-                            borderRadius: '1px'
-                          }} />
-
-                          {/* Current position marker */}
-                          <div style={{
-                            position: 'absolute',
-                            top: '-3px',
-                            left: `${progressPct}%`,
-                            transform: 'translateX(-50%)',
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            background: isHigher ? 'var(--profit)' : 'var(--loss)',
-                            border: '2.5px solid #0f1115',
-                            boxShadow: `0 0 6px ${isHigher ? 'rgba(52, 211, 153, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
-                            transition: 'left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)'
-                          }} />
-                        </div>
-
-                        {/* Limits labels */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--loss)' }}>
-                              ${Math.round(mll).toLocaleString()}
-                            </div>
-                            <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>
-                              {acc.useTrailingDrawdown ? 'MLL (Trailing)' : 'MLL'}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--profit)' }}>
-                              ${Math.round(target).toLocaleString()}
-                            </div>
-                            <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginTop: '1px' }}>TARGET</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Performance Metrics Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trades Synced</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{acc.tradesCount || 0} trades</span>
+                {/* Account Notes Display */}
+                {acc.notes && (
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>Account Notes</div>
+                    {acc.notes}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end' }}>
-                    <span style={{ color: 'var(--text-tertiary)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Return</span>
-                    <span style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)', fontSize: '0.78rem' }}>
-                      {isProfit ? '+' : ''}${(acc.totalPnL || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
+                )}
 
-                {/* View Details Button */}
-                <button
-                  onClick={() => navigate(`/dashboard?accountId=${acc.id}`)}
-                  className="btn btn-sm btn-primary"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    borderRadius: '10px',
-                    marginTop: '4px',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <Activity size={12} /> View Details on Dashboard
-                </button>
-
-                {/* Notion Page Link Integration */}
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '10px' }}>
-                  {acc.notionLink ? (
-                    <div className="notion-link-premium">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1 }}>
-                        <Globe size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                        <a href={acc.notionLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={acc.notionLink}>
-                          Notion Playbook
-                        </a>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                        <button onClick={() => fetchPlaybook(acc)} className="btn btn-sm btn-ghost" style={{ padding: '2px 6px', fontSize: '0.62rem', height: '22px', display: 'flex', alignItems: 'center', gap: '2px', borderRadius: '6px' }}>
-                          <FileText size={10} /> AI Audit
-                        </button>
-                        <button onClick={() => startEditLink(acc)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center' }} title="Edit Link">
-                          ✏️
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {editingLinkId === acc.id ? (
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <input
-                            className="input"
-                            style={{ fontSize: '0.7rem', padding: '2px 6px', height: '24px', flex: 1 }}
-                            placeholder="Paste Notion link..."
-                            value={tempLink}
-                            onChange={e => setTempLink(e.target.value)}
-                          />
-                          <button onClick={() => saveLink(acc.id)} className="btn btn-primary" style={{ padding: '0 8px', fontSize: '0.65rem', height: '24px' }}>
-                            Save
-                          </button>
-                          <button onClick={() => setEditingLinkId(null)} className="btn btn-ghost" style={{ padding: '0 6px', fontSize: '0.65rem', height: '24px' }}>
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => { setEditingLinkId(acc.id); setTempLink(''); }} className="btn btn-sm btn-ghost" style={{ width: '100%', padding: '6px', fontSize: '0.68rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '10px' }}>
-                          + Link Notion Workspace
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Account Notes Integration */}
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '10px' }}>
-                  {editingNotesId === acc.id ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <textarea
-                        className="input"
-                        style={{ fontSize: '0.7rem', padding: '8px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', background: 'var(--bg-tertiary)', border: '1px solid var(--border-strong)', borderRadius: '10px', width: '100%' }}
-                        placeholder="Add account rules, notes, strategy..."
-                        value={tempNotes}
-                        onChange={e => setTempNotes(e.target.value)}
-                      />
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
-                        <button onClick={() => saveNotes(acc.id)} className="btn btn-primary" style={{ padding: '2px 10px', fontSize: '0.65rem', height: '24px' }}>
-                          Save
-                        </button>
-                        <button onClick={() => setEditingNotesId(null)} className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '0.65rem', height: '24px' }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : acc.notes ? (
-                    <div className="notes-preview-premium">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Account Notes</span>
-                        <button 
-                          onClick={() => startEditNotes(acc)} 
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: 0.7, padding: 0, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center' }} 
-                          title="Edit Notes"
-                        >
-                          ✏️
-                        </button>
-                      </div>
-                      <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                        {acc.notes}
-                      </p>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => startEditNotes(acc)} 
-                      className="btn btn-sm btn-ghost" 
-                      style={{ width: '100%', padding: '6px', fontSize: '0.68rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '10px' }}
+                {/* Restore / Permanently Delete Action Bar for Deleted View */}
+                {isDeletedView && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => handleRestore(acc.id)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'var(--profit)', borderColor: 'var(--profit)', fontSize: '0.74rem' }}
                     >
-                      + Add Account Notes
+                      <RotateCcw size={13} /> Restore Account
                     </button>
-                  )}
-                </div>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => setHardDeleteConfirm(acc)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.74rem' }}
+                    >
+                      <Trash2 size={13} /> Delete Permanently
+                    </button>
+                  </div>
+                )}
 
                 {/* Footer Metadata */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-tertiary)', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <Coins size={11} style={{ opacity: 0.6 }} /> {acc.currency}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <CalendarDays size={11} style={{ opacity: 0.6 }} /> {formatDate(acc.createdAt)}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', paddingTop: '4px' }}>
+                  <span>Currency: <strong>{acc.currency || 'USD'}</strong></span>
+                  <span>Created {formatDate(acc.createdAt)}</span>
                 </div>
+
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Add/Edit Account Modal */}
-      {showForm && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseForm()}>
-          <div className="glass-deep modal-panel" style={{ width: 420 }}>
-            <div className="modal-header">
-              <div className="modal-title">{editingAccount ? 'Edit Account Profile' : 'Create Account Profile'}</div>
-              <button className="modal-close" onClick={handleCloseForm}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
-                <div className="form-field">
-                  <label className="form-label">Account Name *</label>
-                  <input
-                    required
-                    className="input"
-                    placeholder="e.g. Apex $50k Challenge #1"
-                    value={formData.accountName}
-                    onChange={e => setFormData({ ...formData, accountName: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="form-label">Account Type</label>
-                  <select
-                    className="input"
-                    value={formData.accountType}
-                    onChange={e => setFormData({ ...formData, accountType: e.target.value })}
-                  >
-                    <option value="Simulated">Simulation Challenge</option>
-                    <option value="Live">Live Brokerage</option>
-                    <option value="Prop Challenge">Prop Firm Evaluation</option>
-                    <option value="Prop Funded">Prop Firm Funded Account</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label className="form-label">Starting Balance ($)</label>
-                  <input
-                    className="input"
-                    type="number"
-                    placeholder="50000"
-                    value={formData.balance}
-                    onChange={e => setFormData({ ...formData, balance: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="form-label">Notion Page Link (Optional)</label>
-                  <input
-                    className="input"
-                    type="url"
-                    placeholder="e.g. https://notion.so/my-playbook"
-                    value={formData.notionLink}
-                    onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="form-label">Notes (Optional)</label>
-                  <textarea
-                    className="input"
-                    style={{ minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.78rem' }}
-                    placeholder="e.g. Trading plan, rules, daily limits..."
-                    value={formData.notes}
-                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  />
-                </div>
-
-                {/* Challenge / Prop Firm Settings */}
-                {formData.accountType !== 'Live' && (
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s2)' }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--s3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Target size={13} style={{ color: 'var(--accent)' }} />
-                      Challenge / Prop Firm Rules
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s3)' }}>
-                      <div className="form-field">
-                        <label className="form-label">Profit Target ($)</label>
-                        <input
-                          className="input"
-                          type="number"
-                          placeholder="e.g. 1250"
-                          value={formData.profitTarget}
-                          onChange={e => setFormData({ ...formData, profitTarget: e.target.value })}
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label className="form-label">Max Loss Limit ($)</label>
-                        <input
-                          className="input"
-                          type="number"
-                          placeholder="e.g. 1500"
-                          value={formData.maxLossLimit}
-                          onChange={e => setFormData({ ...formData, maxLossLimit: e.target.value })}
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label className="form-label">Consistency (%)</label>
-                        <input
-                          className="input"
-                          type="number"
-                          placeholder="e.g. 30"
-                          value={formData.consistencyRule}
-                          onChange={e => setFormData({ ...formData, consistencyRule: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', marginBottom: '4px' }}>
-                      <input
-                        type="checkbox"
-                        id="useTrailingDrawdown"
-                        checked={formData.useTrailingDrawdown || false}
-                        onChange={e => setFormData({ ...formData, useTrailingDrawdown: e.target.checked })}
-                        style={{
-                          width: '14px',
-                          height: '14px',
-                          accentColor: 'var(--accent)',
-                          cursor: 'pointer',
-                          margin: 0
-                        }}
-                      />
-                      <label htmlFor="useTrailingDrawdown" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}>
-                        Use Trailing Drawdown (Apex/prop-firm style dynamic MLL floor)
-                      </label>
-                    </div>
-
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Leave blank or 0 to disable. Profit Target = profit needed to pass. Max Loss = max drawdown from starting balance (trails dynamically if Trailing Drawdown is checked). Consistency = max % of total profit from a single day.
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                  <div className="form-field">
-                    <label className="form-label">Currency</label>
-                    <select
-                      className="input"
-                      value={formData.currency}
-                      onChange={e => setFormData({ ...formData, currency: e.target.value })}
-                    >
-                      {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-field">
-                    <label className="form-label">Status</label>
-                    <select
-                      className="input"
-                      value={formData.status}
-                      onChange={e => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Passed">Passed</option>
-                      <option value="Failed">Failed</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {error && (
-                <div style={{
-                  padding: '8px 12px', borderRadius: 'var(--r-md)',
-                  background: 'var(--loss-soft)', border: '1px solid var(--loss-border)',
-                  fontSize: '0.72rem', color: 'var(--loss)', marginTop: 'var(--s4)'
-                }}>
-                  {error}
-                </div>
-              )}
-
-              <div className="form-actions" style={{ marginTop: 'var(--s6)' }}>
-                <button type="button" className="btn btn-ghost" onClick={handleCloseForm}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? (editingAccount ? 'Saving...' : 'Creating...') : (editingAccount ? 'Save Changes' : '+ Create Account')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
+      {/* ═══ SOFT DELETE CONFIRMATION MODAL ═══ */}
       {deleteConfirm && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeleteConfirm(null)}>
-          <div className="glass-deep modal-panel" style={{ width: 380, padding: 'var(--s8)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-title" style={{ marginBottom: 'var(--s4)' }}>Delete Account?</div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 'var(--s6)', lineHeight: 1.7 }}>
-              This will permanently remove this account profile from your dashboard. Associated trades will be untagged but not deleted.
+        <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="modal-panel glass" style={{ maxWidth: 440, padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warn)', marginBottom: 'var(--s3)' }}>
+              <AlertTriangle size={24} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Move to Deleted Accounts?</h3>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
+              Move <strong>"{deleteConfirm.accountName}"</strong> to the Deleted Accounts tab? All account balances, targets, notes, and trade logs will be safely archived and can be restored at any time.
             </p>
-            <div style={{ display: 'flex', gap: 'var(--s3)', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirm)}>Delete</button>
+              <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirm.id)}>Move to Deleted</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Notion Playbook Modal */}
-      {activePlaybook && (
-        <div className="modal-overlay" onClick={() => setActivePlaybook(null)}>
-          <div className="glass-deep modal-panel" style={{ width: 500, maxWidth: '90vw', padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ marginBottom: 'var(--s4)' }}>
-              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Globe size={18} style={{ color: 'var(--accent)' }} />
-                <span>AI Playbook Audit</span>
-              </div>
-              <button className="modal-close" onClick={() => setActivePlaybook(null)}><X size={18} /></button>
+      {/* ═══ RESTORE CONFIRMATION MODAL ═══ */}
+      {restoreConfirm && (
+        <div className="modal-overlay" onClick={() => setRestoreConfirm(null)}>
+          <div className="modal-panel glass" style={{ maxWidth: 440, padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--profit)', marginBottom: 'var(--s3)' }}>
+              <RotateCcw size={24} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Restore Account?</h3>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 2px 0', color: 'var(--text-primary)' }}>
-                  Account: {activePlaybook.title}
-                </h4>
-                {activePlaybook.url && (
-                  <a href={activePlaybook.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                    {activePlaybook.url.length > 50 ? `${activePlaybook.url.substring(0, 50)}...` : activePlaybook.url} <ExternalLink size={10} />
-                  </a>
-                )}
-              </div>
-
-              <div style={{
-                minHeight: '160px',
-                background: 'rgba(0,0,0,0.15)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--r-md)',
-                padding: 'var(--s4)',
-                fontSize: '0.78rem',
-                lineHeight: 1.6,
-                color: 'var(--text-secondary)',
-                overflowY: 'auto',
-                maxHeight: '350px'
-              }}>
-                {loadingPlaybook ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '120px', gap: '10px' }}>
-                    <span className="spin-anim" style={{ display: 'inline-block', fontSize: '1.5rem' }}>⚡</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>AI Agent scraping & reading Notion page...</span>
-                  </div>
-                ) : playbookError ? (
-                  <div style={{ color: 'var(--loss)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ fontWeight: 700 }}>Extraction Failed</div>
-                    <div>{playbookError}</div>
-                  </div>
-                ) : (
-                  <div className="markdown-body" style={{ whiteSpace: 'pre-wrap' }}>
-                    {activePlaybook.summary}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--s5)' }}>
-              <button className="btn btn-ghost" onClick={() => setActivePlaybook(null)}>Close</button>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
+              Restore <strong>"{restoreConfirm.accountName}"</strong> back to your active accounts list with all stats and trade logs intact?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn btn-ghost" onClick={() => setRestoreConfirm(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ background: 'var(--profit)', borderColor: 'var(--profit)' }} onClick={() => handleRestore(restoreConfirm.id)}>Restore Account</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ═══ HARD DELETE CONFIRMATION MODAL ═══ */}
+      {hardDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setHardDeleteConfirm(null)}>
+          <div className="modal-panel glass" style={{ maxWidth: 440, padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--loss)', marginBottom: 'var(--s3)' }}>
+              <ShieldAlert size={24} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Permanently Delete Account?</h3>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
+              Permanently erase <strong>"{hardDeleteConfirm.accountName}"</strong>? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn btn-ghost" onClick={() => setHardDeleteConfirm(null)}>Cancel</button>
+              <button className="btn btn-danger" onClick={() => handleHardDelete(hardDeleteConfirm.id)}>Permanently Erase</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
