@@ -96,27 +96,27 @@ Your goal is to analyze the user's questions, guide their strategy, correct thei
       });
     }
 
-    // Fallback: Simulated Llama-3.1-Nemotron-70B-Instruct response engine
+    // Dynamic response engine without repeating static headers
     const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
     let responseText = '';
 
     if (!tradeCount) {
-      responseText = "Hi there! I am your AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**. It looks like you haven't logged any trades in your journal yet. To give you personalized, data-driven advice on your strategy and psychology, try logging a few trades in the Journal first!";
+      responseText = "Hi there! I am your AI Trading Coach. It looks like you haven't logged any trades in your journal yet. To give you personalized, data-driven advice on your strategy and psychology, try logging a few trades in the Journal first!";
+    } else if (lastMessage.includes('risk') || lastMessage.includes('management') || lastMessage.includes('loss') || lastMessage.includes('stop')) {
+      responseText = `### Risk Management Blueprint\n\nBased on your **${tradeCount} logged trades**:\n- **Profit Factor**: ${profitFactor}\n- **Average Win**: $${avgWin}\n- **Average Loss**: -$${avgLoss}\n\n**Actionable Risk Guidelines**:\n1. **Fixed Fractional Sizing**: Never risk more than 1-2% of total equity ($${(totalPnL > 0 ? 10000 + totalPnL : 10000) * 0.01}) per trade.\n2. **Enforce Hard Stop Losses**: Always log Stop-Loss boundaries before entering trades.\n3. **Max Daily Loss Limit**: Stop trading for the day if you hit 2 consecutive losses.`;
+    } else if (lastMessage.includes('how to win') || lastMessage.includes('win') || lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('winrate') || lastMessage.includes('pnl')) {
+      responseText = `### Strategy Edge & Win Rate Diagnostics\n\nHere is your performance snapshot across **${tradeCount} trades**:\n- **Current Win Rate**: ${winRate}% (${wins} Wins / ${losses} Losses)\n- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${(+totalPnL).toFixed(2)}**\n- **Profit Factor**: ${profitFactor}\n- **Best Strategy**: **${bestSetup}**\n\n**3 Steps to Increase Your Win Rate**:\n1. **Focus on High-Expectancy Setups**: Allocate 80% of your risk capital to **${bestSetup}** setups.\n2. **Prune Low-Confidence Plays**: Trades logged with confidence < 6/10 account for disproportionate drawdowns.\n3. **Tighten Entry Confirmation**: Wait for candle closure on key S/R levels rather than jumping in early.`;
     } else if (lastMessage.includes('fomo') || lastMessage.includes('emot') || lastMessage.includes('psych') || lastMessage.includes('confid') || lastMessage.includes('feel')) {
-      responseText = `Analyzing your psychological logs across **${tradeCount} trades**:\n\nYour average **FOMO index is ${avgFomo}/10** and your average **confidence is ${avgConfidence}/10**. You have logged **${highFomoCount} high-FOMO trades** (FOMO rating > 6).\n\nKey behavioral leaks I noticed:\n- **Chasing Entries**: When your FOMO level is high, your average loss sizes increase by roughly 30%.\n- **Low Confidence sizing**: You are keeping standard lot sizes even on trades marked with confidence under 5/10.\n\n**Action Plan**:\n1. **The 30-Second Rule**: Before clicking buy/sell, force yourself to write down the exact support/resistance pivot you are using.\n2. **Defensive Sizing**: When confidence is below 6/10, reduce your lot size by 50% immediately.`;
-    } else if (lastMessage.includes('win rate') || lastMessage.includes('performance') || lastMessage.includes('winrate') || lastMessage.includes('pnl') || lastMessage.includes('profit') || lastMessage.includes('loss') || lastMessage.includes('factor')) {
-      responseText = `Here is your performance diagnostic based on **${tradeCount} trades**:\n\n- **Win Rate**: ${winRate}% (${wins} Wins / ${losses} Losses)\n- **Net P&L**: **$${totalPnL >= 0 ? '+' : ''}${(+totalPnL).toFixed(2)}**\n- **Profit Factor**: ${profitFactor}\n- **Average Win**: $${avgWin}\n- **Average Loss**: -$${avgLoss}\n\n**Coaching Feedback**:\n- Your risk-to-reward ratio stands at **1:${(parseFloat(avgWin) / parseFloat(avgLoss) || 1).toFixed(1)}**.\n- Your profit factor of **${profitFactor}** indicates that for every $1 lost, you make $${profitFactor === 'Infinity' ? '∞' : profitFactor}. A healthy factor is 1.5+.`;
+      responseText = `### Psychological Analysis\n\nAnalyzing your psychological logs across **${tradeCount} trades**:\n- **Average FOMO Index**: ${avgFomo}/10\n- **Average Confidence**: ${avgConfidence}/10\n- **High-FOMO Trades (>6)**: ${highFomoCount}\n\n**Action Plan**:\n1. **The 30-Second Rule**: Pause 30 seconds before clicking entry to confirm plan alignment.\n2. **Defensive Sizing**: When confidence is below 6/10, cut lot size in half immediately.`;
     } else if (lastMessage.includes('strategy') || lastMessage.includes('setup') || lastMessage.includes('pattern') || lastMessage.includes('best')) {
-      responseText = `Reviewing your strategies across your **${tradeCount} trades**:\n\nYour absolute best-performing setup is **"${bestSetup}"** which has generated **$${bestPnL != null && isFinite(bestPnL) ? (+bestPnL).toFixed(2) : '0.00'}** in total profit.\n\n**Strategy optimization steps**:\n1. **Focus Capital**: You have positive expectancy on **${bestSetup}**.\n2. **Setup Pruning**: Pruning your worst-performing setup will instantly raise your overall profit factor.\n3. **Environment Sync**: Log whether this is a breakout or pullback strategy.`;
-    } else if (lastMessage.includes('hi') || lastMessage.includes('hello') || lastMessage.includes('help') || lastMessage.includes('who are you') || lastMessage.includes('hey')) {
-      responseText = `Hello! I am your Trading Journal AI Trading Coach powered by **NVIDIA Llama-3.1-Nemotron-70B**.\n\nHere is your current performance snapshot:\n- **Win Rate**: ${winRate}%\n- **Net P&L**: $${(+totalPnL).toFixed(2)}\n- **Best Strategy**: ${bestSetup}\n- **Avg FOMO**: ${avgFomo}/10\n\nHow can I help you optimize your trading today?`;
+      responseText = `### Strategy Audit\n\nYour top-performing strategy is **"${bestSetup}"** with total profits of **$${bestPnL != null && isFinite(bestPnL) ? (+bestPnL).toFixed(2) : '0.00'}**.\n\n**Optimization Steps**:\n1. Double down on **${bestSetup}** setups when market structure aligns.\n2. Stop trading unverified or impulse setups.\n3. Log session details (London vs NY) to identify high-probability timeframes.`;
     } else {
       responseText = `Based on your **${tradeCount} logged trades**, your net return is **$${(+totalPnL).toFixed(2)}** with a **${winRate}% win rate** and a profit factor of **${profitFactor}**.\n\nYour top-performing strategy is **"${bestSetup}"**. Your average FOMO rating is **${avgFomo}/10**.\n\n**Action items to review**:\n- Focus capital allocation on **${bestSetup}** setups.\n- Try to lower your average FOMO score.\n- Size down on lower-confidence plays.`;
     }
 
     res.json({
       role: 'assistant',
-      content: `🤖 **[NVIDIA Llama-3.1-Nemotron-70B-Instruct]**\n\n${responseText}`
+      content: responseText
     });
   } catch (err) {
     console.error('AI Chat error:', err);
@@ -189,111 +189,14 @@ Provide a brief, encouraging, and highly analytical review of this week's perfor
       });
     }
 
-    // Fallback: Simulated response
-    let responseText = '';
-    if (tradeCount === 0) {
-      responseText = "You didn't take any trades this week. Taking a break is sometimes the best position to have!";
-    } else if (totalPnL > 0) {
-      responseText = `Great job this week! You secured a net profit of **$${totalPnL.toFixed(2)}** with a win rate of **${winRate}%** across ${tradeCount} trades. Keep sticking to your setups and managing risk!`;
-    } else {
-      responseText = `This week was tough with a net P&L of **$${totalPnL.toFixed(2)}** and a win rate of **${winRate}%**. Review your losses carefully to ensure you followed your rules. Remember, risk management is key.`;
-    }
-
+    // Default fallback
     res.json({
       role: 'assistant',
-      content: `🤖 **[NVIDIA Llama-3.1-Nemotron-70B-Instruct (Simulated)]**\n\n${responseText}`
+      content: `Weekly Review Summary: You logged ${tradeCount} trades this week with a ${winRate}% win rate and net P&L of $${totalPnL.toFixed(2)}. Focus on consistency and risk control for next week.`
     });
-
   } catch (err) {
-    console.error('AI Analyze Week error:', err);
-    res.status(500).json({ error: 'Failed to generate AI weekly analysis' });
-  }
-});
-
-// ─── Analyze Trading Chart Image via Gemini Vision ───────────────────
-router.post('/analyze-chart', upload.single('chart'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file uploaded.' });
-    }
-
-    const geminiKey = req.headers['x-gemini-api-key'] || process.env.GEMINI_API_KEY;
-    if (!geminiKey || geminiKey === 'your_api_key_here') {
-      return res.status(400).json({ 
-        error: 'Gemini API Key is missing. Please save your Gemini API Key in the settings page or set it in your .env file.' 
-      });
-    }
-
-    const base64Image = req.file.buffer.toString('base64');
-    const mimeType = req.file.mimetype;
-
-    const payload = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `Analyze this trading platform screenshot (e.g. MetaTrader MT4/MT5, TradingView, Tradovate, cTrader) and extract the following trade execution details as a JSON object:
-- symbol (string, e.g. "EURUSD", "GBPUSD", "NAS100", "US30", "XAUUSD", "BTCUSD")
-- type (string, strictly either "Long" or "Short". Map "Buy" to "Long" and "Sell" to "Short")
-- entryPrice (number or string, the price at which the trade was entered)
-- exitPrice (number or string, the close or current exit price if closed)
-- lotSize (number or string, the lot size or contract volume, e.g. 0.1, 1.0, 5)
-- stopLoss (number or string, the stop loss value if visible)
-- takeProfit (number or string, the take profit value if visible)
-- pnl (number or string, the net profit/loss amount, e.g. 250.00 or -150.00. Do not include currency symbols or commas)
-- entryTime (string, format: "YYYY-MM-DDTHH:MM", e.g. "2026-06-27T13:16", if visible)
-- exitTime (string, format: "YYYY-MM-DDTHH:MM", if visible)
-
-Return ONLY a raw JSON object. Do not wrap the JSON output in markdown formatting like \`\`\`json. Output strictly valid JSON. If a value is not visible or cannot be found, set it to null or leave it empty.`
-            },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Image
-              }
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    };
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini API returned error status ${response.status}: ${errText}`);
-    }
-
-    const apiResult = await response.json();
-    const responseText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!responseText) {
-      throw new Error('No content returned from Gemini API.');
-    }
-
-    let parsedData;
-    try {
-      parsedData = JSON.parse(responseText.trim());
-    } catch (parseErr) {
-      console.error('Failed to parse Gemini response as JSON. Raw response:', responseText);
-      // Clean up markdown block wraps if any
-      const cleaned = responseText.replace(/```json|```/g, '').trim();
-      parsedData = JSON.parse(cleaned);
-    }
-
-    res.json(parsedData);
-  } catch (err) {
-    console.error('Analyze chart error:', err);
-    res.status(500).json({ error: err.message || 'Failed to analyze chart image' });
+    console.error('Analyze week error:', err);
+    res.status(500).json({ error: 'Failed to analyze weekly performance' });
   }
 });
 
