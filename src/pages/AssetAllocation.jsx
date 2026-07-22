@@ -388,13 +388,7 @@ const AssetAllocation = () => {
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(May 2026)</span>
               </div>
 
-              <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--profit)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                <ShieldCheck size={13} /> Performance Bonus +1 points
-              </span>
 
-              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: liveStats.tier.color, fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                <Award size={13} /> Tier {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}: Active
-              </span>
             </div>
 
             {/* Description Text with Working Information Link */}
@@ -492,7 +486,6 @@ const AssetAllocation = () => {
             { id: 'assets', label: 'Assets & timeframe' },
             { id: 'strategy', label: 'Strategy Analysis' },
             { id: 'correlation', label: 'Correlation' },
-            { id: 'signal', label: 'Signal Account' },
           ].map(t => (
             <button
               key={t.id}
@@ -844,19 +837,7 @@ const AssetAllocation = () => {
 
 
 
-            {/* Participating Tier Badge Card */}
-            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                Participating Rank Tier
-              </div>
-              <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '0.04em', color: dataMode === 'live' ? liveStats.tier.color : '#cbd5e1' }}>
-                {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 'var(--s2)', marginTop: 'var(--s1)' }}>
-                <span>Current position (temporary)</span>
-                <strong style={{ color: 'var(--accent)' }}>{dataMode === 'live' ? liveStats.tier.rank : '#2,788'}</strong>
-              </div>
-            </div>
+
 
           </div>
 
@@ -1049,42 +1030,7 @@ const AssetAllocation = () => {
         </div>
       )}
 
-      {/* ═══ TAB 5: SIGNAL ACCOUNT STATUS ═══ */}
-      {activeSubTab === 'signal' && (
-        <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
-              Signal Account Engine Status
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', fontSize: '0.78rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--s3)', background: 'var(--bg-tertiary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Engine Connection:</span>
-                <span style={{ color: 'var(--profit)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={14} /> ACTIVE (14ms latency)</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--s3)', background: 'var(--bg-tertiary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Risk Target Engine:</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>6.5% Target VaR</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--s3)', background: 'var(--bg-tertiary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Current Account Leverage:</span>
-                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>1:30 (Regulated)</span>
-              </div>
-            </div>
-          </div>
 
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
-              Auto-Mirroring & Audit
-            </h3>
-            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Your trade signals are automatically normalized by the Risk Management Engine to maintain a constant target volatility regardless of trade lot sizes.
-            </p>
-            <button className="btn btn-secondary" style={{ marginTop: 'var(--s4)', gap: 6, fontSize: '0.75rem' }}>
-              <RefreshCw size={14} /> Refresh Signal Sync State
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ═══ MODAL 1: INVEST IN INDEX MODAL ═══ */}
       <AnimatePresence>
