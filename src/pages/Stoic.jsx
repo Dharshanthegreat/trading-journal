@@ -5,9 +5,70 @@ import {
   Eye, Check, List, HelpCircle, ArrowRight, BookOpen, Clock
 } from 'lucide-react';
 
+const DEFAULT_STOIC_QUOTES = [
+  // Marcus Aurelius
+  { id: 1, author: 'Marcus Aurelius', quote: 'You have power over your mind - not outside events. Realize this, and you will find strength.', translation: 'You cannot control the market trend, but you have 100% control over your entry rules, lot sizing, and exit discipline.' },
+  { id: 2, author: 'Marcus Aurelius', quote: 'The impediment to action advances action. What stands in the way becomes the way.', translation: 'A stop-out is not a failure; it provides crucial market structure data to refine your next setup.' },
+  { id: 3, author: 'Marcus Aurelius', quote: 'Waste no more time arguing about what a good man should be. Be one.', translation: 'Stop searching for magic indicators. Focus on executing your pre-market playbook with absolute discipline.' },
+  { id: 4, author: 'Marcus Aurelius', quote: 'The happiness of your life depends upon the quality of your thoughts.', translation: 'Replace panic and FOMO with rational risk calculations. Calm thinking yields consistent performance.' },
+  { id: 5, author: 'Marcus Aurelius', quote: 'Everything we hear is an opinion, not a fact. Everything we see is a perspective, not the truth.', translation: 'Ignore Twitter and Discord trade calls. Base your decisions strictly on your validated edge.' },
+  { id: 6, author: 'Marcus Aurelius', quote: 'Accept the things to which fate binds you, and love the people with whom fate brings you together.', translation: 'Accept the risk of a trade before taking it. Once entered, let your stop-loss and take-profit run undisturbed.' },
+  { id: 7, author: 'Marcus Aurelius', quote: 'Very little is needed to make a happy life; it is all within yourself, in your way of thinking.', translation: 'Profitability does not require complex algorithms. Simplicity and risk control are all you need.' },
+  { id: 8, author: 'Marcus Aurelius', quote: 'When you arise in the morning think of what a privilege it is to be alive, to think, to enjoy.', translation: 'Approach each trading day with gratitude and patience, not desperate urgency to recover past losses.' },
+  { id: 9, author: 'Marcus Aurelius', quote: 'The best revenge is to be unlike him who performed the injury.', translation: 'Never revenge trade after a loss. Walk away from the terminal to protect your remaining capital.' },
+  { id: 10, author: 'Marcus Aurelius', quote: 'Reject your sense of injury and the injury itself disappears.', translation: 'A loss is just a business expense. Disconnect your self-worth from individual trade outcomes.' },
+  { id: 11, author: 'Marcus Aurelius', quote: 'If it is not right do not do it; if it is not true do not say it.', translation: 'If a setup does not meet 100% of your criteria, do not click buy or sell.' },
+  { id: 12, author: 'Marcus Aurelius', quote: 'Loss is nothing else but change, and change is Nature’s delight.', translation: 'Market volatility is natural. Adapt to shifting trends rather than fighting price direction.' },
+  { id: 13, author: 'Marcus Aurelius', quote: 'Look back over the past, with its changing empires that rose and fell, and you can foresee the future, too.', translation: 'Historical chart patterns repeat because human psychology remains unchanged. Trust backtested statistics.' },
+  { id: 14, author: 'Marcus Aurelius', quote: 'Never let the future disturb you. You will meet it, if you have to, with the same weapons of reason.', translation: 'Do not fear potential drawdowns. Your risk management rules will keep your account safe.' },
+  { id: 15, author: 'Marcus Aurelius', quote: 'Because a thing seems difficult for you, do not think it impossible for any man to accomplish.', translation: 'Professional risk mastery is achievable with consistent habit building and daily trade logging.' },
+
+  // Seneca
+  { id: 16, author: 'Seneca', quote: 'We suffer more often in imagination than in reality.', translation: 'Stop catastrophizing missed setups or temporary floating drawdowns. Focus on reality.' },
+  { id: 17, author: 'Seneca', quote: 'No man is more unhappy than he who never faces adversity, for he is not permitted to prove himself.', translation: 'Facing drawdowns with discipline builds the mental fortitude required for long-term trading mastery.' },
+  { id: 18, author: 'Seneca', quote: 'Difficulties strengthen the mind, as labor does the body.', translation: 'Overcoming bad streaks by following your rules builds true trader resilience.' },
+  { id: 19, author: 'Seneca', quote: 'If a man knows not to which port he sails, no wind is favorable.', translation: 'Define your target risk-to-reward ratio and daily stop limits before entering any trade.' },
+  { id: 20, author: 'Seneca', quote: 'True happiness is to enjoy the present, without anxious dependence upon the future.', translation: 'Focus on executing today\'s setup correctly, rather than obsessing over monthly account projections.' },
+  { id: 21, author: 'Seneca', quote: 'Associate with people who are likely to improve you.', translation: 'Surround yourself with disciplined traders who value risk management over flashy gain screenshots.' },
+  { id: 22, author: 'Seneca', quote: 'He who is brave is free.', translation: 'Courage in trading means pulling the trigger on valid setups without fear, and cutting losses without hesitation.' },
+  { id: 23, author: 'Seneca', quote: 'Luck is what happens when preparation meets opportunity.', translation: 'Winning trades are not luck; they are the result of pre-market prep meeting clean price action.' },
+  { id: 24, author: 'Seneca', quote: 'It is the power of the mind to be unconquerable.', translation: 'No market crash or spread spike can break your psychological calm if your risk size is small.' },
+  { id: 25, author: 'Seneca', quote: 'He suffers more than is necessary, who suffers before it is necessary.', translation: 'Do not stress about a trade while it is active. Let it touch stop loss or take profit automatically.' },
+  { id: 26, author: 'Seneca', quote: 'While we wait for life, life passes.', translation: 'Stop waiting for ideal market conditions. Execute valid setups systematically when rules align.' },
+  { id: 27, author: 'Seneca', quote: 'Most powerful is he who has himself in his own power.', translation: 'Self-mastery is the ultimate trading edge. Controlling your own actions matters more than predicting price.' },
+  { id: 28, author: 'Seneca', quote: 'Begin at once to live, and count each separate day as a separate life.', translation: 'Treat every trading day as a fresh start. Yesterday\'s win or loss has zero bearing on today\'s execution.' },
+  { id: 29, author: 'Seneca', quote: 'To be everywhere is to be nowhere.', translation: 'Focus on 1 or 2 core currency pairs or indices. Over-scanning multiple markets dilutes your edge.' },
+  { id: 30, author: 'Seneca', quote: 'Silence is a lesson learned through the many sufferings of life.', translation: 'Sit quietly on your hands during low-volume or choppy market sessions.' },
+
+  // Epictetus
+  { id: 31, author: 'Epictetus', quote: 'It\'s not what happens to you, but how you react to it that matters.', translation: 'A stop-out is neutral; your emotional reaction to it determines whether you stay profitable.' },
+  { id: 32, author: 'Epictetus', quote: 'Wealth consists not in having great possessions, but in having few wants.', translation: 'Wanting fewer trades leads to higher quality setups and fewer unnecessary losses.' },
+  { id: 33, author: 'Epictetus', quote: 'First say to yourself what you would be; and then do what you have to do.', translation: 'Decide to be a disciplined professional, then strictly obey your risk rules every day.' },
+  { id: 34, author: 'Epictetus', quote: 'Control your passions lest they take vengeance on you.', translation: 'Uncontrolled anger or greed leads to over-leveraging and account liquidation.' },
+  { id: 35, author: 'Epictetus', quote: 'No man is free who is not master of himself.', translation: 'You are only truly profitable when you govern your own actions rather than reacting impulsively to charts.' },
+  { id: 36, author: 'Epictetus', quote: 'The key is to keep company only with people who uplift you.', translation: 'Share your trading journey with accountable peers who push you toward rule adherence.' },
+  { id: 37, author: 'Epictetus', quote: 'If you want to improve, be content to be thought foolish and stupid.', translation: 'Do not care if others laugh at your conservative risk size or early exits. Long-term survival is what counts.' },
+  { id: 38, author: 'Epictetus', quote: 'Circumstances do not make the man, they only reveal him to himself.', translation: 'High-volatility news events reveal whether you possess real discipline or just luck.' },
+  { id: 39, author: 'Epictetus', quote: 'It is impossible for a man to learn what he thinks he already knows.', translation: 'Remain humble. Always study your trade logs to uncover hidden execution leaks.' },
+  { id: 40, author: 'Epictetus', quote: 'Only the educated are free.', translation: 'Deep knowledge of your specific market edge grants you freedom from trading anxiety.' },
+  { id: 41, author: 'Epictetus', quote: 'Make the best use of what is in your power, and take the rest as it happens.', translation: 'Manage your risk per trade, then let market probability unfold without interference.' },
+  { id: 42, author: 'Epictetus', quote: 'He is a wise man who does not grieve for the things which he has not, but rejoices for those which he has.', translation: 'Celebrate small, disciplined wins instead of regretting missed profit targets.' },
+  { id: 43, author: 'Epictetus', quote: 'Any person capable of angering you becomes your master.', translation: 'If a stop-out makes you angry, you let the market master you. Lower your lot size.' },
+  { id: 44, author: 'Epictetus', quote: 'Freedom is the only worthy goal in life. It is won by disregarding things that lie beyond our control.', translation: 'Disregard news noise and random wicks. Focus entirely on risk control.' },
+  { id: 45, author: 'Epictetus', quote: 'Know, first, who you are; and then adorn yourself accordingly.', translation: 'Understand your personality type (scalper, swing, day trader) and trade a strategy that fits your nature.' },
+
+  // Zeno & others
+  { id: 46, author: 'Zeno of Citium', quote: 'Man conquers the world by conquering himself.', translation: 'Mastering your impulses is the single requirement for sustainable trading success.' },
+  { id: 47, author: 'Zeno of Citium', quote: 'Steel your sensibilities, so that life shall hurt you as little as possible.', translation: 'Build mental immunity to drawdowns by keeping risk to 1% or less per trade.' },
+  { id: 48, author: 'Zeno of Citium', quote: 'Well-being is attained by little and little, and yet is no little thing.', translation: 'Compound small, consistent gains daily to build monumental trading capital over time.' },
+  { id: 49, author: 'Chrysippus', quote: 'The wise man lacks nothing, and yet needs everything; the fool needs nothing, and yet lacks everything.', translation: 'Experienced traders value process over outcome; novice traders gamble for quick cash.' },
+  { id: 50, author: 'Musonius Rufus', quote: 'If you accomplish something good with hard work, the labor passes quickly, but the good endures.', translation: 'The effort spent backtesting and journaling daily pays compounding dividends for your career.' },
+  { id: 51, author: 'Zeno of Citium', quote: 'We have two ears and one mouth so that we can listen twice as much as we speak.', translation: 'Listen to what price action is showing you, rather than telling the market where it should go.' }
+];
+
 const Stoic = () => {
   // Quotes
-  const [quotes, setQuotes] = useState([]);
+  const [quotes, setQuotes] = useState(DEFAULT_STOIC_QUOTES);
   const [activeQuoteIdx, setActiveQuoteIdx] = useState(0);
 
   // Dichotomy of Control Journal
@@ -47,10 +108,9 @@ const Stoic = () => {
           qList = await stoicApi.getQuotes();
         } catch (e) {}
 
-        setQuotes(qList);
-        if (qList.length > 0) {
-          setActiveQuoteIdx(Math.floor(Math.random() * qList.length));
-        }
+        const finalQuotes = (qList && qList.length > 0) ? qList : DEFAULT_STOIC_QUOTES;
+        setQuotes(finalQuotes);
+        setActiveQuoteIdx(Math.floor(Math.random() * finalQuotes.length));
 
         let remoteReframes = [];
         try {
