@@ -1106,31 +1106,31 @@ const Dashboard = () => {
           </div>
 
           {/* Full-width Dedicated AVG WIN / LOSS Card */}
-          <div className="tz-card" style={{ flex: 1.1, minHeight: '120px', justifyContent: 'space-between', padding: '14px 16px' }}>
-            <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div className="tz-card" style={{ flex: 1.1, minHeight: '130px', justifyContent: 'space-between', padding: '16px' }}>
+            <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               <span>AVG WIN / LOSS</span>
-              <BarChart2 size={13} style={{ opacity: 0.6 }} />
+              <BarChart2 size={14} style={{ opacity: 0.6 }} />
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', margin: '4px 0' }}>
-              <div style={{ background: 'rgba(52, 211, 153, 0.06)', border: '1px solid rgba(52, 211, 153, 0.15)', borderRadius: 'var(--r-md)', padding: '6px 10px' }}>
-                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>AVG WIN</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '1px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'center', margin: '4px 0' }}>
+              <div style={{ background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', borderRadius: 'var(--r-lg)', padding: '8px 12px' }}>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG WIN</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
                   {stats.avgWin > 0 ? '+$'+parseFloat(stats.avgWin).toFixed(2) : '$0.00'}
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(248, 113, 113, 0.06)', border: '1px solid rgba(248, 113, 113, 0.15)', borderRadius: 'var(--r-md)', padding: '6px 10px' }}>
-                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>AVG LOSS</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--loss)', marginTop: '1px' }}>
+              <div style={{ background: 'rgba(248, 113, 113, 0.08)', border: '1px solid rgba(248, 113, 113, 0.2)', borderRadius: 'var(--r-lg)', padding: '8px 12px' }}>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG LOSS</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--loss)', marginTop: '2px' }}>
                   {stats.avgLoss > 0 ? '-$'+parseFloat(stats.avgLoss).toFixed(2) : '$0.00'}
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.68rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '4px' }}>
               <span>Payoff Ratio (Avg Win / Avg Loss)</span>
-              <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
+              <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.75rem' }}>
                 {stats.avgLoss > 0 ? (stats.avgWin / stats.avgLoss).toFixed(2) + 'x' : '—'}
               </strong>
             </div>
