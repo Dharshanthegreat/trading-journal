@@ -842,53 +842,7 @@ const AssetAllocation = () => {
               </div>
             </div>
 
-            {/* DARWIN Index Creation Card with Working Video Play Modal Trigger */}
-            <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>DARWIN Index Creation</span>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>(3/12)</span>
-              </div>
 
-              {/* Video Thumbnail Box */}
-              <div
-                onClick={() => setShowVideoModal(true)}
-                style={{
-                  height: 120,
-                  background: 'linear-gradient(135deg, #1e1b4b, #0f172a)',
-                  borderRadius: 'var(--r-md)',
-                  border: '1px solid var(--border-mid)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  cursor: 'pointer',
-                  overflow: 'hidden'
-                }}
-              >
-                <div style={{
-                  width: 42, height: 42, borderRadius: '50%',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  backdropFilter: 'blur(4px)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1px solid rgba(255, 255, 255, 0.4)',
-                  boxShadow: '0 0 20px rgba(0, 0, 0, 0.5)',
-                  transition: 'transform var(--t-fast)'
-                }}>
-                  <Play size={20} style={{ color: '#ffffff', marginLeft: 3 }} />
-                </div>
-              </div>
-
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Do you have questions?</span>
-                <button
-                  type="button"
-                  onClick={() => setShowHelpModal(true)}
-                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}
-                >
-                  Zero Help <ExternalLink size={10} />
-                </button>
-              </div>
-            </div>
 
             {/* Participating Tier Badge Card */}
             <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
