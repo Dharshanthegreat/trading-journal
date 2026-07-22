@@ -1041,47 +1041,45 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Column 2: Most Traded Assets & Trade Winrate */}
+        {/* Column 2: Performance Metrics (Winrate, Profit Factor, Avg Win/Loss, Consistency) */}
         <div className="tz-grid-column-flex">
           {/* Avg Win/Loss & Consistency */}
-          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '136px' }}>
+          <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '125px' }}>
             {/* Avg win/loss trade */}
-            <div className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '16px' }}>
-              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '1.4' }}>
-                <div>
-                  AVG<br/>WIN/LOSS
-                </div>
-                <BarChart2 size={14} style={{ opacity: 0.6, marginTop: '2px' }} />
+            <div className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
+              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '1.4' }}>
+                <div>AVG WIN/LOSS</div>
+                <BarChart2 size={13} style={{ opacity: 0.6 }} />
               </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+              <div style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', lineHeight: '1.3' }}>
                 <div>{stats.avgWin > 0 ? '$'+parseFloat(stats.avgWin).toFixed(2) : '$0.00'} /</div>
                 <div>{stats.avgLoss > 0 ? '$'+parseFloat(stats.avgLoss).toFixed(2) : '$0.00'}</div>
               </div>
             </div>
 
             {/* Consistency */}
-            <div className="tz-card tz-hoverable" style={{ flex: 0.9, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '16px' }}>
-              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div className="tz-card tz-hoverable" style={{ flex: 0.9, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
+              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <span>CONSISTENCY</span>
-                <Shield size={14} style={{ opacity: 0.6 }} />
+                <Shield size={13} style={{ opacity: 0.6 }} />
               </div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
                 {Math.round(consistencyScore)}%
               </div>
             </div>
           </div>
 
           {/* Trade Winrate */}
-          <div className="tz-card" style={{ flex: 1, minHeight: '136px', justifyContent: 'space-between' }}>
+          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trade Winrate</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trade Winrate</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
                   {stats.winRate.toFixed(0)}%
                 </div>
               </div>
               <div>
-                <svg width="48" height="48" viewBox="0 0 32 32">
+                <svg width="44" height="44" viewBox="0 0 32 32">
                   <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
                   <circle cx="16" cy="16" r="12" fill="none"
                           stroke="var(--profit)"
@@ -1093,25 +1091,105 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '8px' }}>
               <div>Losing trades <strong style={{ color: 'var(--text-secondary)' }}>{stats.losses}</strong></div>
               <div>Winning trades <strong style={{ color: 'var(--profit)' }}>{stats.wins}</strong></div>
             </div>
           </div>
+
+          {/* Profit Factor Card */}
+          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Profit Factor</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
+                {stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}
+              </div>
+            </div>
+            
+            <div className="tz-pf-bars-container" style={{ margin: '6px 0' }}>
+              {[...Array(28)].map((_, idx) => {
+                const isWin = idx < pfBars.green;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="tz-pf-stats" style={{ paddingTop: '4px', marginTop: '4px' }}>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total profit</span>
+                <span style={{ color: 'var(--profit)', fontWeight: 700 }}>
+                  +{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total loss</span>
+                <span style={{ color: 'var(--loss)', fontWeight: 700 }}>
+                  -{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Column 3: Total Trades & Profit Factor */}
+        {/* Column 3: SCORE & Total Trades */}
         <div className="tz-grid-column-flex">
+          {/* SCORE Card (Moved to Top) */}
+          <div className="tz-card" style={{ flex: 1.4 }}>
+            <div className="tz-card-header" style={{ marginBottom: '6px' }}>
+              <div className="tz-card-title">
+                <Brain size={14} /> SCORE
+              </div>
+            </div>
+            <div className="tz-radar-container">
+              {filteredTrades.length > 0 ? (
+                <ResponsiveContainer width="100%" height={140}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
+                    <PolarGrid stroke="var(--border-mid)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 7.5 }} />
+                    <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                  Log trades to view score
+                </div>
+              )}
+              
+              <div className="tz-score-display" style={{ marginTop: '2px' }}>
+                <div className="tz-score-label">YOUR SCORE</div>
+                <div className="tz-score-value" style={{ fontSize: '1.4rem' }}>{scoreValue}</div>
+                
+                <div className="tz-score-bar-wrapper" style={{ marginTop: '4px' }}>
+                  <div className="tz-score-bar-gradient" />
+                  <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
+                </div>
+                
+                <div className="tz-score-bar-ticks">
+                  <span>0</span>
+                  <span>20</span>
+                  <span>40</span>
+                  <span>60</span>
+                  <span>80</span>
+                  <span>100</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Total Trades */}
-          <div className="tz-card" style={{ flex: 1, minHeight: '136px', justifyContent: 'space-between' }}>
+          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Trades</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Trades</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
                 {stats.totalTrades}
               </div>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '8px' }}>
               {/* Winning Row */}
               <div className="tz-outcome-row">
                 <span className="tz-outcome-label">
@@ -1146,44 +1224,6 @@ const Dashboard = () => {
                   <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%`, background: 'var(--loss)' }} />
                 </div>
                 <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.losses}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Profit Factor Card */}
-          <div className="tz-card" style={{ flex: 1, minHeight: '136px', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Profit Factor</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
-                {stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}
-              </div>
-            </div>
-            
-            {/* Proportional vertical bars visualization */}
-            <div className="tz-pf-bars-container">
-              {[...Array(28)].map((_, idx) => {
-                const isWin = idx < pfBars.green;
-                return (
-                  <div 
-                    key={idx} 
-                    className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
-                  />
-                );
-              })}
-            </div>
-            
-            <div className="tz-pf-stats">
-              <div className="tz-pf-stat-row">
-                <span style={{ color: 'var(--text-muted)' }}>Total profit</span>
-                <span style={{ color: 'var(--profit)', fontWeight: 700 }}>
-                  +{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(2) : '0.00'}%
-                </span>
-              </div>
-              <div className="tz-pf-stat-row">
-                <span style={{ color: 'var(--text-muted)' }}>Total loss</span>
-                <span style={{ color: 'var(--loss)', fontWeight: 700 }}>
-                  -{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(2) : '0.00'}%
-                </span>
               </div>
             </div>
           </div>
@@ -1249,49 +1289,6 @@ const Dashboard = () => {
                 No recent trades
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Score */}
-        <div className="tz-card">
-          <div className="tz-card-header">
-            <div className="tz-card-title">
-              <Brain size={14} /> SCORE
-            </div>
-          </div>
-          <div className="tz-radar-container">
-            {filteredTrades.length > 0 ? (
-              <ResponsiveContainer width="100%" height={160}>
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="var(--border-mid)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 8 }} />
-                  <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                Log trades to view score
-              </div>
-            )}
-            
-            <div className="tz-score-display">
-              <div className="tz-score-label">YOUR SCORE</div>
-              <div className="tz-score-value">{scoreValue}</div>
-              
-              <div className="tz-score-bar-wrapper">
-                <div className="tz-score-bar-gradient" />
-                <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
-              </div>
-              
-              <div className="tz-score-bar-ticks">
-                <span>0</span>
-                <span>20</span>
-                <span>40</span>
-                <span>60</span>
-                <span>80</span>
-                <span>100</span>
-              </div>
-            </div>
           </div>
         </div>
 
