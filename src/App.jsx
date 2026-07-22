@@ -1093,23 +1093,12 @@ const Dashboard = () => {
       </div>
       
       {/* Resync Bar */}
-      {!user?.isGuest ? (
-        <div className="tz-resync-bar">
-          <div>
-            Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
-            <span className="tz-resync-link" onClick={() => fetchTrades({ limit: 200 })}>Resync</span>
-          </div>
-          <button className="tz-btn-primary" onClick={() => fetchTrades({ limit: 200 })}>
-            <Zap size={14} /> Start my day
-          </button>
+      <div className="tz-resync-bar" style={{ justifyContent: 'flex-start' }}>
+        <div>
+          Last import: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
+          <span className="tz-resync-link" onClick={() => fetchTrades({ limit: 200 })}>Resync</span>
         </div>
-      ) : (
-        <div className="tz-resync-bar" style={{ justifyContent: 'flex-start' }}>
-          <div>
-            Last updated: {trades.length > 0 && (trades[0].entryTime || trades[0].entry_time) ? format(new Date(trades[0].entryTime || trades[0].entry_time), 'MMM d, yyyy hh:mm a') : format(new Date(), 'MMM d, yyyy hh:mm a')}
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Weekly Performance Row (New Template) */}
       <div className="tz-card" style={{ padding: '16px', marginBottom: 'var(--s5)' }}>
