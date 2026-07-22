@@ -16,15 +16,6 @@ const Stoic = () => {
   const [pastReframes, setPastReframes] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
-  // DTG Stoic AI Chat
-  const [messages, setMessages] = useState([]);
-  const [aiInput, setAiInput] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const chatBottomRef = useRef(null);
-
-  // Error handling
-  const [error, setError] = useState(null);
-
   // Fetch quotes and history on mount
   useEffect(() => {
     const init = async () => {
@@ -41,14 +32,6 @@ const Stoic = () => {
 
         const history = await stoicApi.getReframes();
         setPastReframes(history);
-
-        // Initial welcome message
-        setMessages([
-          {
-            role: 'assistant',
-            content: `Welcome to the **Stoic Mindset Sanctuary**. I am your **Stoic Trading Mentor** powered by **NVIDIA Llama-3.1-Nemotron-70B**.\n\nHere we apply the wisdom of Marcus Aurelius, Seneca, and Epictetus to trading discipline. How are you feeling today? Share your trading frustrations, or ask for guidance on dealing with drawdowns, fear, or revenge trading.`
-          }
-        ]);
       } catch (err) {
         console.error(err);
         setError('Failed to load Stoic resources. Please make sure the server is active.');
@@ -112,39 +95,6 @@ const Stoic = () => {
       setError('Failed to delete reframe.');
     }
   };
-
-  // Stoic AI Mentor Chat Send
-  const handleSendMessage = async (e) => {
-    if (e) e.preventDefault();
-    if (!aiInput.trim() || aiLoading) return;
-
-    const userMsg = { role: 'user', content: aiInput };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setAiInput('');
-    setAiLoading(true);
-
-    try {
-      const response = await stoicApi.chat(updatedMessages);
-      setMessages((prev) => [...prev, response]);
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: '❌ **NVIDIA AI Stoic Channel Interrupted**\n\nFailed to retrieve Stoic counsel. Check server logs and environment variables.'
-        }
-      ]);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  // Scroll bottom of AI chat log
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, aiLoading]);
 
   // Clean Markdown formatter
   const parseBoldText = (text) => {
@@ -282,16 +232,16 @@ const Stoic = () => {
         </div>
       )}
 
-      {/* 2. BOTTOM MAIN: Two-Column Dashboard */}
+      {/* 2. BOTTOM MAIN: Full-Width Dichotomy Journal */}
       <div style={{
         flex: 1,
         display: 'grid',
-        gridTemplateColumns: '1.2fr 380px',
+        gridTemplateColumns: '1fr',
         gap: 'var(--s4)',
         alignItems: 'stretch',
         overflow: 'hidden'
       }}>
-        {/* LEFT PANEL: Dichotomy Control Journal */}
+        {/* Dichotomy Control Journal */}
         <div className="glass anim-fade-up delay-2" style={{
           display: 'flex',
           flexDirection: 'column',
@@ -493,196 +443,6 @@ const Stoic = () => {
             </div>
 
           </div>
-        </div>
-
-        {/* RIGHT PANEL: Stoic Mentor AI Chat */}
-        <div className="glass anim-fade-up delay-3" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: 'var(--r-lg)',
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border)'
-        }}>
-          {/* Header */}
-          <div style={{
-            padding: 'var(--s3) var(--s4)',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: 'var(--bg-tertiary)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: 'var(--accent)', display: 'flex' }}><Brain size={16} /></span>
-              <div>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>NVIDIA Stoic Mentor</span>
-                <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Llama-3.1-Nemotron-70B-Instruct</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Chat Messages Log */}
-          <div style={{
-            flex: 1,
-            padding: 'var(--s4)',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--s4)',
-            background: 'var(--bg-primary)'
-          }}>
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className="anim-fade-in"
-                style={{
-                  alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '90%',
-                  display: 'flex',
-                  gap: '8px',
-                  flexDirection: msg.role === 'user' ? 'row-reverse' : 'row'
-                }}
-              >
-                {/* Avatar */}
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: 'var(--r-sm)',
-                  background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent), #a78bfa)' : 'var(--bg-elevated)',
-                  border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  {msg.role === 'user' ? (
-                    <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#fff' }}>U</span>
-                  ) : (
-                    <span style={{ color: 'var(--accent)', display: 'flex' }}><Cpu size={10} /></span>
-                  )}
-                </div>
-
-                {/* Msg Content Box */}
-                <div style={{
-                  background: msg.role === 'user' ? 'var(--accent-soft)' : 'var(--bg-secondary)',
-                  border: '1px solid',
-                  borderColor: msg.role === 'user' ? 'var(--border-accent)' : 'var(--border)',
-                  borderRadius: msg.role === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0',
-                  padding: '8px 12px',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.75rem',
-                  boxShadow: 'var(--shadow-xs)',
-                  lineHeight: '1.4'
-                }}>
-                  {msg.role === 'user' ? msg.content : formatMessageContent(msg.content)}
-                </div>
-              </div>
-            ))}
-
-            {/* AI Typing Indicator */}
-            {aiLoading && (
-              <div style={{ alignSelf: 'flex-start', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: 'var(--r-sm)',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <span style={{ color: 'var(--accent)', display: 'flex' }}><Cpu size={10} /></span>
-                </div>
-                <div className="glass" style={{
-                  borderRadius: '12px 12px 12px 0',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  gap: '4px',
-                  alignItems: 'center',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)'
-                }}>
-                  <span className="status-dot live" style={{ animation: 'pulse-glow 1s infinite' }} />
-                  <span className="status-dot live" style={{ animation: 'pulse-glow 1s infinite 0.2s' }} />
-                  <span className="status-dot live" style={{ animation: 'pulse-glow 1s infinite 0.4s' }} />
-                </div>
-              </div>
-            )}
-            <div ref={chatBottomRef} />
-          </div>
-
-          {/* Quick Prompt Chips */}
-          {messages.length === 1 && (
-            <div style={{
-              padding: 'var(--s2) var(--s4)',
-              background: 'var(--bg-tertiary)',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px'
-            }}>
-              <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Suggested queries</span>
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-                <button
-                  onClick={() => setAiInput('I am in a severe drawdown and feel anxious')}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', padding: '2px 8px', background: 'var(--bg-secondary)', height: '24px' }}
-                >
-                  Drawdown relief
-                </button>
-                <button
-                  onClick={() => setAiInput('I just revenge traded. How can I regain emotional calm?')}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', padding: '2px 8px', background: 'var(--bg-secondary)', height: '24px' }}
-                >
-                  Handle revenge trading
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Input Form */}
-          <form onSubmit={handleSendMessage} style={{
-            padding: 'var(--s3) var(--s4)',
-            borderTop: '1px solid var(--border)',
-            background: 'var(--bg-tertiary)',
-            display: 'flex',
-            gap: 'var(--s3)',
-            alignItems: 'center'
-          }}>
-            <input
-              type="text"
-              className="input"
-              placeholder={aiLoading ? "Sage is reflecting..." : "Discuss greed, fear, or rules with Seneca..."}
-              value={aiInput}
-              onChange={(e) => setAiInput(e.target.value)}
-              disabled={aiLoading}
-              style={{
-                flex: 1,
-                height: '32px',
-                fontSize: '0.75rem',
-                background: 'var(--bg-primary)',
-                borderColor: 'var(--border-mid)'
-              }}
-            />
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={aiLoading || !aiInput.trim()}
-              style={{
-                padding: '0 var(--s3)',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 'var(--r-md)'
-              }}
-            >
-              <Send size={12} />
-            </button>
-          </form>
         </div>
       </div>
 
