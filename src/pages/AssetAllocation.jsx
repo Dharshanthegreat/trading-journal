@@ -339,9 +339,9 @@ const AssetAllocation = () => {
 
       {/* ═══ TOP ASSET ALLOCATION BANNER ═══ */}
       <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 'var(--s6)', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
           
-          {/* Left Column: Index Header & KPI Bar */}
+          {/* Header & KPI Bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             
             {/* Index Badge & Rank */}
@@ -425,31 +425,6 @@ const AssetAllocation = () => {
 
             </div>
 
-          </div>
-
-          {/* Right Column: Quote Card with Working Invest Button */}
-          <div style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-            <div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Quote</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', lineHeight: 1.1, marginTop: 2 }}>
-                {liveStats.currentQuote}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: liveStats.todayPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                {liveStats.todayPnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {liveStats.todayPnl >= 0 ? '+' : ''}${liveStats.todayPnl} ({liveStats.todayPct}%) today
-              </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowInvestModal(true)}
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center', gap: 6, fontSize: '0.78rem', background: 'linear-gradient(135deg, var(--accent), #6366f1)', cursor: 'pointer' }}
-            >
-              Invest in Index <ArrowUpRight size={14} />
-            </button>
           </div>
 
         </div>
