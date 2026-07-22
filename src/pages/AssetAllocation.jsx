@@ -350,14 +350,14 @@ const AssetAllocation = () => {
               className={`btn btn-sm ${dataMode === 'demo' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ fontSize: '0.7rem', padding: '3px 10px', height: 'auto' }}
             >
-              Demo DARWIN Benchmark
+              Demo Benchmark
             </button>
           </div>
         </div>
 
       </div>
 
-      {/* ═══ TOP DARWIN INDEX BANNER ═══ */}
+      {/* ═══ TOP ASSET ALLOCATION BANNER ═══ */}
       <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 'var(--s6)', alignItems: 'start' }}>
           
@@ -389,17 +389,17 @@ const AssetAllocation = () => {
               </div>
 
               <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--profit)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                <ShieldCheck size={13} /> DarwinIA Bonus +1 points
+                <ShieldCheck size={13} /> Performance Bonus +1 points
               </span>
 
               <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: liveStats.tier.color, fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                <Award size={13} /> DarwinIA {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}: Active
+                <Award size={13} /> Tier {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}: Active
               </span>
             </div>
 
             {/* Description Text with Working Information Link */}
             <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-              A DARWIN is an independently risk-managed and investable index that combines a trader's signals with Darwinex's independent Risk Management Engine.{' '}
+              An Asset Allocation index is an independently risk-managed portfolio that combines your trading signals with an automated Risk Management Engine.{' '}
               <button
                 type="button"
                 onClick={() => setShowInfoModal(true)}
@@ -847,7 +847,7 @@ const AssetAllocation = () => {
             {/* Participating Tier Badge Card */}
             <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                Participating in DarwinIA
+                Participating Rank Tier
               </div>
               <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '0.04em', color: dataMode === 'live' ? liveStats.tier.color : '#cbd5e1' }}>
                 {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}
@@ -1077,7 +1077,7 @@ const AssetAllocation = () => {
               Auto-Mirroring & Audit
             </h3>
             <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Your trade signals are automatically normalized by the Darwinex Risk Engine to maintain a constant target volatility regardless of trade lot sizes.
+              Your trade signals are automatically normalized by the Risk Management Engine to maintain a constant target volatility regardless of trade lot sizes.
             </p>
             <button className="btn btn-secondary" style={{ marginTop: 'var(--s4)', gap: 6, fontSize: '0.75rem' }}>
               <RefreshCw size={14} /> Refresh Signal Sync State
@@ -1196,7 +1196,7 @@ const AssetAllocation = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Info size={20} style={{ color: 'var(--accent)' }} />
-                  What is a DARWIN Index?
+                  What is an Asset Allocation Index?
                 </div>
                 <button onClick={() => setShowInfoModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <X size={18} />
@@ -1205,7 +1205,7 @@ const AssetAllocation = () => {
 
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
                 <p>
-                  A <strong>DARWIN</strong> (Darwinex Investable Index) is a standardized financial asset created by wrapping a trader’s signals with an automated <strong>Risk Management Engine</strong>.
+                  An <strong>Asset Allocation Index</strong> is a standardized strategy portfolio created by wrapping your trading signals with an automated <strong>Risk Management Engine</strong>.
                 </p>
                 <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                   <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Key Features:</div>
@@ -1240,7 +1240,7 @@ const AssetAllocation = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Play size={20} style={{ color: 'var(--accent)' }} />
-                  DARWIN Index Creation Tutorial
+                  Asset Allocation Strategy Tutorial
                 </div>
                 <button onClick={() => setShowVideoModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <X size={18} />
@@ -1264,7 +1264,7 @@ const AssetAllocation = () => {
                   <Play size={24} style={{ color: '#fff', marginLeft: 3 }} />
                 </div>
                 <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  How to Build & List Your DARWIN Strategy Index
+                  How to Build & Manage Your Asset Allocation Strategy
                 </div>
                 <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Runtime: 4 min 20 sec</div>
               </div>
@@ -1302,7 +1302,7 @@ const AssetAllocation = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
                 {[
                   { q: 'How is Asset Allocation calculated?', a: 'Your trades are automatically grouped by asset family and individual symbol to compute volume percentage and win rate.' },
-                  { q: 'What is DarwinIA Silver participation?', a: 'Silver is an active tier in the monthly Darwinex Zero benchmark competition rewarding consistent risk management.' },
+                  { q: 'What is Silver Tier participation?', a: 'Silver is an active tier in the monthly strategy benchmark ranking rewarding consistent risk management.' },
                   { q: 'Can I connect MT5 or Tradovate?', a: 'Yes! Navigate to MT5 Connect or Tradovate Sync in the sidebar to auto-import your trades into your journal.' },
                 ].map((faq, idx) => (
                   <div key={idx} style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
