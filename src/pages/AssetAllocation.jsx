@@ -1,32 +1,51 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { accounts as accountsApi } from '../services/api';
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
 } from 'recharts';
 import {
   PieChart as PieIcon, Layers, TrendingUp, TrendingDown,
   ShieldCheck, Award, Info, ExternalLink, Play, Lock, User,
   DollarSign, Percent, BarChart2, Clock, ArrowUpRight, Activity, CheckCircle,
-  Sliders, Filter, ChevronRight
+  Sliders, Filter, ChevronRight, Wallet, RefreshCw
 } from 'lucide-react';
 
 const COLORS = ['#d946ef', '#06b6d4', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const AssetAllocation = () => {
-  const { trades, loading } = useTrades();
+  const { trades, fetchTrades, loading } = useTrades();
   const { user } = useAuth();
 
+  const [dataMode, setDataMode] = useState('live'); // 'live' | 'demo'
   const [allocationMode, setAllocationMode] = useState('family'); // 'family' | 'asset'
   const [timeframe, setTimeframe] = useState('ALL'); // 'YTD'|'1W'|'1M'|'3M'|'6M'|'1Y'|'2Y'|'ALL'
+  const [selectedAccountId, setSelectedAccountId] = useState('all');
+  const [accountList, setAccountList] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  // Fetch trades and user accounts on mount
+  useEffect(() => {
+    fetchTrades();
+    const loadAccounts = async () => {
+      try {
+        if (!user?.isGuest) {
+          const list = await accountsApi.list();
+          if (Array.isArray(list)) setAccountList(list);
+        }
+      } catch (err) {
+        console.error('Failed to load accounts list:', err);
+      }
+    };
+    loadAccounts();
+  }, [fetchTrades, user]);
 
   // Helper to categorize symbols into asset families
   const getAssetFamily = (symbol) => {
-    if (!symbol) return 'Other';
+    if (!symbol) return 'Other Assets';
     const sym = symbol.toUpperCase();
-    if (['NQ', 'ES', 'YM', 'US30', 'SPX', 'DAX', 'NAS100', 'US500', 'GER40'].some(s => sym.includes(s))) {
+    if (['NQ', 'ES', 'YM', 'US30', 'SPX', 'DAX', 'NAS100', 'US500', 'GER40', 'FTSE'].some(s => sym.includes(s))) {
       return 'Indices CFDs';
     }
     if (['XAUUSD', 'GOLD', 'SILVER', 'XAGUSD', 'USOIL', 'WTI', 'BRENT', 'NGAS'].some(s => sym.includes(s))) {
@@ -44,12 +63,111 @@ const AssetAllocation = () => {
     return 'Other Assets';
   };
 
-  // Compute allocation metrics from actual user trades or sample baseline
-  const allocationData = useMemo(() => {
-    const validTrades = (trades || []).filter(t => t.symbol);
+  // Filter trades by Account and Timeframe
+  const filteredTrades = useMemo(() => {
+    let list = Array.isArray(trades) ? [...trades] : [];
 
-    if (validTrades.length === 0) {
-      // High-quality sample data matching DARWIN asset allocation benchmark
+    // Filter by account
+    if (selectedAccountId !== 'all') {
+      list = list.filter(t => String(t.account_id || t.accountId) === String(selectedAccountId));
+    }
+
+    // Filter by timeframe
+    if (timeframe !== 'ALL') {
+      const now = new Date();
+      let cutoff = new Date();
+      if (timeframe === '1W') cutoff.setDate(now.getDate() - 7);
+      else if (timeframe === '1M') cutoff.setMonth(now.getMonth() - 1);
+      else if (timeframe === '3M') cutoff.setMonth(now.getMonth() - 3);
+      else if (timeframe === '6M') cutoff.setMonth(now.getMonth() - 6);
+      else if (timeframe === '1Y') cutoff.setFullYear(now.getFullYear() - 1);
+      else if (timeframe === '2Y') cutoff.setFullYear(now.getFullYear() - 2);
+      else if (timeframe === 'YTD') cutoff = new Date(now.getFullYear(), 0, 1);
+
+      list = list.filter(t => {
+        if (!t.date && !t.entryTime && !t.createdAt) return true;
+        const d = new Date(t.date || t.entryTime || t.createdAt);
+        return d >= cutoff;
+      });
+    }
+
+    return list;
+  }, [trades, selectedAccountId, timeframe]);
+
+  // Compute Initial Capital size
+  const initialCapital = useMemo(() => {
+    if (selectedAccountId !== 'all' && accountList.length > 0) {
+      const acc = accountList.find(a => String(a.id) === String(selectedAccountId));
+      if (acc && acc.accountBalance) return Number(acc.accountBalance);
+    }
+    return Number(user?.accountSize) || 25000;
+  }, [user, selectedAccountId, accountList]);
+
+  // Dynamic KPI Stats calculated from actual filtered trades
+  const liveStats = useMemo(() => {
+    const totalPnl = filteredTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+    const returnPct = initialCapital > 0 ? (totalPnl / initialCapital) * 100 : 0;
+    const currentAum = initialCapital + totalPnl;
+    const currentQuote = 100 + returnPct;
+
+    // Calculate Max Drawdown
+    let peak = initialCapital;
+    let runningEquity = initialCapital;
+    let maxDdPct = 0;
+    const chronTrades = [...filteredTrades].sort((a, b) => new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt));
+
+    chronTrades.forEach(t => {
+      runningEquity += Number(t.pnl) || 0;
+      if (runningEquity > peak) {
+        peak = runningEquity;
+      } else {
+        const dd = ((peak - runningEquity) / peak) * 100;
+        if (dd > maxDdPct) maxDdPct = dd;
+      }
+    });
+
+    // Calculate 6-month return
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.setMonth(now.getMonth() - 6));
+    const sixMonthsTrades = filteredTrades.filter(t => new Date(t.date || t.createdAt) >= sixMonthsAgo);
+    const sixMonthsPnl = sixMonthsTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+    const return6mPct = initialCapital > 0 ? (sixMonthsPnl / initialCapital) * 100 : 0;
+
+    // Calculate Today's PnL
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayTrades = filteredTrades.filter(t => (t.date || t.createdAt || '').startsWith(todayStr));
+    const todayPnl = todayTrades.reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
+    const todayPct = initialCapital > 0 ? (todayPnl / initialCapital) * 100 : 0;
+
+    // Calculate Win Rate
+    const winsCount = filteredTrades.filter(t => Number(t.pnl) > 0).length;
+    const winRate = filteredTrades.length > 0 ? (winsCount / filteredTrades.length) * 100 : 0;
+
+    // Determine Tier Badge based on user performance
+    let tier = { name: 'SILVER', color: '#cbd5e1', rank: '#2,788' };
+    if (totalPnl >= 10000 && winRate >= 65) tier = { name: 'DIAMOND', color: '#38bdf8', rank: '#124' };
+    else if (totalPnl >= 5000 && winRate >= 60) tier = { name: 'PLATINUM', color: '#e2e8f0', rank: '#482' };
+    else if (totalPnl >= 2000 && winRate >= 55) tier = { name: 'GOLD', color: '#fbbf24', rank: '#1,120' };
+    else if (totalPnl < 0) tier = { name: 'BRONZE', color: '#b45309', rank: '#4,512' };
+
+    return {
+      totalPnl,
+      returnPct: Number(returnPct.toFixed(2)),
+      maxDdPct: Number(maxDdPct.toFixed(2)),
+      return6mPct: Number(return6mPct.toFixed(2)),
+      currentAum,
+      currentQuote: Number(currentQuote.toFixed(2)),
+      todayPnl: Number(todayPnl.toFixed(2)),
+      todayPct: Number(todayPct.toFixed(2)),
+      winRate: Number(winRate.toFixed(1)),
+      tier
+    };
+  }, [filteredTrades, initialCapital]);
+
+  // Compute Allocation Data Breakdown
+  const allocationData = useMemo(() => {
+    // If user has chosen DEMO mode or has no valid trades, return sample benchmark
+    if (dataMode === 'demo' || filteredTrades.length === 0) {
       if (allocationMode === 'family') {
         return [
           { name: 'Commodity CFDs', count: 1240, percent: 48.3, winners: 68.4, returnPnl: 14250.50, returnPct: 14.25, avgWin: 240, avgLoss: 110, volume: 185.4 },
@@ -69,12 +187,12 @@ const AssetAllocation = () => {
       }
     }
 
-    // Group actual user trades
+    // Group actual user trades dynamically
     const groups = {};
     let totalCount = 0;
 
-    validTrades.forEach(t => {
-      const key = allocationMode === 'family' ? getAssetFamily(t.symbol) : t.symbol.toUpperCase();
+    filteredTrades.forEach(t => {
+      const key = allocationMode === 'family' ? getAssetFamily(t.symbol) : (t.symbol ? t.symbol.toUpperCase() : 'OTHER');
       if (!groups[key]) {
         groups[key] = {
           name: key,
@@ -108,6 +226,7 @@ const AssetAllocation = () => {
       const lossesCount = g.count - g.wins;
       const avgWin = g.wins > 0 ? g.totalWinAmount / g.wins : 0;
       const avgLoss = lossesCount > 0 ? g.totalLossAmount / lossesCount : 0;
+      const returnPct = initialCapital > 0 ? (g.returnPnl / initialCapital) * 100 : 0;
 
       return {
         name: g.name,
@@ -115,34 +234,70 @@ const AssetAllocation = () => {
         percent: Number(percent.toFixed(1)),
         winners: Number(winners.toFixed(1)),
         returnPnl: Number(g.returnPnl.toFixed(2)),
-        returnPct: Number((g.returnPnl / 1000).toFixed(2)),
+        returnPct: Number(returnPct.toFixed(2)),
         avgWin: Number(avgWin.toFixed(2)),
         avgLoss: Number(avgLoss.toFixed(2)),
         volume: Number(g.volume.toFixed(1)),
       };
     }).sort((a, b) => b.count - a.count);
-  }, [trades, allocationMode]);
+  }, [dataMode, filteredTrades, allocationMode, initialCapital]);
 
   // Selected item highlight or default to top item
   const activeFocusItem = selectedItem || allocationData[0] || {};
 
-  const totalTradesCount = useMemo(() => {
-    return allocationData.reduce((sum, item) => sum + item.count, 0);
-  }, [allocationData]);
-
-  const overallWinRate = useMemo(() => {
-    if (!allocationData.length) return 0;
-    const totalWins = allocationData.reduce((sum, item) => sum + (item.count * (item.winners / 100)), 0);
-    return ((totalWins / totalTradesCount) * 100).toFixed(1);
-  }, [allocationData, totalTradesCount]);
-
-  const overallReturn = useMemo(() => {
-    return allocationData.reduce((sum, item) => sum + item.returnPnl, 0);
-  }, [allocationData]);
+  const activeAccountObj = useMemo(() => {
+    if (selectedAccountId === 'all') return null;
+    return accountList.find(a => String(a.id) === String(selectedAccountId));
+  }, [selectedAccountId, accountList]);
 
   return (
     <div className="asset-allocation-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '80px' }}>
       
+      {/* ═══ TOP CONTROLS & ACCOUNTS BAR ═══ */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)', background: 'var(--bg-secondary)', padding: 'var(--s3) var(--s4)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+        
+        {/* Account Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+          <Wallet size={16} style={{ color: 'var(--accent)' }} />
+          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Trading Account:</span>
+          <select
+            className="input"
+            value={selectedAccountId}
+            onChange={e => setSelectedAccountId(e.target.value)}
+            style={{ width: 'auto', minWidth: '180px', padding: '4px 10px', fontSize: '0.78rem', height: 'auto' }}
+          >
+            <option value="all">All Accounts ({trades.length} trades)</option>
+            {accountList.map(acc => (
+              <option key={acc.id} value={acc.id}>
+                {acc.accountName} ({acc.currency || '$'}{Number(acc.accountBalance || 0).toLocaleString()})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Live vs Demo Data Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Data Source:</span>
+          <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-tertiary)', padding: '3px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setDataMode('live')}
+              className={`btn btn-sm ${dataMode === 'live' ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ fontSize: '0.7rem', padding: '3px 10px', height: 'auto' }}
+            >
+              <Activity size={12} /> Live Website Data
+            </button>
+            <button
+              onClick={() => setDataMode('demo')}
+              className={`btn btn-sm ${dataMode === 'demo' ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ fontSize: '0.7rem', padding: '3px 10px', height: 'auto' }}
+            >
+              Demo DARWIN Benchmark
+            </button>
+          </div>
+        </div>
+
+      </div>
+
       {/* ═══ TOP DARWIN INDEX BANNER ═══ */}
       <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 'var(--s6)', alignItems: 'start' }}>
@@ -156,29 +311,30 @@ const AssetAllocation = () => {
                 background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
                 color: '#ffffff',
                 fontWeight: 800,
-                fontSize: '1.2rem',
-                padding: '6px 18px',
+                fontSize: '1.1rem',
+                padding: '6px 16px',
                 borderRadius: 'var(--r-md)',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.04em',
                 boxShadow: '0 4px 14px rgba(6, 182, 212, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <PieIcon size={20} />
-                LMJW
+                <PieIcon size={18} />
+                {activeAccountObj ? activeAccountObj.accountName.slice(0, 8).toUpperCase() : (user?.displayName?.slice(0, 8).toUpperCase() || 'LMJW')}
               </div>
 
               <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)' }}>
-                <span style={{ color: 'var(--loss)', fontWeight: 800 }}>2,788th</span> <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(May 2026)</span>
+                <span style={{ color: 'var(--loss)', fontWeight: 800 }}>{dataMode === 'live' ? liveStats.tier.rank : '2,788th'}</span>{' '}
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(May 2026)</span>
               </div>
 
               <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--profit)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
                 <ShieldCheck size={13} /> DarwinIA Bonus +1 points
               </span>
 
-              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: 'var(--warn)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                <Award size={13} /> DarwinIA SILVER: Active
+              <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: liveStats.tier.color, fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                <Award size={13} /> DarwinIA {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}: Active
               </span>
             </div>
 
@@ -197,8 +353,9 @@ const AssetAllocation = () => {
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Return (since inception)
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--profit)', fontFamily: 'var(--font-mono)' }}>
-                  +21.32%
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: (dataMode === 'live' ? liveStats.returnPct : 21.32) >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
+                  {(dataMode === 'live' ? liveStats.returnPct : 21.32) >= 0 ? '+' : ''}
+                  {dataMode === 'live' ? liveStats.returnPct : 21.32}%
                 </div>
               </div>
 
@@ -207,7 +364,7 @@ const AssetAllocation = () => {
                   Max. drawdown
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  -12.22%
+                  -{dataMode === 'live' ? liveStats.maxDdPct : 12.22}%
                 </div>
               </div>
 
@@ -215,8 +372,9 @@ const AssetAllocation = () => {
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Return (last 6 months)
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--profit)', fontFamily: 'var(--font-mono)' }}>
-                  +7.03%
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: (dataMode === 'live' ? liveStats.return6mPct : 7.03) >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
+                  {(dataMode === 'live' ? liveStats.return6mPct : 7.03) >= 0 ? '+' : ''}
+                  {dataMode === 'live' ? liveStats.return6mPct : 7.03}%
                 </div>
               </div>
 
@@ -224,8 +382,8 @@ const AssetAllocation = () => {
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Assets under management
                 </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                  $215,000.00
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  ${(dataMode === 'live' ? liveStats.currentAum : 215000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
 
@@ -238,18 +396,19 @@ const AssetAllocation = () => {
             <div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Quote</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', lineHeight: 1.1, marginTop: 2 }}>
-                121.32
+                {dataMode === 'live' ? liveStats.currentQuote : '121.32'}
               </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--profit)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                <TrendingUp size={12} /> 0.90 (0.75%) ↑ today
+              <div style={{ fontSize: '0.72rem', color: (dataMode === 'live' ? liveStats.todayPnl : 0.90) >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                {(dataMode === 'live' ? liveStats.todayPnl : 0.90) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {dataMode === 'live' ? `${liveStats.todayPnl >= 0 ? '+' : ''}$${liveStats.todayPnl} (${liveStats.todayPct}%)` : '0.90 (0.75%) ↑'} today
               </div>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                18 May, 14:30
+                {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
 
             <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', gap: 6, fontSize: '0.78rem', background: 'linear-gradient(135deg, var(--accent), #6366f1)' }}>
-              Invest in LMJW <ArrowUpRight size={14} />
+              Invest in Index <ArrowUpRight size={14} />
             </button>
           </div>
 
@@ -330,13 +489,13 @@ const AssetAllocation = () => {
                   Asset allocation
                 </h2>
                 <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
-                  Last update: 17/05/2026 21:00 UTC
+                  Last update: {new Date().toLocaleDateString('en-GB')} UTC
                 </span>
               </div>
             </div>
 
             <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 'var(--s2)', marginBottom: 'var(--s4)' }}>
-              Percentage of trades the account has made in each different asset and by asset family (forex, commodities, indices, stocks...), as well as the accumulated return in each one of them.
+              Percentage of trades your website journal has recorded in each different asset and by asset family (forex, commodities, indices, stocks...), as well as the accumulated return in each one of them.
             </p>
 
             {/* Toggle Buttons: By Family | By Asset */}
@@ -364,45 +523,51 @@ const AssetAllocation = () => {
             {/* Donut Allocation Chart */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <div style={{ width: '100%', height: 220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={allocationData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={95}
-                      paddingAngle={3}
-                      dataKey="percent"
-                      onClick={(entry) => setSelectedItem(entry)}
-                    >
-                      {allocationData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          stroke="var(--bg-primary)"
-                          strokeWidth={2}
-                          style={{
-                            cursor: 'pointer',
-                            filter: activeFocusItem?.name === entry.name ? 'drop-shadow(0 0 8px var(--accent))' : 'none',
-                            opacity: activeFocusItem?.name && activeFocusItem.name !== entry.name ? 0.6 : 1
-                          }}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val, name) => [`${val}%`, 'Allocation']}
-                      contentStyle={{
-                        background: 'var(--bg-secondary)',
-                        border: '1px solid var(--border-mid)',
-                        borderRadius: 'var(--r-md)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.75rem',
-                        boxShadow: 'var(--shadow-md)'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {allocationData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={allocationData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={95}
+                        paddingAngle={3}
+                        dataKey="percent"
+                        onClick={(entry) => setSelectedItem(entry)}
+                      >
+                        {allocationData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                            stroke="var(--bg-primary)"
+                            strokeWidth={2}
+                            style={{
+                              cursor: 'pointer',
+                              filter: activeFocusItem?.name === entry.name ? 'drop-shadow(0 0 8px var(--accent))' : 'none',
+                              opacity: activeFocusItem?.name && activeFocusItem.name !== entry.name ? 0.6 : 1
+                            }}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(val, name) => [`${val}%`, 'Allocation']}
+                        contentStyle={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-mid)',
+                          borderRadius: 'var(--r-md)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.75rem',
+                          boxShadow: 'var(--shadow-md)'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    No trades found
+                  </div>
+                )}
 
                 {/* Center Stats Ring Label */}
                 <div style={{
@@ -417,7 +582,7 @@ const AssetAllocation = () => {
                   <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                     {activeFocusItem?.percent ? `${activeFocusItem.percent}%` : '100%'}
                   </div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, textAlign: 'center', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {activeFocusItem?.name || 'Total Volume'}
                   </div>
                 </div>
@@ -591,21 +756,20 @@ const AssetAllocation = () => {
             <div style={{
               width: 44, height: 44, borderRadius: '50%',
               background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-              display: 'flex', alignItems: 'center', justifyCenter: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#ffffff', fontWeight: 800, fontSize: '1rem',
               boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-              flexShrink: 0,
-              paddingLeft: 12, paddingTop: 10
+              flexShrink: 0
             }}>
-              <User size={20} />
+              {user?.displayName?.[0] || 'D'}
             </div>
             <div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Welcome,</div>
               <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {user?.displayName || 'PriyanFX28'}
+                {user?.displayName || 'dharshan'}
               </div>
               <div style={{ fontSize: '0.65rem', color: 'var(--profit)', fontWeight: 600, marginTop: 2 }}>
-                Active since 05/06/2025
+                Active since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB') : '05/06/2025'}
               </div>
             </div>
           </div>
@@ -655,12 +819,12 @@ const AssetAllocation = () => {
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Participating in DarwinIA
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '0.04em', background: 'linear-gradient(135deg, #94a3b8, #cbd5e1, #64748b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              SILVER
+            <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '0.04em', color: dataMode === 'live' ? liveStats.tier.color : '#cbd5e1' }}>
+              {dataMode === 'live' ? liveStats.tier.name : 'SILVER'}
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 'var(--s2)', marginTop: 'var(--s1)' }}>
               <span>Current position (temporary)</span>
-              <strong style={{ color: 'var(--accent)' }}>#2,788</strong>
+              <strong style={{ color: 'var(--accent)' }}>{dataMode === 'live' ? liveStats.tier.rank : '#2,788'}</strong>
             </div>
           </div>
 
