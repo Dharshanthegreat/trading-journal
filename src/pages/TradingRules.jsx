@@ -163,6 +163,7 @@ const TradingRules = () => {
   const totalCount = rules.length;
   const activeCount = rules.filter(r => r.isActive).length;
   const inactiveCount = totalCount - activeCount;
+  const completionScore = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 100;
 
   // Selected account detail
   const currentAccount = accounts.find(a => String(a.id) === String(selectedAccountId));
@@ -233,14 +234,10 @@ const TradingRules = () => {
 
         <div className="glass stat-card">
           <div className="stat-label">
-            <span style={{ color: 'var(--warn)' }}><Shield size={13} /></span> Account Status
+            <span style={{ color: 'var(--profit)' }}><Percent size={13} /></span> Completion Score
           </div>
-          <div className="stat-value" style={{ fontSize: '0.9rem', paddingTop: '6px', color: currentAccount?.status === 'Failed' ? 'var(--loss)' : 'var(--text-secondary)' }}>
-            {currentAccount ? `${currentAccount.accountType} (${currentAccount.status})` : 'No Account Selected'}
-          </div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-            {currentAccount ? `Balance: $${(currentAccount.currentBalance || currentAccount.startingBalance || 0).toLocaleString()}` : 'Select an account above'}
-          </div>
+          <div className="stat-value" style={{ color: 'var(--profit)' }}>{completionScore}%</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeCount} of {totalCount} rules active</div>
         </div>
       </div>
 
