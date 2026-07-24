@@ -961,7 +961,7 @@ const Journal = () => {
                       Active Account Constraints
                     </span>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                      Confirm that your execution adhered to the rules configured for this account. Checked rules will increment "Pass" (+1 Followed), and unchecked rules will increment "Fail" (+1 Violated) on the Trading Rules scorecard when saving.
+                      All rules configured for this account are listed below. Rules added here or in the playbook are saved directly to your Trading Rules page.
                     </p>
                   </div>
 

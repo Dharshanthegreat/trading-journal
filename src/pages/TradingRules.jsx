@@ -159,66 +159,10 @@ const TradingRules = () => {
       triggerError(err.message || 'Failed to delete rule.');
     }
   };
-  const handleLogRuleAdherence = async (rule, type) => {
-    try {
-      let passed = rule.passedCount || 0;
-      let failed = rule.failedCount || 0;
-      if (type === 'pass') passed += 1;
-      if (type === 'fail') failed += 1;
-      if (type === 'reset') {
-        passed = 0;
-        failed = 0;
-      }
-      
-      const updated = await rulesApi.update(rule.id, {
-        passedCount: passed,
-        failedCount: failed
-      });
-      setRules(prev => prev.map(r => r.id === rule.id ? updated : r));
-      triggerSuccess(type === 'reset' ? 'Rule adherence log reset.' : `Logged ${type === 'pass' ? 'followed' : 'violated'} event for this rule.`);
-    } catch (err) {
-      triggerError(err.message || 'Failed to update rule adherence log.');
-    }
-  };
-
-  // Combine DB rules counters with auto-calculated stats from trades checklist
-  const rulesWithStats = React.useMemo(() => {
-    return rules.map(rule => {
-      let passed = rule.passedCount || 0;
-      let failed = rule.failedCount || 0;
-
-      trades.forEach(t => {
-        if (t.rulesChecklist && t.rulesChecklist[rule.id] !== undefined) {
-          if (t.rulesChecklist[rule.id] !== false) {
-            passed++;
-          } else {
-            failed++;
-          }
-        }
-      });
-
-      return {
-        ...rule,
-        passedCount: passed,
-        failedCount: failed
-      };
-    });
-  }, [rules, trades]);
-
   // Metrics calculations
-  const totalCount = rulesWithStats.length;
-  const activeCount = rulesWithStats.filter(r => r.isActive).length;
+  const totalCount = rules.length;
+  const activeCount = rules.filter(r => r.isActive).length;
   const inactiveCount = totalCount - activeCount;
-
-  // Calculate compliance rate as total passed / (total passed + total failed) across all rules
-  let totalPassed = 0;
-  let totalFailed = 0;
-  rulesWithStats.forEach(r => {
-    totalPassed += r.passedCount || 0;
-    totalFailed += r.failedCount || 0;
-  });
-  const totalLogs = totalPassed + totalFailed;
-  const complianceRate = totalLogs > 0 ? Math.round((totalPassed / totalLogs) * 100) : 100;
 
   // Selected account detail
   const currentAccount = accounts.find(a => String(a.id) === String(selectedAccountId));
@@ -262,7 +206,7 @@ const TradingRules = () => {
       </div>
 
       {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--s4)' }} className="rules-kpi-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }} className="rules-kpi-grid">
         <div className="glass stat-card">
           <div className="stat-label">
             <span style={{ color: 'var(--accent)' }}><ListTodo size={13} /></span> Total Rules
@@ -285,16 +229,6 @@ const TradingRules = () => {
           </div>
           <div className="stat-value" style={{ color: 'var(--text-tertiary)' }}>{inactiveCount}</div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Archived or disabled rules</div>
-        </div>
-
-        <div className="glass stat-card">
-          <div className="stat-label">
-            <span style={{ color: 'var(--accent)' }}><Percent size={13} /></span> Playbook Compliance
-          </div>
-          <div className="stat-value" style={{ color: complianceRate >= 80 ? 'var(--profit)' : (complianceRate >= 50 ? 'var(--warn)' : 'var(--loss)') }}>
-            {complianceRate}%
-          </div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rule adherence index</div>
         </div>
 
         <div className="glass stat-card">
@@ -369,7 +303,7 @@ const TradingRules = () => {
                 <div key={i} className="skeleton" style={{ height: '36px', borderRadius: 'var(--r-md)' }} />
               ))}
             </div>
-          ) : rulesWithStats.length === 0 ? (
+          ) : rules.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
               <ListTodo size={28} style={{ opacity: 0.25, marginBottom: '8px' }} />
               <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>No rules defined yet</div>
@@ -377,7 +311,7 @@ const TradingRules = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {rulesWithStats.map((rule, idx) => {
+              {rules.map((rule, idx) => {
                 const isEditing = editingRuleId === rule.id;
                 return (
                   <div
@@ -395,7 +329,7 @@ const TradingRules = () => {
                       gap: '16px'
                     }}
                   >
-                    <div style={{ display: 'flex', gap: '12px', flex: 1, alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '12px', flex: 1, alignItems: 'center' }}>
                       {/* Interactive checkmark toggle */}
                       <button
                         onClick={() => handleToggleRule(rule)}
@@ -406,8 +340,7 @@ const TradingRules = () => {
                           padding: 0,
                           display: 'flex',
                           color: rule.isActive ? 'var(--profit)' : 'var(--text-tertiary)',
-                          transition: 'color var(--t-fast)',
-                          marginTop: '2px'
+                          transition: 'color var(--t-fast)'
                         }}
                         title={rule.isActive ? "Click to deactivate rule" : "Click to activate rule"}
                       >
@@ -437,52 +370,27 @@ const TradingRules = () => {
                             autoFocus
                           />
                         ) : (
-                          <>
-                            <span 
-                              style={{ 
-                                fontSize: '0.78rem', 
-                                color: rule.isActive ? 'var(--text-secondary)' : 'var(--text-muted)',
-                                textDecoration: rule.isActive ? 'none' : 'line-through',
-                                lineHeight: 1.4,
-                                fontWeight: 500
-                              }}
-                            >
-                              <strong>{idx + 1}.</strong> {rule.ruleText}
-                              {selectedAccountId === 'All' && rule.accountId && (
-                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '4px', marginLeft: '8px', border: '1px solid var(--border-accent)' }}>
-                                  Account #{rule.accountId}
-                                </span>
-                              )}
-                            </span>
-
-                            {/* Adherence metrics sub-row */}
-                            {rule.isActive && (() => {
-                              const passed = rule.passedCount || 0;
-                              const failed = rule.failedCount || 0;
-                              const total = passed + failed;
-                              const pct = total > 0 ? Math.round((passed / total) * 100) : null;
-                              return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                                  <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
-                                    {pct !== null && (
-                                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--profit)' }} />
-                                    )}
-                                  </div>
-                                  <span style={{ fontSize: '0.65rem', fontWeight: pct !== null ? 700 : 500, color: pct !== null ? (pct >= 80 ? 'var(--profit)' : (pct >= 50 ? 'var(--warn)' : 'var(--loss)')) : 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
-                                    {pct !== null ? `${pct}% Adherence` : 'No logs yet'}
-                                  </span>
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
-                                    ({passed} followed / {failed} violated)
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </>
+                          <span 
+                            style={{ 
+                              fontSize: '0.78rem', 
+                              color: rule.isActive ? 'var(--text-secondary)' : 'var(--text-muted)',
+                              textDecoration: rule.isActive ? 'none' : 'line-through',
+                              lineHeight: 1.4,
+                              fontWeight: 500
+                            }}
+                          >
+                            <strong>{idx + 1}.</strong> {rule.ruleText}
+                            {selectedAccountId === 'All' && rule.accountId && (
+                              <span style={{ fontSize: '0.6rem', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '4px', marginLeft: '8px', border: '1px solid var(--border-accent)' }}>
+                                Account #{rule.accountId}
+                              </span>
+                            )}
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Action buttons (Log Followed, Log Broken, Edit, Delete, Save) */}
+                    {/* Action buttons (Edit, Delete, Save) */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                       {isEditing ? (
                         <>
@@ -503,35 +411,6 @@ const TradingRules = () => {
                         </>
                       ) : (
                         <>
-                          {rule.isActive && (
-                            <div style={{ display: 'flex', gap: '4px', marginRight: '4px' }}>
-                              <button
-                                onClick={() => handleLogRuleAdherence(rule, 'pass')}
-                                className="btn btn-sm btn-ghost"
-                                style={{ padding: '2px 8px', fontSize: '0.65rem', color: 'var(--profit)', border: '1px solid rgba(52, 211, 153, 0.12)', background: 'rgba(52, 211, 153, 0.04)', height: '24px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Log a session/trade where you followed this rule"
-                              >
-                                👍 Pass
-                              </button>
-                              <button
-                                onClick={() => handleLogRuleAdherence(rule, 'fail')}
-                                className="btn btn-sm btn-ghost"
-                                style={{ padding: '2px 8px', fontSize: '0.65rem', color: 'var(--loss)', border: '1px solid rgba(239, 68, 68, 0.12)', background: 'rgba(239, 68, 68, 0.04)', height: '24px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Log a session/trade where you violated this rule"
-                              >
-                                👎 Fail
-                              </button>
-                              {((rule.passedCount || 0) + (rule.failedCount || 0)) > 0 && (
-                                <button
-                                  onClick={() => handleLogRuleAdherence(rule, 'reset')}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.65rem', display: 'flex', alignItems: 'center', padding: '0 4px' }}
-                                  title="Reset adherence statistics counter"
-                                >
-                                  ⟲
-                                </button>
-                              )}
-                            </div>
-                          )}
                           <button
                             onClick={() => startEditRule(rule)}
                             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
