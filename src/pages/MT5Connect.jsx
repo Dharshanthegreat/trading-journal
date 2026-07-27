@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { mt5 } from '../services/api';
+import { useTrades } from '../contexts/TradeContext';
 import {
   Wifi, WifiOff, Shield, Zap, TrendingUp, Lock,
   Server, Hash, Eye, EyeOff, ChevronRight, CheckCircle2,
   XCircle, AlertTriangle, Activity, BarChart2, Globe,
-  ArrowRight, Layers, Clock, LogOut, RefreshCw
+  ArrowRight, Layers, Clock, LogOut, RefreshCw, Filter, Search
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════
@@ -309,9 +310,270 @@ const ConnectionStatus = ({ connection, onDisconnect, onSync, syncing, syncMessa
 );
 
 /* ═══════════════════════════════════════════════════════
+   MT5 ALL TRADES TABLE COMPONENT
+   ═══════════════════════════════════════════════════════ */
+const MT5AllTrades = ({ trades = [], onRefresh }) => {
+  const [filterSymbol, setFilterSymbol] = useState('All');
+  const [filterType, setFilterType] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('mt5'); // 'mt5' or 'all'
+
+  // Filter MT5 specific trades vs All trades
+  const mt5Trades = useMemo(() => {
+    return trades.filter(t => {
+      const tagsStr = Array.isArray(t.tags) ? t.tags.join(' ') : (t.tags || '');
+      const isMt5Tag = tagsStr.toLowerCase().includes('mt5');
+      const isMt5Notes = (t.notes || '').toLowerCase().includes('mt5');
+      const isMt5Source = (t.source || t.platform || t.broker || '').toLowerCase().includes('mt5');
+      return isMt5Tag || isMt5Notes || isMt5Source;
+    });
+  }, [trades]);
+
+  const displayPool = activeTab === 'mt5' ? (mt5Trades.length > 0 ? mt5Trades : trades) : trades;
+
+  const uniqueSymbols = useMemo(() => {
+    const syms = displayPool.map(t => (t.symbol || '').toUpperCase()).filter(Boolean);
+    return ['All', ...new Set(syms)].sort();
+  }, [displayPool]);
+
+  const filteredTrades = useMemo(() => {
+    return displayPool.filter(t => {
+      if (filterSymbol !== 'All' && (t.symbol || '').toUpperCase() !== filterSymbol) return false;
+      if (filterType !== 'All' && t.type !== filterType && t.direction !== filterType) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const sym = (t.symbol || '').toLowerCase();
+        const notes = (t.notes || '').toLowerCase();
+        if (!sym.includes(q) && !notes.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [displayPool, filterSymbol, filterType, searchQuery]);
+
+  const totalPnL = useMemo(() => {
+    return filteredTrades.reduce((acc, t) => acc + (parseFloat(t.pnl) || parseFloat(t.netPnl) || 0), 0);
+  }, [filteredTrades]);
+
+  const winsCount = useMemo(() => {
+    return filteredTrades.filter(t => (parseFloat(t.pnl) || parseFloat(t.netPnl) || 0) > 0).length;
+  }, [filteredTrades]);
+
+  const winRate = filteredTrades.length > 0 ? ((winsCount / filteredTrades.length) * 100).toFixed(1) : '0.0';
+
+  return (
+    <div style={{
+      marginTop: '24px',
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-mid)',
+      borderRadius: '16px',
+      padding: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px',
+      backdropFilter: 'blur(20px)'
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '10px',
+            background: 'var(--accent-soft)', border: '1px solid var(--border-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)'
+          }}>
+            <BarChart2 size={18} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              MT5 All Trades History
+            </h3>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+              {filteredTrades.length} trades recorded · Real-time Account Log
+            </span>
+          </div>
+        </div>
+
+        {/* Action Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 12px', fontSize: '0.68rem' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Total P&L: </span>
+            <strong style={{ color: totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono, monospace' }}>
+              {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
+            </strong>
+          </div>
+          <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 12px', fontSize: '0.68rem' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Win Rate: </span>
+            <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+              {winRate}%
+            </strong>
+          </div>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              style={{
+                background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '6px 10px', color: 'var(--text-secondary)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem'
+              }}
+              title="Refresh Trades"
+            >
+              <RefreshCw size={12} /> Refresh
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs & Filter Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+        {/* Tab Selector */}
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-primary)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+          <button
+            onClick={() => setActiveTab('mt5')}
+            style={{
+              padding: '5px 12px', border: 'none', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 600,
+              background: activeTab === 'mt5' ? 'var(--accent)' : 'transparent',
+              color: activeTab === 'mt5' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            MT5 Trades ({mt5Trades.length > 0 ? mt5Trades.length : trades.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('all')}
+            style={{
+              padding: '5px 12px', border: 'none', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 600,
+              background: activeTab === 'all' ? 'var(--accent)' : 'transparent',
+              color: activeTab === 'all' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            All Account Trades ({trades.length})
+          </button>
+        </div>
+
+        {/* Dropdown Filters & Search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', padding: '2px 8px' }}>
+            <Filter size={11} style={{ color: 'var(--text-muted)' }} />
+            <select
+              value={filterSymbol}
+              onChange={e => setFilterSymbol(e.target.value)}
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.68rem', outline: 'none', cursor: 'pointer'
+              }}
+            >
+              {uniqueSymbols.map(s => (
+                <option key={s} value={s}>{s === 'All' ? 'All Symbols' : s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', padding: '2px 8px' }}>
+            <select
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.68rem', outline: 'none', cursor: 'pointer'
+              }}
+            >
+              <option value="All">All Directions</option>
+              <option value="Long">Long</option>
+              <option value="Short">Short</option>
+            </select>
+          </div>
+
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={11} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                borderRadius: '6px', padding: '4px 8px 4px 24px', color: 'var(--text-primary)', fontSize: '0.68rem', outline: 'none', width: '120px'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Trades Table */}
+      <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid var(--border)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+              <th style={{ padding: '10px 14px', fontWeight: 600 }}>SYMBOL</th>
+              <th style={{ padding: '10px 14px', fontWeight: 600 }}>TYPE</th>
+              <th style={{ padding: '10px 14px', fontWeight: 600 }}>DATE / TIME</th>
+              <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'right' }}>ENTRY</th>
+              <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'right' }}>EXIT</th>
+              <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'right' }}>LOTS</th>
+              <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'right' }}>NET P&L</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTrades.length > 0 ? (
+              filteredTrades.map((t, idx) => {
+                const pnlNum = parseFloat(t.pnl) || parseFloat(t.netPnl) || 0;
+                const isWin = pnlNum > 0;
+                const isLoss = pnlNum < 0;
+                const dateStr = t.entryTime || t.entry_time || t.exitTime || t.exit_time || t.date || '';
+                const formattedDate = dateStr ? new Date(dateStr).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+                const tradeType = t.type || t.direction || 'Long';
+
+                return (
+                  <tr key={t.id || idx} style={{ borderBottom: '1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {t.symbol || '—'}
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 700,
+                        background: tradeType === 'Long' ? 'var(--profit-soft)' : 'var(--loss-soft)',
+                        color: tradeType === 'Long' ? 'var(--profit)' : 'var(--loss)',
+                        border: `1px solid ${tradeType === 'Long' ? 'var(--profit-border)' : 'var(--loss-border)'}`
+                      }}>
+                        {tradeType}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', fontSize: '0.68rem' }}>
+                      {formattedDate}
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-secondary)' }}>
+                      {t.entryPrice || t.entry_price ? Number(t.entryPrice || t.entry_price).toFixed(2) : '—'}
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-secondary)' }}>
+                      {t.exitPrice || t.exit_price ? Number(t.exitPrice || t.exit_price).toFixed(2) : '—'}
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-primary)' }}>
+                      {t.lotSize || t.lots || t.contracts || 1}
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: isWin ? 'var(--profit)' : isLoss ? 'var(--loss)' : 'var(--text-muted)' }}>
+                      {pnlNum >= 0 ? '+' : ''}${pnlNum.toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={7} style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  No MT5 trades logged yet. Click "Sync MT5 Account Log" above to pull trades directly from your MT5 account.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════
    MAIN MT5 CONNECT PAGE
    ═══════════════════════════════════════════════════════ */
 const MT5Connect = () => {
+  const { trades, fetchTrades } = useTrades() || { trades: [], fetchTrades: () => {} };
+
   // State
   const [accountType, setAccountType] = useState('prop');
   const [accountNumber, setAccountNumber] = useState('');
@@ -356,13 +618,14 @@ const MT5Connect = () => {
       const data = await mt5.syncTrades();
       if (data.success) {
         setSyncMessage({ type: 'success', text: data.message });
+        if (fetchTrades) await fetchTrades();
       }
     } catch (err) {
       setSyncMessage({ type: 'error', text: err.message || 'Failed to sync trades' });
     } finally {
       setSyncing(false);
     }
-  }, []);
+  }, [fetchTrades]);
 
   // Comprehensive prop firms and brokers lists
   const popularServers = useMemo(() => {
@@ -902,6 +1165,9 @@ const MT5Connect = () => {
             syncMessage={syncMessage}
           />
         )}
+
+        {/* ── MT5 All Trades History Table ────────────── */}
+        <MT5AllTrades trades={trades} onRefresh={fetchTrades} />
 
         {/* ── Features Row ───────────────────────────── */}
         <div style={{
