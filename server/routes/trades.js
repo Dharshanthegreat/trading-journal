@@ -638,18 +638,160 @@ router.post('/:id/share', async (req, res) => {
   }
 });
 
-// ─── Revoke Share Link ───────────────────────────────
-router.delete('/:id/share', async (req, res) => {
+// ─── Delete Trade (Move to Backup Bin) ───────────────
+router.delete('/:id', async (req, res) => {
   try {
-    const tradeResult = await db.query('SELECT id FROM trades WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    const tradeResult = await db.query('SELECT * FROM trades WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (tradeResult.rows.length === 0) {
       return res.status(404).json({ error: 'Trade not found' });
     }
-    await db.query('UPDATE trades SET share_token = NULL WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Share link revoked successfully' });
+    const tradeData = tradeResult.rows[0];
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS deleted_trades (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        trade_id INTEGER,
+        trade_data JSONB NOT NULL,
+        deleted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.query(`
+      INSERT INTO deleted_trades (user_id, trade_id, trade_data)
+      VALUES ($1, $2, $3)
+    `, [req.user.id, tradeData.id, JSON.stringify(formatTrade(tradeData))]);
+
+    await db.query('DELETE FROM trades WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    res.json({ message: 'Trade moved to backup bin' });
   } catch (err) {
-    console.error('Revoke share link error:', err);
-    res.status(500).json({ error: 'Failed to revoke share link' });
+    console.error('Delete trade error:', err);
+    res.status(500).json({ error: 'Failed to delete trade' });
+  }
+});
+
+// ─── Get Deleted Trades ───────────────────────────────
+router.get('/deleted', async (req, res) => {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS deleted_trades (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        trade_id INTEGER,
+        trade_data JSONB NOT NULL,
+        deleted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    const result = await db.query(
+      'SELECT id, trade_id, trade_data, deleted_at FROM deleted_trades WHERE user_id = $1 ORDER BY deleted_at DESC',
+      [req.user.id]
+    );
+
+    const formatted = result.rows.map(row => ({
+      ...(typeof row.trade_data === 'string' ? JSON.parse(row.trade_data) : row.trade_data),
+      backupId: row.id,
+      deletedAt: row.deleted_at
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error('Get deleted trades error:', err);
+    res.status(500).json({ error: 'Failed to fetch deleted trades' });
+  }
+});
+
+// ─── Restore Trade ────────────────────────────────────
+router.post('/:id/restore', async (req, res) => {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS deleted_trades (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        trade_id INTEGER,
+        trade_data JSONB NOT NULL,
+        deleted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    const result = await db.query(
+      'SELECT * FROM deleted_trades WHERE (id = $1 OR trade_id = $1) AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Deleted trade not found' });
+    }
+
+    const row = result.rows[0];
+    const t = typeof row.trade_data === 'string' ? JSON.parse(row.trade_data) : row.trade_data;
+
+    await db.query(`
+      INSERT INTO trades (
+        user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
+        pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags, fomo_level, confidence_level, risk_reward_ratio
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    `, [
+      req.user.id, (t.symbol || '').toUpperCase(), t.type || 'Long',
+      parseFloat(t.entryPrice) || 0, parseFloat(t.exitPrice) || 0, parseFloat(t.lotSize) || 0,
+      parseFloat(t.stopLoss) || 0, parseFloat(t.takeProfit) || 0, parseFloat(t.pnl) || 0,
+      t.entryTime || new Date().toISOString(), t.exitTime || null, t.setup || '', t.grade || 'B',
+      t.notes || '', JSON.stringify(t.tags || []), JSON.stringify(t.emotionTags || []),
+      t.fomoLevel || 5, t.confidenceLevel || 5, t.riskRewardRatio || 0
+    ]);
+
+    await db.query('DELETE FROM deleted_trades WHERE id = $1', [row.id]);
+    res.json({ success: true, message: 'Trade restored successfully' });
+  } catch (err) {
+    console.error('Restore trade error:', err);
+    res.status(500).json({ error: 'Failed to restore trade' });
+  }
+});
+
+// ─── Restore All Trades ───────────────────────────────
+router.post('/restore-all', async (req, res) => {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS deleted_trades (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        trade_id INTEGER,
+        trade_data JSONB NOT NULL,
+        deleted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    const result = await db.query('SELECT * FROM deleted_trades WHERE user_id = $1', [req.user.id]);
+    
+    for (const row of result.rows) {
+      const t = typeof row.trade_data === 'string' ? JSON.parse(row.trade_data) : row.trade_data;
+      await db.query(`
+        INSERT INTO trades (
+          user_id, symbol, type, entry_price, exit_price, lot_size, stop_loss, take_profit,
+          pnl, entry_time, exit_time, setup, grade, notes, tags, emotion_tags, fomo_level, confidence_level, risk_reward_ratio
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      `, [
+        req.user.id, (t.symbol || '').toUpperCase(), t.type || 'Long',
+        parseFloat(t.entryPrice) || 0, parseFloat(t.exitPrice) || 0, parseFloat(t.lotSize) || 0,
+        parseFloat(t.stopLoss) || 0, parseFloat(t.takeProfit) || 0, parseFloat(t.pnl) || 0,
+        t.entryTime || new Date().toISOString(), t.exitTime || null, t.setup || '', t.grade || 'B',
+        t.notes || '', JSON.stringify(t.tags || []), JSON.stringify(t.emotionTags || []),
+        t.fomoLevel || 5, t.confidenceLevel || 5, t.riskRewardRatio || 0
+      ]);
+    }
+
+    await db.query('DELETE FROM deleted_trades WHERE user_id = $1', [req.user.id]);
+    res.json({ success: true, message: `${result.rows.length} trades restored successfully` });
+  } catch (err) {
+    console.error('Restore all trades error:', err);
+    res.status(500).json({ error: 'Failed to restore all trades' });
+  }
+});
+
+// ─── Permanent Delete Trade ───────────────────────────
+router.delete('/:id/permanent', async (req, res) => {
+  try {
+    await db.query('DELETE FROM deleted_trades WHERE (id = $1 OR trade_id = $1) AND user_id = $2', [req.params.id, req.user.id]);
+    res.json({ success: true, message: 'Trade permanently deleted' });
+  } catch (err) {
+    console.error('Permanent delete trade error:', err);
+    res.status(500).json({ error: 'Failed to permanently delete trade' });
   }
 });
 

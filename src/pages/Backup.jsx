@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useJournal } from '../contexts/JournalContext';
-import { backup as backupApi, accounts as accountsApi } from '../services/api';
+import { backup as backupApi, accounts as accountsApi, trades as tradesApi } from '../services/api';
 import {
   Database as DatabaseIcon, Download, RefreshCw, AlertTriangle, Loader,
   FileJson, Check, History, Trash2, Shield, RotateCcw, Wallet
@@ -30,6 +30,10 @@ const Backup = () => {
   const [deletedAccounts, setDeletedAccounts] = useState([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
 
+  // Deleted Trades State
+  const [deletedTrades, setDeletedTrades] = useState([]);
+  const [loadingDeletedTrades, setLoadingDeletedTrades] = useState(false);
+
   const fetchDeletedAccounts = async () => {
     try {
       setLoadingDeleted(true);
@@ -42,9 +46,63 @@ const Backup = () => {
     }
   };
 
+  const fetchDeletedTrades = async () => {
+    try {
+      setLoadingDeletedTrades(true);
+      const data = await tradesApi.getDeleted();
+      setDeletedTrades(data || []);
+    } catch (err) {
+      console.error('Failed to fetch deleted trades:', err);
+    } finally {
+      setLoadingDeletedTrades(false);
+    }
+  };
+
   useEffect(() => {
     fetchDeletedAccounts();
+    fetchDeletedTrades();
   }, []);
+
+  const handleRestoreTrade = async (id) => {
+    if (user?.isGuest) { alert("Cannot modify trades in Showcase view."); return; }
+    try {
+      await tradesApi.restore(id);
+      addAuditLog('Restore Trade', `Trade ID: ${id}`, 'success');
+      await fetchDeletedTrades();
+      await fetchTrades({ limit: 200 });
+      await fetchAnalytics();
+    } catch (err) {
+      console.error('Failed to restore trade:', err);
+      alert('Failed to restore trade');
+    }
+  };
+
+  const handleRestoreAllTrades = async () => {
+    if (user?.isGuest) { alert("Cannot modify trades in Showcase view."); return; }
+    try {
+      await tradesApi.restoreAll();
+      addAuditLog('Restore All Trades', 'Restored all backup trades', 'success');
+      await fetchDeletedTrades();
+      await fetchTrades({ limit: 200 });
+      await fetchAnalytics();
+    } catch (err) {
+      console.error('Failed to restore all trades:', err);
+      alert('Failed to restore all trades');
+    }
+  };
+
+  const handlePermanentDeleteTrade = async (id) => {
+    if (user?.isGuest) { alert("Cannot modify trades in Showcase view."); return; }
+    if (!window.confirm('Are you sure you want to permanently delete this trade from backup? This action cannot be undone.')) return;
+    try {
+      await tradesApi.hardDelete(id);
+      addAuditLog('Permanent Delete Trade', `Trade ID: ${id}`, 'success');
+      await fetchDeletedTrades();
+    } catch (err) {
+      console.error('Failed to permanently delete trade:', err);
+      alert('Failed to delete trade');
+    }
+  };
 
   // Load audit logs on mount
   useEffect(() => {
@@ -578,6 +636,92 @@ const Backup = () => {
                     )}
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card: Trades Backup (Recycle Bin) */}
+          <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-mid)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)', marginBottom: 'var(--s3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+                <History size={14} style={{ color: 'var(--accent)' }} />
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Trades Backup (Recycle Bin)</h4>
+                <span className="badge" style={{ fontSize: '0.62rem', background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--border-accent)' }}>
+                  {deletedTrades.length} Deleted Trades
+                </span>
+              </div>
+              {deletedTrades.length > 0 && (
+                <button className="btn btn-sm btn-ghost" style={{ color: 'var(--profit)', fontSize: '0.7rem' }} onClick={handleRestoreAllTrades}>
+                  <RotateCcw size={12} /> Restore All Trades
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 'var(--s4)' }}>
+              Trades deleted by mistake are safely stored in this backup bin. You can restore them anytime to return them to your Trade Journal, or delete them permanently.
+            </p>
+
+            {loadingDeletedTrades ? (
+              <div style={{ padding: 'var(--s4)', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <Loader size={16} style={{ animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+              </div>
+            ) : deletedTrades.length === 0 ? (
+              <div style={{ padding: 'var(--s4) var(--s2)', fontStyle: 'italic', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem', background: 'var(--surface-glass)', borderRadius: 'var(--r-sm)' }}>
+                No deleted trades in the backup bin. All active trades are safe.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.7rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '8px 10px', fontWeight: 600 }}>SYMBOL</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 600 }}>DIR</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 600 }}>TRADE DATE</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 600, textAlign: 'right' }}>P&L</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deletedTrades.map((t, idx) => {
+                      const pnlNum = parseFloat(t.pnl) || parseFloat(t.netPnl) || 0;
+                      const dateStr = t.entryTime || t.entry_time || t.date || '';
+                      const formattedDate = dateStr ? new Date(dateStr).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+                      const tradeType = t.type || t.direction || 'Long';
+
+                      return (
+                        <tr key={t.backupId || t.id || idx} style={{ borderBottom: '1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {t.symbol || '—'}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span style={{
+                              padding: '1px 5px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: 700,
+                              background: tradeType === 'Long' ? 'var(--profit-soft)' : 'var(--loss-soft)',
+                              color: tradeType === 'Long' ? 'var(--profit)' : 'var(--loss)'
+                            }}>
+                              {tradeType}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>
+                            {formattedDate}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: pnlNum >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                            {pnlNum >= 0 ? '+' : ''}${pnlNum.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', height: 'auto', fontSize: '0.65rem', color: 'var(--profit)' }} onClick={() => handleRestoreTrade(t.backupId || t.id)}>
+                                <RotateCcw size={11} /> Restore
+                              </button>
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', height: 'auto', fontSize: '0.65rem', color: 'var(--loss)' }} onClick={() => handlePermanentDeleteTrade(t.backupId || t.id)}>
+                                <Trash2 size={11} /> Delete Forever
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

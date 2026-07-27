@@ -610,21 +610,70 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     return updated;
   }
   
-  if (url.startsWith('/') && method === 'DELETE') {
+  if (url === '/deleted' && method === 'GET') {
+    return getStorageItem(`deleted_trades_${activeUser.id}`, []);
+  }
+
+  if (url.endsWith('/restore') && method === 'POST') {
+    const id = parseInt(url.split('/')[1]);
+    let deletedTrades = getStorageItem(`deleted_trades_${activeUser.id}`, []);
+    const targetTrade = deletedTrades.find(t => t.id === id);
+    if (!targetTrade) throw { status: 404, message: 'Trade not found in backup bin' };
+
+    deletedTrades = deletedTrades.filter(t => t.id !== id);
+    setStorageItem(`deleted_trades_${activeUser.id}`, deletedTrades);
+
+    const { deletedAt, ...cleanTrade } = targetTrade;
+    trades.push(cleanTrade);
+    setStorageItem(`trades_${activeUser.id}`, trades);
+    return { message: 'Trade restored successfully' };
+  }
+
+  if (url === '/restore-all' && method === 'POST') {
+    let deletedTrades = getStorageItem(`deleted_trades_${activeUser.id}`, []);
+    if (deletedTrades.length === 0) return { message: 'No trades to restore' };
+
+    deletedTrades.forEach(t => {
+      const { deletedAt, ...cleanTrade } = t;
+      trades.push(cleanTrade);
+    });
+
+    setStorageItem(`trades_${activeUser.id}`, trades);
+    setStorageItem(`deleted_trades_${activeUser.id}`, []);
+    return { message: 'All trades restored successfully' };
+  }
+
+  if (url.endsWith('/permanent') && method === 'DELETE') {
+    const id = parseInt(url.split('/')[1]);
+    let deletedTrades = getStorageItem(`deleted_trades_${activeUser.id}`, []);
+    const targetTrade = deletedTrades.find(t => t.id === id);
+    if (targetTrade) {
+      if (targetTrade.imageKeys && targetTrade.imageKeys.length > 0) {
+        await Promise.all(targetTrade.imageKeys.map(key => deleteLocalImage(key)));
+      } else {
+        await deleteLocalImage(id);
+      }
+    }
+    deletedTrades = deletedTrades.filter(t => t.id !== id);
+    setStorageItem(`deleted_trades_${activeUser.id}`, deletedTrades);
+    return { message: 'Trade permanently deleted' };
+  }
+
+  if (url.startsWith('/') && method === 'DELETE' && !url.includes('/permanent')) {
     const id = parseInt(url.slice(1));
     const targetTrade = trades.find(t => t.id === id);
     if (!targetTrade) throw { status: 404, message: 'Trade not found' };
     
+    const deletedTrades = getStorageItem(`deleted_trades_${activeUser.id}`, []);
+    deletedTrades.unshift({
+      ...targetTrade,
+      deletedAt: new Date().toISOString()
+    });
+    setStorageItem(`deleted_trades_${activeUser.id}`, deletedTrades);
+
     trades = trades.filter(t => t.id !== id);
-    
-    if (targetTrade.imageKeys && targetTrade.imageKeys.length > 0) {
-      await Promise.all(targetTrade.imageKeys.map(key => deleteLocalImage(key)));
-    } else {
-      await deleteLocalImage(id);
-    }
-    
     setStorageItem(`trades_${activeUser.id}`, trades);
-    return { message: 'Trade deleted' };
+    return { message: 'Trade moved to backup recycle bin' };
   }
 
   if (url.endsWith('/share') && method === 'POST') {

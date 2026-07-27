@@ -158,6 +158,24 @@ export const TradeProvider = ({ children }) => {
     return await tradesApi.export();
   };
 
+  const restoreTrade = async (id) => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot restore trades.");
+      return;
+    }
+    await tradesApi.restore(id);
+    await fetchTrades();
+  };
+
+  const restoreAllTrades = async () => {
+    if (user?.isGuest) {
+      alert("This is a read-only showcase dashboard. You cannot restore trades.");
+      return;
+    }
+    await tradesApi.restoreAll();
+    await fetchTrades();
+  };
+
   return (
     <TradeContext.Provider value={{
       trades, loading, total, analytics,
@@ -165,6 +183,7 @@ export const TradeProvider = ({ children }) => {
       addTrade, updateTrade, deleteTrade,
       shareTrade, unshareTrade,
       importTrades, exportTrades,
+      restoreTrade, restoreAllTrades
     }}>
       {children}
     </TradeContext.Provider>

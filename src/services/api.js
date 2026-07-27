@@ -173,6 +173,10 @@ export const trades = {
   share: (id) => request(`/trades/${id}/share`, { method: 'POST' }),
   unshare: (id) => request(`/trades/${id}/share`, { method: 'DELETE' }),
   getShared: (token) => request(`/public/trades/${token}`),
+  getDeleted: () => request('/trades/deleted'),
+  restore: (id) => request(`/trades/${id}/restore`, { method: 'POST' }),
+  hardDelete: (id) => request(`/trades/${id}/permanent`, { method: 'DELETE' }),
+  restoreAll: () => request('/trades/restore-all', { method: 'POST' }),
 };
 
 // ─── Journal ─────────────────────────────────────────
