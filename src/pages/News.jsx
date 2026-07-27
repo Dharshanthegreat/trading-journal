@@ -201,8 +201,17 @@ const News = () => {
       if (hasTodayInEvents && today.getFullYear() === currentYear && today.getMonth() === currentMonth) {
         setSelectedCalendarDate(todayStr);
       } else {
-        const firstEventDate = new Date(events[0].date).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' });
-        setSelectedCalendarDate(firstEventDate);
+        // Prioritize upcoming events on or after today
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const upcomingEvent = events.find(e => new Date(e.date) >= startOfToday);
+        if (upcomingEvent) {
+          const upcomingDateStr = new Date(upcomingEvent.date).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' });
+          setSelectedCalendarDate(upcomingDateStr);
+        } else {
+          const firstEventDate = new Date(events[0].date).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' });
+          setSelectedCalendarDate(firstEventDate);
+        }
       }
     } else {
       setSelectedCalendarDate(null);
@@ -585,9 +594,7 @@ const News = () => {
                     <div
                       key={idx}
                       onClick={() => {
-                        if (dayEvents.length > 0) {
-                          setSelectedCalendarDate(cell.dateKey);
-                        }
+                        setSelectedCalendarDate(cell.dateKey);
                       }}
                       style={{
                         height: '38px',
@@ -596,7 +603,7 @@ const News = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: 'var(--r-xs)',
-                        cursor: dayEvents.length > 0 ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         background: isSelected ? 'var(--accent)' : (isTodayCell ? 'var(--accent-soft)' : 'transparent'),
                         border: isSelected ? '1px solid var(--accent)' : (isTodayCell ? '1px solid var(--border-accent)' : '1px solid transparent'),
                         color: isSelected ? '#fff' : (cell.isCurrentMonth ? 'var(--text-primary)' : 'var(--text-muted)'),
@@ -605,7 +612,7 @@ const News = () => {
                         position: 'relative'
                       }}
                       onMouseEnter={e => {
-                        if (!isSelected && dayEvents.length > 0) {
+                        if (!isSelected) {
                           e.currentTarget.style.background = 'var(--bg-hover)';
                         }
                       }}
@@ -646,8 +653,17 @@ const News = () => {
               <button className="btn btn-secondary btn-sm" onClick={() => loadNews()}>Try Again</button>
             </div>
           ) : groupedEvents.length === 0 ? (
-            <div style={{ padding: 'var(--s10) 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-              No economic releases matching current filters.
+            <div style={{ padding: 'var(--s10) 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <div>No economic releases matching current filters or date.</div>
+              {selectedCalendarDate && (
+                <button 
+                  className="btn btn-secondary btn-sm" 
+                  onClick={() => setSelectedCalendarDate(null)}
+                  style={{ fontSize: '0.72rem', marginTop: '4px' }}
+                >
+                  View All Releases For This Month
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>

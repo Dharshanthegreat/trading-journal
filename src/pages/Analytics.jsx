@@ -231,6 +231,9 @@ const Analytics = () => {
     }
 
     const getResult = (t) => {
+      if (t.outcome === 'Breakeven' || t.result === 'Breakeven') return 'Breakeven';
+      if (t.outcome === 'Win' || t.result === 'Win') return 'Win';
+      if (t.outcome === 'Loss' || t.result === 'Loss') return 'Loss';
       const acc = accountsList.find(a => String(a.id) === String(t.accountId || t.account_id || 1));
       const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
       const threshold = startingBalance * 0.001;

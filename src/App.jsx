@@ -485,6 +485,19 @@ const Dashboard = () => {
     return days;
   }, [pickerMonth]);
 
+  // Compute starting balance dynamically based on accounts list and selected account
+  const startBalance = useMemo(() => {
+    if (selectedAccount === 'All') {
+      if (accounts.length > 0) {
+        return accounts.reduce((acc, curr) => acc + (parseFloat(curr.startingBalance) || 0), 0);
+      }
+      return user?.accountSize ? parseFloat(user.accountSize) : 25000;
+    } else {
+      const acc = accounts.find(a => String(a.id) === String(selectedAccount));
+      return acc ? (parseFloat(acc.startingBalance) || 0) : (user?.accountSize ? parseFloat(user.accountSize) : 25000);
+    }
+  }, [selectedAccount, accounts, user]);
+
   // Recalculate stats dynamically based on filtered trades
   const stats = useMemo(() => {
     const totalTrades = filteredTrades.length;
@@ -495,6 +508,7 @@ const Dashboard = () => {
         winRate: 0,
         wins: 0,
         losses: 0,
+        breakevens: 0,
         profitFactor: '0.00',
         avgWin: '0.00',
         avgLoss: '0.00',
@@ -506,11 +520,22 @@ const Dashboard = () => {
       };
     }
 
-    const wins = filteredTrades.filter(t => t.pnl > 0);
-    const losses = filteredTrades.filter(t => t.pnl < 0);
-    const totalPnL = filteredTrades.reduce((acc, t) => acc + t.pnl, 0);
-    const totalWin = wins.reduce((acc, t) => acc + t.pnl, 0);
-    const totalLoss = Math.abs(losses.reduce((acc, t) => acc + t.pnl, 0));
+    const getResult = (t) => {
+      if (t.outcome === 'Breakeven' || t.result === 'Breakeven') return 'Breakeven';
+      if (t.outcome === 'Win' || t.result === 'Win') return 'Win';
+      if (t.outcome === 'Loss' || t.result === 'Loss') return 'Loss';
+      const threshold = (startBalance || 10000) * 0.001;
+      if (t.pnl > threshold) return 'Win';
+      if (t.pnl < -threshold) return 'Loss';
+      return 'Breakeven';
+    };
+
+    const wins = filteredTrades.filter(t => getResult(t) === 'Win');
+    const losses = filteredTrades.filter(t => getResult(t) === 'Loss');
+    const breakevens = filteredTrades.filter(t => getResult(t) === 'Breakeven');
+    const totalPnL = filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+    const totalWin = wins.reduce((acc, t) => acc + (t.pnl || 0), 0);
+    const totalLoss = Math.abs(losses.reduce((acc, t) => acc + (t.pnl || 0), 0));
     
     const winRate = ((wins.length / totalTrades) * 100).toFixed(1);
     const profitFactor = totalLoss > 0 ? (totalWin / totalLoss).toFixed(2) : (wins.length > 0 ? 'Infinity' : '0.00');
@@ -523,7 +548,9 @@ const Dashboard = () => {
     let streakType = null;
     
     chronoTrades.forEach(t => {
-      const isWin = t.pnl > 0;
+      const res = getResult(t);
+      if (res === 'Breakeven') return;
+      const isWin = res === 'Win';
       if (streakType === null) {
         streakType = isWin;
         currentStreak = 1;
@@ -540,7 +567,7 @@ const Dashboard = () => {
     // Drawdowns
     let running = 0, peak = 0, maxDrawdown = 0;
     chronoTrades.forEach(t => {
-      running += t.pnl;
+      running += (t.pnl || 0);
       if (running > peak) peak = running;
       const dd = peak - running;
       if (dd > maxDrawdown) maxDrawdown = dd;
@@ -556,6 +583,7 @@ const Dashboard = () => {
       winRate: parseFloat(winRate),
       wins: wins.length,
       losses: losses.length,
+      breakevens: breakevens.length,
       profitFactor,
       avgWin,
       avgLoss,
@@ -565,7 +593,7 @@ const Dashboard = () => {
       bestTrade,
       worstTrade,
     };
-  }, [filteredTrades]);
+  }, [filteredTrades, startBalance]);
 
   // Group trades by day to calculate Day Win %
   const dayStats = useMemo(() => {
@@ -691,18 +719,6 @@ const Dashboard = () => {
     }));
   }, [filteredTrades]);
 
-  // Compute starting balance dynamically based on accounts list and selected account
-  const startBalance = useMemo(() => {
-    if (selectedAccount === 'All') {
-      if (accounts.length > 0) {
-        return accounts.reduce((acc, curr) => acc + (parseFloat(curr.startingBalance) || 0), 0);
-      }
-      return user?.accountSize ? parseFloat(user.accountSize) : 25000;
-    } else {
-      const acc = accounts.find(a => String(a.id) === String(selectedAccount));
-      return acc ? (parseFloat(acc.startingBalance) || 0) : (user?.accountSize ? parseFloat(user.accountSize) : 25000);
-    }
-  }, [selectedAccount, accounts, user]);
 
   // Compute account balance curve based on dynamic user accountSize
   const balanceData = useMemo(() => {
@@ -805,12 +821,26 @@ const Dashboard = () => {
   }, [filteredTrades]);
 
   const breakevenTradesCount = useMemo(() => {
-    return stats.totalTrades - stats.wins - stats.losses;
+    return stats.breakevens;
   }, [stats]);
 
   const pfBars = useMemo(() => {
-    const totalWinVal = filteredTrades.filter(t => t.pnl > 0).reduce((acc, t) => acc + t.pnl, 0);
-    const totalLossVal = Math.abs(filteredTrades.filter(t => t.pnl < 0).reduce((acc, t) => acc + t.pnl, 0));
+    const wins = filteredTrades.filter(t => {
+      if (t.outcome === 'Breakeven' || t.result === 'Breakeven') return false;
+      if (t.outcome === 'Win' || t.result === 'Win') return true;
+      if (t.outcome === 'Loss' || t.result === 'Loss') return false;
+      const threshold = (startBalance || 10000) * 0.001;
+      return t.pnl > threshold;
+    });
+    const losses = filteredTrades.filter(t => {
+      if (t.outcome === 'Breakeven' || t.result === 'Breakeven') return false;
+      if (t.outcome === 'Win' || t.result === 'Win') return false;
+      if (t.outcome === 'Loss' || t.result === 'Loss') return true;
+      const threshold = (startBalance || 10000) * 0.001;
+      return t.pnl < -threshold;
+    });
+    const totalWinVal = wins.reduce((acc, t) => acc + (t.pnl || 0), 0);
+    const totalLossVal = Math.abs(losses.reduce((acc, t) => acc + (t.pnl || 0), 0));
     let numGreenBars = 14;
     if (totalWinVal + totalLossVal > 0) {
       const ratio = totalWinVal / (totalWinVal + totalLossVal);
@@ -822,7 +852,7 @@ const Dashboard = () => {
       totalWinVal,
       totalLossVal
     };
-  }, [filteredTrades]);
+  }, [filteredTrades, startBalance]);
 
   const recentTrades = useMemo(() => {
     return [...filteredTrades].slice(0, 4);
@@ -1375,7 +1405,7 @@ const Dashboard = () => {
                 <div className="tz-outcome-bar-bg">
                   <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.wins / stats.totalTrades) * 100 : 0}%`, background: 'var(--profit)' }} />
                 </div>
-                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.wins}</span>
+                <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right' }}>{stats.wins}</span>
               </div>
               
               {/* Breakeven Row */}
@@ -1387,7 +1417,7 @@ const Dashboard = () => {
                 <div className="tz-outcome-bar-bg">
                   <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (breakevenTradesCount / stats.totalTrades) * 100 : 0}%`, background: 'var(--text-muted)' }} />
                 </div>
-                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{breakevenTradesCount}</span>
+                <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right' }}>{breakevenTradesCount}</span>
               </div>
 
               {/* Losing Row */}
@@ -1399,7 +1429,7 @@ const Dashboard = () => {
                 <div className="tz-outcome-bar-bg">
                   <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%`, background: 'var(--loss)' }} />
                 </div>
-                <span style={{ color: 'var(--text-primary)', width: '12px', textAlign: 'right' }}>{stats.losses}</span>
+                <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right' }}>{stats.losses}</span>
               </div>
             </div>
           </div>

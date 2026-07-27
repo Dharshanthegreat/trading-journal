@@ -356,6 +356,9 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     const accountsList = getStorageItem(`accounts_${activeUser.id}`, []);
     const getResult = (t) => {
+      if (t.outcome === 'Breakeven' || t.result === 'Breakeven') return 'Breakeven';
+      if (t.outcome === 'Win' || t.result === 'Win') return 'Win';
+      if (t.outcome === 'Loss' || t.result === 'Loss') return 'Loss';
       const acc = accountsList.find(a => String(a.id) === String(t.accountId || 1));
       const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
       const threshold = startingBalance * 0.001;
@@ -684,6 +687,9 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     const accountsList = getStorageItem(`accounts_${activeUser.id}`, []);
     const getResult = (t) => {
+      if (t.outcome === 'Breakeven' || t.result === 'Breakeven') return 'Breakeven';
+      if (t.outcome === 'Win' || t.result === 'Win') return 'Win';
+      if (t.outcome === 'Loss' || t.result === 'Loss') return 'Loss';
       const acc = accountsList.find(a => String(a.id) === String(t.accountId || 1));
       const startingBalance = acc ? (acc.startingBalance || 10000.0) : 10000.0;
       const threshold = startingBalance * 0.001;
@@ -2101,8 +2107,13 @@ const handleStoic = async (url, method, body) => {
 // 10. News Handler
 const handleNews = async (url, method, body, queryParams = {}) => {
   if (url === '' && method === 'GET') {
-    // In offline mode, return empty array — no fake data.
-    // The api.js layer already tries the real backend server first for /news endpoints.
+    try {
+      const resp = await fetch('/news.json');
+      if (resp.ok) {
+        const events = await resp.json();
+        if (Array.isArray(events) && events.length > 0) return events;
+      }
+    } catch (e) {}
     return [];
   }
 

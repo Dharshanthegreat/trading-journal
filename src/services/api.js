@@ -231,16 +231,40 @@ export const ai = {
 // ─── News ────────────────────────────────────────────
 export const news = {
   list: async (params = {}) => {
+    // 1. Try live Forex Factory API first for up-to-date upcoming news
     try {
-      // Direct integration with Forex Factory API via static prebuild (avoids browser CORS)
+      const liveResponse = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json', { cache: 'no-store' });
+      if (liveResponse.ok) {
+        let events = await liveResponse.json();
+        if (Array.isArray(events) && events.length > 0) {
+          if (params.year !== undefined && params.month !== undefined) {
+            const reqYear = parseInt(params.year);
+            const reqMonth = parseInt(params.month);
+            events = events.filter(e => {
+              try {
+                const d = new Date(e.date);
+                return d.getFullYear() === reqYear && d.getMonth() === reqMonth;
+              } catch {
+                return false;
+              }
+            });
+          }
+          if (events.length > 0) return events;
+        }
+      }
+    } catch (e) {
+      console.warn('Live Forex Factory fetch failed, trying static news.json:', e);
+    }
+
+    // 2. Fallback to static news.json
+    try {
       const baseUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.BASE_URL : '/';
       const staticUrl = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}/news.json`;
       const response = await fetch(staticUrl);
       
       if (response.ok) {
         let events = await response.json();
-        if (Array.isArray(events)) {
-          // Filter by requested month/year to match calendar UI requirements
+        if (Array.isArray(events) && events.length > 0) {
           if (params.year !== undefined && params.month !== undefined) {
             const reqYear = parseInt(params.year);
             const reqMonth = parseInt(params.month);
@@ -260,7 +284,7 @@ export const news = {
       console.warn('Failed to load static news.json, falling back to backend:', err);
     }
     
-    // Fallback
+    // 3. Fallback to backend API
     const qs = new URLSearchParams(params).toString();
     return request(`/news${qs ? `?${qs}` : ''}`);
   },
