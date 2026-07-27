@@ -634,7 +634,7 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
     
     trades[tradeIndex].shareToken = 'trade-token-' + id;
     setStorageItem(`trades_${activeUser.id}`, trades);
-    return { success: true, token: trades[tradeIndex].shareToken };
+    return { success: true, shareToken: trades[tradeIndex].shareToken, token: trades[tradeIndex].shareToken };
   }
   
   if (url.endsWith('/share') && method === 'DELETE') {
@@ -2164,13 +2164,12 @@ const handlePublic = async (url, method, body) => {
 
   if (url.startsWith('/trades/')) {
     const token = parts[2];
-    const tradeId = parseInt(token.replace('trade-token-', ''));
-    if (!tradeId) throw { status: 404, message: 'Trade not found' };
+    const tradeId = parseInt(token.replace('trade-token-', '')) || null;
 
     const users = getStorageItem('users', []);
     for (const u of users) {
       const trades = getStorageItem(`trades_${u.id}`, []);
-      const found = trades.find(t => t.id === tradeId);
+      const found = trades.find(t => t.shareToken === token || (tradeId && t.id === tradeId));
       if (found) {
         const imageBase64 = await getLocalImage(found.id);
         return {

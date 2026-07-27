@@ -631,7 +631,7 @@ router.post('/:id/share', async (req, res) => {
     }
     const shareToken = crypto.randomUUID();
     await db.query('UPDATE trades SET share_token = $1 WHERE id = $2', [shareToken, req.params.id]);
-    res.json({ shareToken });
+    res.json({ shareToken, token: shareToken });
   } catch (err) {
     console.error('Generate share token error:', err);
     res.status(500).json({ error: 'Failed to generate share link' });

@@ -379,7 +379,9 @@ const Journal = () => {
     if (!currentSelectedTrade) return;
     try {
       const token = await shareTrade(currentSelectedTrade.id);
-      setSelectedTrade(prev => prev ? { ...prev, shareToken: token } : null);
+      if (token) {
+        setSelectedTrade(prev => prev ? { ...prev, shareToken: token } : null);
+      }
     } catch (err) {
       console.error('Failed to share trade:', err);
     }

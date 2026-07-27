@@ -125,7 +125,8 @@ export const TradeProvider = ({ children }) => {
       alert("This is a read-only showcase dashboard. You cannot share trades.");
       return null;
     }
-    const { shareToken } = await tradesApi.share(id);
+    const res = await tradesApi.share(id);
+    const shareToken = res?.shareToken || res?.token;
     setTrades(prev => prev.map(t => t.id === id ? { ...t, shareToken } : t));
     return shareToken;
   };
