@@ -422,15 +422,15 @@ const News = () => {
 
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 420px',
-      gap: 'var(--s4)',
+      width: '100%',
       height: 'calc(100vh - 120px)',
       minHeight: '520px',
-      alignItems: 'stretch',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      {/* LEFT COLUMN: Clean economic calendar */}
+      {/* Clean full-width economic calendar */}
       <div className="glass anim-fade-up delay-1" style={{
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -488,14 +488,14 @@ const News = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', flexWrap: 'wrap' }}>
             {/* Impact Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '2px 8px' }}>
-              <span style={{ color: 'var(--text-muted)', display: 'flex' }}><ShieldAlert size={12} /></span>
+              <Filter size={12} style={{ color: 'var(--text-muted)' }} />
               <select 
-                value={impactFilter} 
+                value={impactFilter}
                 onChange={e => setImpactFilter(e.target.value)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', cursor: 'pointer', outline: 'none' }}
               >
                 <option value="All">All Impact</option>
-                <option value="High">High Impact</option>
+                <option value="High">High Impact Only</option>
                 <option value="Medium">Medium Impact</option>
                 <option value="Low">Low Impact</option>
                 <option value="Holiday">Holidays</option>
@@ -504,11 +504,11 @@ const News = () => {
 
             {/* Currency Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '2px 8px' }}>
-              <span style={{ color: 'var(--text-muted)', display: 'flex' }}><Globe size={12} /></span>
+              <Globe size={12} style={{ color: 'var(--text-muted)' }} />
               <select 
-                value={currencyFilter} 
+                value={currencyFilter}
                 onChange={e => setCurrencyFilter(e.target.value)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.72rem', cursor: 'pointer', outline: 'none' }}
               >
                 {uniqueCurrencies.map(curr => (
                   <option key={curr} value={curr}>{curr === 'All' ? 'All Currencies' : curr}</option>
@@ -692,7 +692,7 @@ const News = () => {
                       return (
                         <div
                           key={index}
-                          onClick={() => setSelectedEvent(ev)}
+                          onClick={() => setSelectedEvent(ev === selectedEvent ? null : ev)}
                           style={{
                             display: 'grid',
                             gridTemplateColumns: '80px 70px 1fr 180px',
@@ -770,296 +770,6 @@ const News = () => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* RIGHT COLUMN: DTG AI Economic Analyst Widget */}
-      <div className="glass anim-fade-up delay-2" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        borderRadius: 'var(--r-lg)',
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border)'
-      }}>
-        {/* Chat Header */}
-        <div style={{
-          padding: 'var(--s3) var(--s4)',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'var(--bg-tertiary)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: 'var(--accent)', display: 'flex' }}><Brain size={16} /></span>
-            <div>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>DTG AI News Analyst</span>
-              <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Llama-3.1-Nemotron-70B-Instruct</span>
-            </div>
-          </div>
-          {messages.length > 0 && (
-            <button 
-              onClick={handleClearChat} 
-              className="btn btn-ghost btn-sm"
-              style={{ padding: '4px', height: 'auto', border: 'none', display: 'flex', alignItems: 'center' }}
-              title="Clear Analysis History"
-            >
-              <Trash2 size={13} />
-            </button>
-          )}
-        </div>
-
-        {/* Selected Event Details Card or Empty State */}
-        {!selectedEvent ? (
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 'var(--s8)',
-            textAlign: 'center',
-            color: 'var(--text-muted)',
-            gap: 'var(--s4)'
-          }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--r-md)',
-              background: 'var(--surface-glass)',
-              border: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text-muted)'
-            }}>
-              <Info size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>No Event Selected</div>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                Select an economic news event from the calendar to launch the economic analyst module and prepare your session strategies.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}>
-            {/* Event Info Card */}
-            <div style={{
-              padding: 'var(--s4)',
-              background: 'var(--bg-tertiary)',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--s2)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Selected indicator</span>
-                  <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>{selectedEvent.title}</strong>
-                </div>
-                <span style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
-                  color: getImpactColor(selectedEvent.impact).main,
-                  background: getImpactColor(selectedEvent.impact).soft,
-                  border: `1px solid ${getImpactColor(selectedEvent.impact).border}`,
-                  padding: '2px 8px',
-                  borderRadius: '4px'
-                }}>
-                  {selectedEvent.impact} Impact
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s3)', marginTop: '4px' }}>
-                <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Currency</span>
-                  <strong style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>{selectedEvent.country}</strong>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Forecast</span>
-                  <strong style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>{selectedEvent.forecast || 'N/A'}</strong>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Previous</span>
-                  <strong style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>{selectedEvent.previous || 'N/A'}</strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Chat Messages */}
-            <div style={{
-              flex: 1,
-              padding: 'var(--s4)',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--s4)',
-              background: 'var(--bg-primary)'
-            }}>
-              {messages.length === 0 ? (
-                <div style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)',
-                  gap: 'var(--s3)'
-                }}>
-                  <Cpu size={24} style={{ color: 'var(--accent)' }} />
-                  <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>NVIDIA Macro Analyst Offline</div>
-                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', maxWidth: '240px', margin: '4px auto 0 auto', lineHeight: '1.4' }}>
-                      Click the analysis chip below to request trade setup diagnostics.
-                    </p>
-                  </div>
-                  
-                  {/* Quick analysis chip */}
-                  <button
-                    onClick={() => handleAskZella()}
-                    disabled={aiLoading}
-                    className="btn btn-primary btn-sm"
-                    style={{ marginTop: 'var(--s2)', gap: '6px' }}
-                  >
-                    <Sparkles size={12} />
-                    Analyze Economic Volatility
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className="anim-fade-in"
-                      style={{
-                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        maxWidth: '90%',
-                        display: 'flex',
-                        gap: '8px',
-                        flexDirection: msg.role === 'user' ? 'row-reverse' : 'row'
-                      }}
-                    >
-                      {/* Avatar */}
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: 'var(--r-sm)',
-                        background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent), #a78bfa)' : 'var(--bg-elevated)',
-                        border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        {msg.role === 'user' ? (
-                          <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#fff' }}>U</span>
-                        ) : (
-                          <span style={{ color: 'var(--accent)', display: 'flex' }}><Cpu size={10} /></span>
-                        )}
-                      </div>
-
-                      {/* Msg Box */}
-                      <div style={{
-                        background: msg.role === 'user' ? 'var(--accent-soft)' : 'var(--bg-secondary)',
-                        border: '1px solid',
-                        borderColor: msg.role === 'user' ? 'var(--border-accent)' : 'var(--border)',
-                        borderRadius: msg.role === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0',
-                        padding: '8px 12px',
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.75rem',
-                        boxShadow: 'var(--shadow-xs)'
-                      }}>
-                        {msg.role === 'user' ? msg.content : formatMessageContent(msg.content)}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {/* Typing indicator */}
-              {aiLoading && (
-                <div style={{ alignSelf: 'flex-start', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: 'var(--r-sm)',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <span style={{ color: 'var(--accent)', display: 'flex' }}><Cpu size={10} /></span>
-                  </div>
-                  <div className="glass" style={{
-                    borderRadius: '12px 12px 12px 0',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    gap: '4px',
-                    alignItems: 'center',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)'
-                  }}>
-                    <span className="status-dot live" style={{ animation: 'pulse-glow 1s infinite' }} />
-                    <span className="status-dot live" style={{ animation: 'pulse-glow 1s infinite 0.2s' }} />
-                    <span className="status-dot live" style={{ animation: 'pulse-glow 1s infinite 0.4s' }} />
-                  </div>
-                </div>
-              )}
-              <div ref={chatBottomRef} />
-            </div>
-
-            {/* Input Bar */}
-            {messages.length > 0 && (
-              <form onSubmit={handleSendMessage} style={{
-                padding: 'var(--s3) var(--s4)',
-                borderTop: '1px solid var(--border)',
-                background: 'var(--bg-tertiary)',
-                display: 'flex',
-                gap: 'var(--s3)',
-                alignItems: 'center'
-              }}>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder={aiLoading ? "Coach is generating response..." : "Ask follow up questions about setups..."}
-                  value={aiInput}
-                  onChange={e => setAiInput(e.target.value)}
-                  disabled={aiLoading}
-                  style={{
-                    flex: 1,
-                    height: '32px',
-                    fontSize: '0.75rem',
-                    background: 'var(--bg-primary)',
-                    borderColor: 'var(--border-mid)'
-                  }}
-                />
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={aiLoading || !aiInput.trim()}
-                  style={{
-                    padding: '0 var(--s3)',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 'var(--r-md)'
-                  }}
-                >
-                  <Send size={12} />
-                </button>
-              </form>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
