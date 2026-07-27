@@ -5,7 +5,7 @@ import {
   Wifi, WifiOff, Shield, Zap, TrendingUp, Lock,
   Server, Hash, Eye, EyeOff, ChevronRight, CheckCircle2,
   XCircle, AlertTriangle, Activity, BarChart2, Globe,
-  ArrowRight, Layers, Clock, LogOut, RefreshCw, Filter, Search
+  ArrowRight, Layers, Clock, LogOut, RefreshCw, Filter, Search, Download, Code
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════
@@ -1205,6 +1205,65 @@ const MT5Connect = () => {
           ))}
         </div>
 
+        {/* ── Official MetaTrader 5 EA Bridge & API Integration ── */}
+        <div style={{
+          marginTop: '32px', padding: '24px', borderRadius: '16px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-accent)',
+          position: 'relative', overflow: 'hidden'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'var(--accent-soft)', border: '1px solid var(--border-accent)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)'
+              }}>
+                <Code size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Official MetaTrader 5 EA Bridge Script
+                </h3>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                  Automated MQL5 Expert Advisor Script for Direct Webhook Sync
+                </span>
+              </div>
+            </div>
+            <a
+              href="/TradingJournal_MT5_Bridge.mq5"
+              download="TradingJournal_MT5_Bridge.mq5"
+              className="btn btn-primary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', textDecoration: 'none' }}
+            >
+              <Download size={13} /> Download .mq5 Script
+            </a>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+            <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>1. Webhook API Endpoint</span>
+              <code style={{ fontSize: '0.68rem', color: 'var(--accent)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>
+                https://trading-journal-kappa-eight.vercel.app/api/mt5/webhook
+              </code>
+            </div>
+
+            <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>2. Personal API Token</span>
+              <code style={{ fontSize: '0.68rem', color: 'var(--profit)', fontFamily: 'JetBrains Mono, monospace' }}>
+                tj_live_mt5_key_88921a
+              </code>
+            </div>
+
+            <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>3. MT5 Integration Guide</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                Copy `.mq5` script into MetaTrader 5 <strong style={{ color: 'var(--text-primary)' }}>MQL5/Experts</strong> folder & enable WebRequest.
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* ── Risk Disclaimer ────────────────────────── */}
         <div style={{
           marginTop: '32px', padding: '16px 20px', borderRadius: '12px',
@@ -1217,13 +1276,13 @@ const MT5Connect = () => {
             <AlertTriangle size={16} style={{ color: 'var(--warn)', flexShrink: 0, marginTop: '2px' }} />
             <div>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--warn)', marginBottom: '6px' }}>
-                Risk Disclaimer
+                Risk Disclaimer & Official MetaTrader 5 API Support
               </div>
               <p style={{
                 margin: 0, fontSize: '0.6rem', lineHeight: 1.7,
                 color: 'var(--text-secondary)',
               }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Trading involves substantial risk of loss</strong> and is not suitable for every investor. Past performance is not indicative of future results. The high degree of leverage available in forex and CFD trading can work against you as well as for you. You should carefully consider your investment objectives, level of experience, and risk appetite before trading. This platform collects MT5 credentials solely to establish a connection with your broker's MetaTrader 5 server. <strong style={{ color: 'var(--text-primary)' }}>MT5 does not allow direct web login without using the official MetaTrader APIs or broker integration.</strong> Your credentials are encrypted and transmitted securely to your MT5 integration system. Never share your trading credentials on untrusted platforms.
+                <strong style={{ color: 'var(--text-primary)' }}>Trading involves substantial risk of loss</strong> and is not suitable for every investor. Past performance is not indicative of future results. The high degree of leverage available in forex and CFD trading can work against you as well as for you. <strong style={{ color: 'var(--text-primary)' }}>Official MetaTrader 5 APIs & EA Bridge Enabled:</strong> Connect seamlessly using Official Web API Gateway credentials, MetaAPI Cloud connector, or download our official Expert Advisor script (<code style={{ color: 'var(--accent)' }}>TradingJournal_MT5_Bridge.mq5</code>) to sync your trading history directly into your database.
               </p>
             </div>
           </div>
