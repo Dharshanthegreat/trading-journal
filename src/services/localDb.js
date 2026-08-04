@@ -384,15 +384,19 @@ const handleTrades = async (url, method, body, queryParams = {}) => {
       let valA = a[sortField];
       let valB = b[sortField];
       if (sortField === 'entryTime' || sortField === 'createdAt') {
-        valA = new Date(valA || 0).getTime();
-        valB = new Date(valB || 0).getTime();
+        valA = new Date(a.entryTime || a.entry_time || a.createdAt || a.created_at || 0).getTime();
+        valB = new Date(b.entryTime || b.entry_time || b.createdAt || b.created_at || 0).getTime();
       } else if (typeof valA === 'string') {
-        valA = valA.toLowerCase();
+        valA = (valA || '').toLowerCase();
         valB = (valB || '').toLowerCase();
       }
       if (valA < valB) return -1 * sortOrder;
       if (valA > valB) return 1 * sortOrder;
-      return 0;
+
+      const timeA = new Date(a.entryTime || a.entry_time || a.createdAt || a.created_at || 0).getTime();
+      const timeB = new Date(b.entryTime || b.entry_time || b.createdAt || b.created_at || 0).getTime();
+      if (timeB !== timeA) return (timeB - timeA) * sortOrder;
+      return ((parseInt(b.id) || 0) - (parseInt(a.id) || 0)) * sortOrder;
     });
     
     const pageNum = parseInt(page) || 1;
@@ -1408,6 +1412,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url === '' && method === 'GET') {
     const trades = getStorageItem(`trades_${activeUser.id}`, []);
+    let statusUpdated = false;
     
     const accountsWithStats = accountsList.map(acc => {
       const accTrades = trades.filter(t => (t.accountId === acc.id || (!t.accountId && acc.id === 1)));
@@ -1468,8 +1473,27 @@ const handleAccounts = async (url, method, body) => {
         consistencyScore = (maxDayPnL / totalPnL) * 100;
       }
 
+      // Automatic evaluation of account status
+      let calculatedStatus = acc.status || 'Active';
+      if (!calculatedStatus || calculatedStatus.toLowerCase() === 'active') {
+        if (profitTarget > 0 && totalPnL >= profitTarget) {
+          calculatedStatus = 'Passed';
+          if (acc.status !== 'Passed') {
+            acc.status = 'Passed';
+            statusUpdated = true;
+          }
+        } else if (maxLossLimit > 0 && (useTrailingDrawdown ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
+          calculatedStatus = 'Failed';
+          if (acc.status !== 'Failed') {
+            acc.status = 'Failed';
+            statusUpdated = true;
+          }
+        }
+      }
+
       return {
         ...acc,
+        status: calculatedStatus,
         notes: acc.notes || '',
         currentBalance,
         totalPnL,
@@ -1484,6 +1508,10 @@ const handleAccounts = async (url, method, body) => {
         consistencyScore
       };
     });
+
+    if (statusUpdated) {
+      setStorageItem(`accounts_${activeUser.id}`, accountsList);
+    }
     return accountsWithStats;
   }
 

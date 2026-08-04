@@ -397,8 +397,20 @@ const Journal = () => {
     }
   };
 
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDirection(key === 'date' ? 'desc' : 'asc');
+    }
+  };
+
   const filtered = useMemo(() => {
-    return trades.filter(t => {
+    const list = trades.filter(t => {
       // Exclude mock trades created specifically on the Monday's page
       if (t.tags && t.tags.includes('Monday-Only')) return false;
 
@@ -419,7 +431,53 @@ const Journal = () => {
         
       return matchSearch && matchType && matchAccount;
     });
-  }, [trades, search, filterType, filterAccount, accounts]);
+
+    return list.sort((a, b) => {
+      let valA, valB;
+      if (sortKey === 'date') {
+        valA = new Date(a.entryTime || a.entry_time || a.date || a.createdAt || a.created_at || 0).getTime();
+        valB = new Date(b.entryTime || b.entry_time || b.date || b.createdAt || b.created_at || 0).getTime();
+      } else if (sortKey === 'symbol') {
+        valA = (a.symbol || '').toLowerCase();
+        valB = (b.symbol || '').toLowerCase();
+      } else if (sortKey === 'type') {
+        valA = (a.type || '').toLowerCase();
+        valB = (b.type || '').toLowerCase();
+      } else if (sortKey === 'entryPrice') {
+        valA = parseFloat(a.entryPrice) || 0;
+        valB = parseFloat(b.entryPrice) || 0;
+      } else if (sortKey === 'exitPrice') {
+        valA = parseFloat(a.exitPrice) || 0;
+        valB = parseFloat(b.exitPrice) || 0;
+      } else if (sortKey === 'lotSize') {
+        valA = parseFloat(a.lotSize) || 0;
+        valB = parseFloat(b.lotSize) || 0;
+      } else if (sortKey === 'rr') {
+        valA = parseFloat(a.riskRewardRatio) || 0;
+        valB = parseFloat(b.riskRewardRatio) || 0;
+      } else if (sortKey === 'setup') {
+        valA = (a.setup || '').toLowerCase();
+        valB = (b.setup || '').toLowerCase();
+      } else if (sortKey === 'pnl') {
+        valA = parseFloat(a.pnl) || 0;
+        valB = parseFloat(b.pnl) || 0;
+      } else if (sortKey === 'grade') {
+        valA = (a.grade || '').toLowerCase();
+        valB = (b.grade || '').toLowerCase();
+      } else {
+        valA = new Date(a.entryTime || a.entry_time || 0).getTime();
+        valB = new Date(b.entryTime || b.entry_time || 0).getTime();
+      }
+
+      if (valA < valB) return sortDirection === 'desc' ? 1 : -1;
+      if (valA > valB) return sortDirection === 'desc' ? -1 : 1;
+
+      const timeA = new Date(a.entryTime || a.entry_time || a.createdAt || a.created_at || 0).getTime();
+      const timeB = new Date(b.entryTime || b.entry_time || b.createdAt || b.created_at || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (parseInt(b.id) || 0) - (parseInt(a.id) || 0);
+    });
+  }, [trades, search, filterType, filterAccount, accounts, sortKey, sortDirection]);
 
   const toggleEmotion = (e) => {
     setFormData(prev => ({
@@ -548,8 +606,38 @@ const Journal = () => {
           <table className="data-table" style={{ minWidth: 800 }}>
             <thead>
               <tr>
-                <th>Date</th><th>Symbol</th><th>Dir.</th><th>Entry</th><th>Exit</th>
-                <th>Lot</th><th>R/R</th><th>Setup</th><th>P&L</th><th>Grade</th><th>Notes</th><th></th>
+                <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Date">
+                  Date {sortKey === 'date' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('symbol')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Symbol">
+                  Symbol {sortKey === 'symbol' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('type')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Direction">
+                  Dir. {sortKey === 'type' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('entryPrice')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Entry Price">
+                  Entry {sortKey === 'entryPrice' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('exitPrice')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Exit Price">
+                  Exit {sortKey === 'exitPrice' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('lotSize')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Lot Size">
+                  Lot {sortKey === 'lotSize' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('rr')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by R/R">
+                  R/R {sortKey === 'rr' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('setup')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Setup">
+                  Setup {sortKey === 'setup' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('pnl')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by P&L">
+                  P&L {sortKey === 'pnl' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th onClick={() => handleSort('grade')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Sort by Grade">
+                  Grade {sortKey === 'grade' ? (sortDirection === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+                <th>Notes</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>

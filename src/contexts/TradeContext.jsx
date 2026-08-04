@@ -5,6 +5,18 @@ import { useAuth } from './AuthContext';
 const TradeContext = createContext();
 export const useTrades = () => useContext(TradeContext);
 
+export const sortTradesByDateDesc = (tradesList) => {
+  if (!Array.isArray(tradesList)) return [];
+  return [...tradesList].sort((a, b) => {
+    const timeA = new Date(a.entryTime || a.entry_time || a.date || a.createdAt || a.created_at || 0).getTime();
+    const timeB = new Date(b.entryTime || b.entry_time || b.date || b.createdAt || b.created_at || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    const createdA = new Date(a.createdAt || a.created_at || 0).getTime() || (parseInt(a.id) || 0);
+    const createdB = new Date(b.createdAt || b.created_at || 0).getTime() || (parseInt(b.id) || 0);
+    return createdB - createdA;
+  });
+};
+
 export const TradeProvider = ({ children }) => {
   const { user } = useAuth();
   const [trades, setTrades] = useState([]);
@@ -19,12 +31,12 @@ export const TradeProvider = ({ children }) => {
       if (user.isGuest) {
         const { publicApi } = await import('../services/api');
         const data = await publicApi.getDashboard(user.guestToken);
-        setTrades(data.trades || []);
+        setTrades(sortTradesByDateDesc(data.trades || []));
         setTotal(data.trades ? data.trades.length : 0);
         if (data.analytics) setAnalytics(data.analytics);
       } else {
         const data = await tradesApi.list(params);
-        setTrades(data.trades || []);
+        setTrades(sortTradesByDateDesc(data.trades || []));
         setTotal(data.total || 0);
       }
     } catch (err) {
@@ -76,7 +88,7 @@ export const TradeProvider = ({ children }) => {
     }
 
     const newTrade = await tradesApi.create(formData);
-    setTrades(prev => [newTrade, ...prev]);
+    setTrades(prev => sortTradesByDateDesc([newTrade, ...prev]));
     return newTrade;
   };
 
@@ -107,7 +119,7 @@ export const TradeProvider = ({ children }) => {
     }
 
     const updated = await tradesApi.update(id, formData);
-    setTrades(prev => prev.map(t => t.id === id ? updated : t));
+    setTrades(prev => sortTradesByDateDesc(prev.map(t => t.id === id ? updated : t)));
     return updated;
   };
 

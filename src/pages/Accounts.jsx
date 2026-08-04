@@ -266,17 +266,17 @@ const Accounts = () => {
   const deletedArray = Array.isArray(deletedAccounts) ? deletedAccounts : [];
 
   const totalBalance = accountsArray
-    .filter(a => a.status === 'Active')
+    .filter(a => (a.status || '').toLowerCase() === 'active')
     .reduce((acc, curr) => acc + (curr.currentBalance || 0), 0);
 
-  const activeCount = accountsArray.filter(a => a.status === 'Active').length;
-  const passedCount = accountsArray.filter(a => a.status === 'Passed').length;
-  const failedCount = accountsArray.filter(a => a.status === 'Failed').length;
+  const activeCount = accountsArray.filter(a => (a.status || '').toLowerCase() === 'active').length;
+  const passedCount = accountsArray.filter(a => (a.status || '').toLowerCase() === 'passed').length;
+  const failedCount = accountsArray.filter(a => (a.status || '').toLowerCase() === 'failed').length;
   const deletedCount = deletedArray.length;
   
   const filteredAccounts = statusFilter === 'Deleted' ? deletedArray : accountsArray.filter(a => {
     if (statusFilter === 'All') return true;
-    return a.status === statusFilter;
+    return (a.status || '').toLowerCase() === statusFilter.toLowerCase();
   });
 
   return (
@@ -621,7 +621,7 @@ const Accounts = () => {
                       {acc.accountName}
                     </h3>
                     <span className={`badge ${
-                      isDeletedView ? 'badge-warn' : (acc.status === 'Passed' ? 'badge-profit' : (acc.status === 'Failed' ? 'badge-loss' : 'badge-accent'))
+                      isDeletedView ? 'badge-warn' : ((acc.status || '').toLowerCase() === 'passed' ? 'badge-profit' : ((acc.status || '').toLowerCase() === 'failed' ? 'badge-loss' : 'badge-accent'))
                     }`} style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       {isDeletedView ? 'DELETED' : acc.status}
                     </span>

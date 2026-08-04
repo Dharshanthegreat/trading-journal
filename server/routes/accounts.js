@@ -66,6 +66,18 @@ router.get('/', async (req, res) => {
         consistencyScore = (maxDayPnL / totalPnL) * 100;
       }
 
+      // Automatic evaluation of account status
+      let calculatedStatus = acc.status || 'Active';
+      if (!calculatedStatus || calculatedStatus.toLowerCase() === 'active') {
+        if (profitTarget > 0 && totalPnL >= profitTarget) {
+          calculatedStatus = 'Passed';
+          await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Passed', acc.id, userId]);
+        } else if (maxLossLimit > 0 && (useTrailingDrawdown ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
+          calculatedStatus = 'Failed';
+          await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Failed', acc.id, userId]);
+        }
+      }
+
       return {
         id: acc.id,
         accountName: acc.account_name,
@@ -76,7 +88,7 @@ router.get('/', async (req, res) => {
         tradesCount,
         tradingDays,
         currency: acc.currency || 'USD',
-        status: acc.status || 'Active',
+        status: calculatedStatus,
         notionLink: acc.notion_link || '',
         notes: acc.notes || '',
         profitTarget,

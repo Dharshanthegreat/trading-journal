@@ -441,7 +441,15 @@ const Dashboard = () => {
       result = result.filter(t => t.type === selectedType);
     }
 
-    return result;
+    // 5. Ensure sorting by date descending
+    return result.sort((a, b) => {
+      const timeA = new Date(a.entryTime || a.entry_time || a.date || a.createdAt || a.created_at || 0).getTime();
+      const timeB = new Date(b.entryTime || b.entry_time || b.date || b.createdAt || b.created_at || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      const createdA = new Date(a.createdAt || a.created_at || 0).getTime() || (parseInt(a.id) || 0);
+      const createdB = new Date(b.createdAt || b.created_at || 0).getTime() || (parseInt(b.id) || 0);
+      return createdB - createdA;
+    });
   }, [trades, dateRange, selectedSymbol, selectedSetup, selectedType, selectedAccount, customStartDate, customEndDate]);
 
   // Handle reset
