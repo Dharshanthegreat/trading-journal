@@ -834,67 +834,7 @@ const Accounts = () => {
                   </button>
                 )}
 
-                {/* Notion Playbook link & AI Audit */}
-                {editingLinkId === acc.id ? (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <input
-                      type="url"
-                      className="input"
-                      style={{ fontSize: '0.72rem', padding: '4px 8px', flex: 1, height: '30px' }}
-                      value={tempLink}
-                      onChange={e => setTempLink(e.target.value)}
-                      placeholder="https://notion.so/..."
-                    />
-                    <button className="btn btn-sm btn-primary" style={{ padding: '0 10px', fontSize: '0.7rem' }} onClick={() => saveLink(acc.id)}>Save</button>
-                    <button className="btn btn-sm btn-ghost" style={{ padding: '0 8px', fontSize: '0.7rem' }} onClick={() => setEditingLinkId(null)}>Cancel</button>
-                  </div>
-                ) : (
-                  <div className="notion-link-premium">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                      <Globe size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                      {acc.notionLink ? (
-                        <a
-                          href={acc.notionLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: '0.72rem', color: 'var(--text-secondary)', textDecoration: 'none',
-                            fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                          }}
-                        >
-                          Notion Playbook
-                        </a>
-                      ) : (
-                        <span
-                          onClick={() => startEditLink(acc)}
-                          style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', cursor: 'pointer', fontStyle: 'italic' }}
-                        >
-                          + Link Notion Playbook
-                        </span>
-                      )}
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {acc.notionLink && (
-                        <button
-                          className="btn btn-xs btn-ghost"
-                          onClick={() => fetchPlaybook(acc)}
-                          style={{ fontSize: '0.65rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent)', fontWeight: 600 }}
-                        >
-                          📜 AI Audit ✏️
-                        </button>
-                      )}
-                      <button
-                        className="btn-action-round"
-                        style={{ width: '22px', height: '22px' }}
-                        onClick={() => startEditLink(acc)}
-                        title="Edit Notion Link"
-                      >
-                        <Edit2 size={10} />
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* Account Notes */}
                 {editingNotesId === acc.id ? (
