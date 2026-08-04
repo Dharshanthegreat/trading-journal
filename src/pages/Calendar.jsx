@@ -3,7 +3,7 @@ import { useTrades } from '../contexts/TradeContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target, Wallet, Sparkles } from 'lucide-react';
 
-import { toNewYorkDateString } from '../utils/timezone';
+import { toNewYorkDateString, formatInNewYork } from '../utils/timezone';
 import { accounts as accountsApi, ai } from '../services/api';
 
 const CalendarPage = () => {
@@ -30,7 +30,7 @@ const CalendarPage = () => {
   }, [fetchAnalytics, fetchTrades]);
 
   const filteredTrades = useMemo(() => {
-    const baseTrades = (trades || []).filter(t => !t.tags?.includes('Monday-Only'));
+    const baseTrades = trades || [];
     if (selectedAccountId === 'All') return baseTrades;
     const targetId = parseInt(selectedAccountId);
     return baseTrades.filter(t => {
@@ -326,6 +326,132 @@ const CalendarPage = () => {
               const dayData = dailyData[dateStr];
               const isSaturday = selectedDate.getDay() === 6;
               const weekTotal = isSaturday ? getWeekTotal(selectedDate) : null;
+
+              const renderTradeCard = (t, i) => {
+                const pnlVal = parseFloat(t.pnl) || 0;
+                const pnlFormatted = pnlVal > 0 ? `+$${pnlVal.toFixed(2)}` : pnlVal < 0 ? `-$${Math.abs(pnlVal).toFixed(2)}` : `$0.00`;
+                const accountObj = accounts.find(a => String(a.id) === String(t.accountId));
+                const accountName = accountObj?.accountName || '';
+                
+                const entryTimeFormatted = t.entryTime ? formatInNewYork(t.entryTime, 'hh:mm a') : '';
+                const exitTimeFormatted = t.exitTime ? formatInNewYork(t.exitTime, 'hh:mm a') : '';
+                const timeRange = entryTimeFormatted ? (exitTimeFormatted ? `${entryTimeFormatted} → ${exitTimeFormatted}` : entryTimeFormatted) : null;
+                
+                const entryPrice = t.entryPrice !== undefined && t.entryPrice !== null && t.entryPrice !== '' ? t.entryPrice : null;
+                const exitPrice = t.exitPrice !== undefined && t.exitPrice !== null && t.exitPrice !== '' ? t.exitPrice : null;
+                const priceRange = (entryPrice || exitPrice) ? `${entryPrice || '—'} → ${exitPrice || '—'}` : null;
+                
+                const lotSize = t.lotSize ? `${t.lotSize} ${parseFloat(t.lotSize) === 1 ? 'lot' : 'lots'}` : null;
+                const rrGradeParts = [];
+                if (t.riskRewardRatio) rrGradeParts.push(`${t.riskRewardRatio}R`);
+                if (t.grade) rrGradeParts.push(`Grade ${t.grade}`);
+                const rrGradeStr = rrGradeParts.length > 0 ? rrGradeParts.join(' · ') : null;
+
+                const rawTags = t.tags;
+                const tagsList = Array.isArray(rawTags) ? rawTags : (typeof rawTags === 'string' && rawTags ? rawTags.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+                return (
+                  <div 
+                    key={t.id || i} 
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      background: 'var(--surface-glass)',
+                      borderRadius: 'var(--r-md)',
+                      border: '1px solid var(--border)',
+                      fontSize: '0.78rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {/* Header Row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span 
+                          className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} 
+                          style={{ fontSize: '0.6rem', padding: '2px 8px', fontWeight: 700, letterSpacing: '0.04em' }}
+                        >
+                          {t.type === 'Long' ? 'LONG ↑' : 'SHORT ↓'}
+                        </span>
+                        <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+                          {t.symbol}
+                        </span>
+                        {accountName && (
+                          <span style={{ fontSize: '0.6rem', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+                            {accountName}
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontWeight: 800, color: pnlVal > 0 ? 'var(--profit)' : pnlVal < 0 ? 'var(--loss)' : 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.95rem' }}>
+                        {pnlFormatted}
+                      </span>
+                    </div>
+
+                    {/* Details Grid */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+                      gap: '6px 12px', 
+                      padding: '8px 10px', 
+                      background: 'rgba(0, 0, 0, 0.15)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(255, 255, 255, 0.03)' 
+                    }}>
+                      {priceRange && (
+                        <div>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Price (Entry → Exit)</span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>{priceRange}</span>
+                        </div>
+                      )}
+                      {timeRange && (
+                        <div>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Time (NY)</span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{timeRange}</span>
+                        </div>
+                      )}
+                      {lotSize && (
+                        <div>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Size</span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{lotSize}</span>
+                        </div>
+                      )}
+                      {rrGradeStr && (
+                        <div>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>R/R & Grade</span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rrGradeStr}</span>
+                        </div>
+                      )}
+                      {t.setup && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Setup</span>
+                          <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{t.setup}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer: Tags and Notes */}
+                    {(tagsList.length > 0 || t.notes) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                        {tagsList.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {tagsList.map((tag, idx) => (
+                              <span key={idx} style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {t.notes && (
+                          <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: 'var(--text-secondary)', lineHeight: '1.3' }}>
+                            "{t.notes}"
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
               
               if (isSaturday) {
                  return (
@@ -339,7 +465,7 @@ const CalendarPage = () => {
                          {isAnalyzing ? 'Analyzing...' : 'AI Weekly Analysis'}
                        </button>
                      </div>
-                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '360px' }}>
+                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '400px' }}>
                        <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                          <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Total P&L</div>
                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: weekTotal.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
@@ -370,23 +496,8 @@ const CalendarPage = () => {
                          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)', marginTop: 'var(--s4)' }}>
                            Saturday Trade Details
                          </div>
-                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s3)' }}>
-                           {selectedDateTrades.map((t, i) => (
-                             <div key={t.id || i} style={{
-                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                               padding: '10px var(--s4)', background: 'var(--surface-glass)',
-                               borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
-                               fontSize: '0.78rem',
-                             }}>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-                                 <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.58rem', padding: '2px 6px' }}>{t.type}</span>
-                                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.symbol}</span>
-                               </div>
-                               <span style={{ fontWeight: 700, color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.82rem' }}>
-                                 {t.pnl >= 0 ? '+' : ''}${Math.abs(t.pnl).toFixed(2)}
-                               </span>
-                             </div>
-                           ))}
+                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s3)' }}>
+                           {selectedDateTrades.map((t, i) => renderTradeCard(t, i))}
                          </div>
                        </>
                      )}
@@ -397,19 +508,38 @@ const CalendarPage = () => {
               if (!dayData) {
                 return <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: 'var(--s3) 0' }}>No trades on this day</div>;
               }
+
+              const dayTotalPnl = selectedDateTrades.reduce((sum, t) => sum + (parseFloat(t.pnl) || 0), 0);
+              const dayWins = selectedDateTrades.filter(t => (parseFloat(t.pnl) || 0) > 0).length;
+              const dayLosses = selectedDateTrades.filter(t => (parseFloat(t.pnl) || 0) < 0).length;
+              const dayWinRate = selectedDateTrades.length > 0 ? ((dayWins / selectedDateTrades.length) * 100).toFixed(0) : '0';
+              const dayAvgPnl = selectedDateTrades.length > 0 ? dayTotalPnl / selectedDateTrades.length : 0;
+
               return (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '360px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)' }}>
                     <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Total P&L</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayData.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
-                        {dayData.pnl >= 0 ? '+' : ''}${dayData.pnl.toFixed(2)}
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayTotalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                        {dayTotalPnl >= 0 ? '+' : ''}${dayTotalPnl.toFixed(2)}
                       </div>
                     </div>
                     <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Trades Count</div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-                        {dayData.count}
+                        {selectedDateTrades.length} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({dayWins}W / {dayLosses}L)</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Win Rate</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: parseInt(dayWinRate) >= 50 ? 'var(--profit)' : 'var(--text-primary)' }}>
+                        {dayWinRate}%
+                      </div>
+                    </div>
+                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Avg Trade</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayAvgPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                        {dayAvgPnl >= 0 ? '+' : ''}${dayAvgPnl.toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -417,23 +547,8 @@ const CalendarPage = () => {
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)' }}>
                     Trade Details
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--s3)' }}>
-                    {selectedDateTrades.map((t, i) => (
-                      <div key={t.id || i} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '10px var(--s4)', background: 'var(--surface-glass)',
-                        borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
-                        fontSize: '0.78rem',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-                          <span className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.58rem', padding: '2px 6px' }}>{t.type}</span>
-                          <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.symbol}</span>
-                        </div>
-                        <span style={{ fontWeight: 700, color: t.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.82rem' }}>
-                          {t.pnl >= 0 ? '+' : ''}${Math.abs(t.pnl).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s3)' }}>
+                    {selectedDateTrades.map((t, i) => renderTradeCard(t, i))}
                     {selectedDateTrades.length === 0 && (
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Trade details loading...</div>
                     )}

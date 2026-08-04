@@ -411,9 +411,6 @@ const Journal = () => {
 
   const filtered = useMemo(() => {
     const list = trades.filter(t => {
-      // Exclude mock trades created specifically on the Monday's page
-      if (t.tags && t.tags.includes('Monday-Only')) return false;
-
       const q = search.toLowerCase();
       const matchSearch = !q || t.symbol?.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q) || t.setup?.toLowerCase().includes(q);
       
@@ -881,9 +878,11 @@ const Journal = () => {
                   <label className="form-label">Trading Account</label>
                   <select className="input" value={formData.accountId} onChange={e => handleFieldChange('accountId', e.target.value)}>
                     <option value="">— Select Account —</option>
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.accountName}</option>
-                    ))}
+                    {accounts
+                      .filter(acc => (!acc.status || acc.status.toLowerCase() === 'active') || (formData.accountId && String(acc.id) === String(formData.accountId)))
+                      .map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.accountName}</option>
+                      ))}
                   </select>
                 </div>
 

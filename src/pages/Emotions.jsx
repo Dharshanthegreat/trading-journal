@@ -100,7 +100,7 @@ const Emotions = () => {
   }, [user, trades, accounts]);
 
   const tradesList = useMemo(() => {
-    return (trades || []).filter(t => !t.tags?.includes('Monday-Only'));
+    return trades || [];
   }, [trades]);
 
   const startBalance = useMemo(() => {

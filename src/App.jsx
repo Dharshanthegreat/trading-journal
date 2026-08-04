@@ -33,7 +33,6 @@ import Stoic from './pages/Stoic';
 import TradovateConnect from './pages/TradovateConnect';
 import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
-import Mondays from './pages/Mondays';
 import TradingRules from './pages/TradingRules';
 import AssetAllocation from './pages/AssetAllocation';
 import { ai as aiApi, publicApi, accounts as accountsApi, rules as rulesApi, news as newsApi } from './services/api';
@@ -1782,7 +1781,6 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/rules',         icon: <ListTodo size={16}/>,        label: 'Trading Rules' },
     { path: '/journal',       icon: <BookOpen size={16}/>,        label: 'Journal' },
     { path: '/calendar',      icon: <CalendarDays size={16}/>,    label: 'Calendar' },
-    { path: '/mondays',       icon: <CalendarDays size={16}/>,    label: "Monday's" },
     { path: '/news',          icon: <Newspaper size={16}/>,       label: 'News Feed' },
     { path: '/achievements',  icon: <Trophy size={16}/>,          label: 'Achievements' },
     { path: '/analytics',     icon: <BarChart2 size={16}/>,       label: 'Analytics' },
@@ -1980,7 +1978,6 @@ const Header = ({ onMenuToggle }) => {
 
   const pageNames = {
     '/': 'Landing Page', '/dashboard': 'Dashboard', '/journal': 'Journal', '/calendar': 'Calendar',
-    '/mondays': "Monday's",
     '/news': 'News Feed', '/stoic': 'Stoic Mindset',
     '/analytics': 'Analytics', '/asset-allocation': 'Asset Allocation', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
@@ -2328,7 +2325,6 @@ function AppContent() {
                 <Route path="/rules" element={<TradingRules />} />
                 <Route path="/daily-journal" element={<DailyJournal />} />
                 <Route path="/charts" element={<Charts />} />
-                <Route path="/mondays" element={<Mondays />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/backup" element={<Backup />} />
               </>

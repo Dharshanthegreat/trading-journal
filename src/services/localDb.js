@@ -1042,9 +1042,7 @@ const handleAi = async (url, method, body) => {
     const { messages } = body;
     const trades = getStorageItem(`trades_${activeUser.id}`, []);
     
-    // Filter out Monday-Only tagged trades
-    const baseTrades = trades.filter(t => !t.tags?.includes('Monday-Only'));
-    const metrics = calculateLocalMetrics(baseTrades);
+    const metrics = calculateLocalMetrics(trades);
     const { tradeCount, winRate, totalPnL, profitFactor, avgWin, avgLoss, avgFomo, avgConfidence, highFomoCount, bestSetup, wins, losses, bestPnL } = metrics;
 
     // Check if NVIDIA_API_KEY is available (from localStorage or environment)
