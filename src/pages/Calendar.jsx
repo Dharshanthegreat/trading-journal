@@ -331,13 +331,6 @@ const CalendarPage = () => {
               <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                 Trades for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
               </div>
-              <button 
-                className="btn btn-ghost" 
-                style={{ padding: 4, minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                onClick={() => setSelectedDate(null)}
-              >
-                <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>✕</span>
-              </button>
             </div>
             {(() => {
               const dateStr = format(selectedDate, 'yyyy-MM-dd');
