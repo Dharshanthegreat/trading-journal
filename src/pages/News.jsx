@@ -1,23 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { news as newsApi } from '../services/api';
 import {
-  Brain, Send, Sparkles, Trash2, Cpu,
-  Calendar, Globe, ShieldAlert, AlertCircle,
-  Filter, ArrowRight, ChevronLeft, ChevronRight, Newspaper,
-  Info, CornerDownRight, RefreshCw, X, Zap
+  Calendar, Globe, AlertCircle,
+  Filter, ChevronLeft, ChevronRight, Newspaper,
+  RefreshCw, X, Zap
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-// Bold text custom parser
-const parseBoldText = (text) => {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      return <strong key={idx} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-};
 
 // Formatting helpers
 const formatEventDate = (dateStr) => {
@@ -53,7 +40,7 @@ const News = () => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth()); // 0-indexed
 
-  // Event Drawer State
+  // Event Detail Modal State
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   // Load economic calendar news for the selected month
@@ -221,21 +208,18 @@ const News = () => {
           main: '#f87171',
           soft: 'rgba(248, 113, 113, 0.12)',
           border: 'rgba(248, 113, 113, 0.3)',
-          glow: '0 0 12px rgba(248, 113, 113, 0.25)'
         };
       case 'medium':
         return {
           main: '#f97316',
           soft: 'rgba(249, 115, 22, 0.12)',
           border: 'rgba(249, 115, 22, 0.3)',
-          glow: 'none'
         };
       case 'low':
         return {
           main: '#10b981',
           soft: 'rgba(16, 185, 129, 0.12)',
           border: 'rgba(16, 185, 129, 0.3)',
-          glow: 'none'
         };
       case 'holiday':
       default:
@@ -243,13 +227,12 @@ const News = () => {
           main: '#8a8a8a',
           soft: 'rgba(138, 138, 138, 0.12)',
           border: 'rgba(138, 138, 138, 0.3)',
-          glow: 'none'
         };
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} style={{
+    <div style={{
       width: '100%',
       height: 'calc(100vh - 120px)',
       minHeight: '520px',
@@ -342,9 +325,7 @@ const News = () => {
               </select>
             </div>
 
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button 
               onClick={() => loadNews(true)}
               disabled={loading || refreshing}
               style={{
@@ -361,7 +342,7 @@ const News = () => {
               title="Refresh Calendar"
             >
               <RefreshCw size={12} className={refreshing ? 'spin-anim' : ''} />
-            </motion.button>
+            </button>
           </div>
         </div>
 
@@ -374,25 +355,21 @@ const News = () => {
               
               {/* Month Navigation */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <motion.button 
-                  whileHover={{ scale: 1.15 }}
-                  whileTap={{ scale: 0.9 }}
+                <button 
                   onClick={handlePrevMonth}
                   style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', borderRadius: '4px' }}
                 >
                   <ChevronLeft size={16} />
-                </motion.button>
+                </button>
                 <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                   {monthNames[currentMonth]} {currentYear}
                 </strong>
-                <motion.button 
-                  whileHover={{ scale: 1.15 }}
-                  whileTap={{ scale: 0.9 }}
+                <button 
                   onClick={handleNextMonth}
                   style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', borderRadius: '4px' }}
                 >
                   <ChevronRight size={16} />
-                </motion.button>
+                </button>
               </div>
 
               {/* Weekday Headers */}
@@ -402,14 +379,8 @@ const News = () => {
                 ))}
               </div>
 
-              {/* Instant 60fps Hardware-Accelerated Calendar Days Grid */}
-              <motion.div
-                key={`${currentYear}-${currentMonth}`}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}
-              >
+              {/* Static Calendar Days Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
                 {calendarDays.map((cell, idx) => {
                   const isSelected = selectedCalendarDate === cell.dateKey;
                   const isTodayCell = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' }) === cell.dateKey;
@@ -440,9 +411,7 @@ const News = () => {
                         border: isSelected ? '1px solid var(--accent)' : (isTodayCell ? '1px solid var(--border-accent)' : '1px solid transparent'),
                         color: isSelected ? '#fff' : (cell.isCurrentMonth ? 'var(--text-primary)' : 'var(--text-muted)'),
                         opacity: cell.isCurrentMonth ? 1 : 0.4,
-                        transition: 'all 0.15s ease',
                         position: 'relative',
-                        transform: isSelected ? 'scale(1.04)' : 'none'
                       }}
                     >
                       <span style={{ fontSize: '0.72rem', fontWeight: isTodayCell || isSelected ? 700 : 500 }}>
@@ -450,7 +419,7 @@ const News = () => {
                       </span>
 
                       <div style={{ display: 'flex', gap: '2px', height: '4px', marginTop: '2px', alignItems: 'center' }}>
-                        {hasHigh && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#f87171', boxShadow: '0 0 6px rgba(248, 113, 113, 0.6)' }} />}
+                        {hasHigh && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#f87171' }} />}
                         {hasMed && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#f97316' }} />}
                         {hasLow && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981' }} />}
                         {hasHoliday && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#8a8a8a' }} />}
@@ -458,7 +427,7 @@ const News = () => {
                     </div>
                   );
                 })}
-              </motion.div>
+              </div>
             </div>
           )}
 
@@ -488,188 +457,169 @@ const News = () => {
               )}
             </div>
           ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${selectedCalendarDate}-${impactFilter}-${currencyFilter}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.22 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}
-              >
-                {groupedEvents.map(([dateLabel, groupEvents]) => (
-                  <div key={dateLabel} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                    <div style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: 'var(--accent)',
-                      borderBottom: '1px solid var(--border)',
-                      paddingBottom: '4px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span>{dateLabel}</span>
-                      <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                        {groupEvents.length} economic events
-                      </span>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                      {groupEvents.map((ev, index) => {
-                        const colors = getImpactColor(ev.impact);
-                        const isSelected = selectedEvent && selectedEvent.title === ev.title && selectedEvent.date === ev.date;
-                        return (
-                          <motion.div
-                            key={index}
-                            whileHover={{ x: 4, backgroundColor: isSelected ? 'var(--accent-soft)' : 'rgba(255,255,255,0.04)' }}
-                            whileTap={{ scale: 0.99 }}
-                            onClick={() => setSelectedEvent(ev === selectedEvent ? null : ev)}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '80px 70px 1fr 180px',
-                              alignItems: 'center',
-                              padding: 'var(--s3) var(--s4)',
-                              borderRadius: 'var(--r-md)',
-                              border: '1px solid',
-                              borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
-                              background: isSelected ? 'var(--accent-soft)' : 'var(--bg-tertiary)',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                              boxShadow: ev.impact === 'High' ? colors.glow : 'none'
-                            }}
-                            className="news-event-row"
-                          >
-                            {/* Time */}
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500, fontFamily: 'JetBrains Mono' }}>
-                              {formatEventTime(ev.date)}
-                            </span>
-
-                            {/* Country / Currency */}
-                            <div>
-                              <span style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                color: 'var(--text-primary)',
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border-mid)',
-                                borderRadius: '4px',
-                                padding: '2px 6px'
-                              }}>
-                                {ev.country}
-                              </span>
-                            </div>
-
-                            {/* News Title & Impact Badge */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                {ev.title}
-                              </span>
-                              <span style={{
-                                background: colors.soft,
-                                color: colors.main,
-                                border: `1px solid ${colors.border}`,
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                fontSize: '0.55rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.02em'
-                              }}>
-                                {ev.impact}
-                              </span>
-                            </div>
-
-                            {/* Forecast & Previous */}
-                            <div style={{ display: 'flex', gap: 'var(--s4)', justifyContent: 'flex-end', fontSize: '0.7rem' }}>
-                              <div style={{ textAlign: 'right' }}>
-                                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.58rem', textTransform: 'uppercase' }}>Forecast</span>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{ev.forecast || '—'}</span>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.58rem', textTransform: 'uppercase' }}>Previous</span>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{ev.previous || '—'}</span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', marginLeft: '6px', color: 'var(--text-muted)' }}>
-                                <ChevronRight size={14} />
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
+              {groupedEvents.map(([dateLabel, groupEvents]) => (
+                <div key={dateLabel} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                  <div style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: 'var(--accent)',
+                    borderBottom: '1px solid var(--border)',
+                    paddingBottom: '4px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>{dateLabel}</span>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                      {groupEvents.length} economic events
+                    </span>
                   </div>
-                ))}
-              </motion.div>
-            </AnimatePresence>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                    {groupEvents.map((ev, index) => {
+                      const colors = getImpactColor(ev.impact);
+                      const isSelected = selectedEvent && selectedEvent.title === ev.title && selectedEvent.date === ev.date;
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => setSelectedEvent(ev === selectedEvent ? null : ev)}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '80px 70px 1fr 180px',
+                            alignItems: 'center',
+                            padding: 'var(--s3) var(--s4)',
+                            borderRadius: 'var(--r-md)',
+                            border: '1px solid',
+                            borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                            background: isSelected ? 'var(--accent-soft)' : 'var(--bg-tertiary)',
+                            cursor: 'pointer',
+                          }}
+                          className="news-event-row"
+                        >
+                          {/* Time */}
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500, fontFamily: 'JetBrains Mono' }}>
+                            {formatEventTime(ev.date)}
+                          </span>
+
+                          {/* Country / Currency */}
+                          <div>
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              color: 'var(--text-primary)',
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-mid)',
+                              borderRadius: '4px',
+                              padding: '2px 6px'
+                            }}>
+                              {ev.country}
+                            </span>
+                          </div>
+
+                          {/* News Title & Impact Badge */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {ev.title}
+                            </span>
+                            <span style={{
+                              background: colors.soft,
+                              color: colors.main,
+                              border: `1px solid ${colors.border}`,
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.55rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.02em'
+                            }}>
+                              {ev.impact}
+                            </span>
+                          </div>
+
+                          {/* Forecast & Previous */}
+                          <div style={{ display: 'flex', gap: 'var(--s4)', justifyContent: 'flex-end', fontSize: '0.7rem' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.58rem', textTransform: 'uppercase' }}>Forecast</span>
+                              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{ev.forecast || '—'}</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.58rem', textTransform: 'uppercase' }}>Previous</span>
+                              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{ev.previous || '—'}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '6px', color: 'var(--text-muted)' }}>
+                              <ChevronRight size={14} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Sleek Event Detail Modal Drawer */}
-      <AnimatePresence>
-        {selectedEvent && (
-          <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ duration: 0.22 }}
-              className="glass-deep modal-panel"
-              style={{ maxWidth: '480px', padding: 'var(--s6)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--s4)' }}>
-                <div>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {selectedEvent.country} · {formatEventTime(selectedEvent.date)}
-                  </span>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0 0 0' }}>
-                    {selectedEvent.title}
-                  </h3>
-                </div>
-                <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                  <X size={18} />
-                </button>
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div
+            className="glass-deep modal-panel"
+            style={{ maxWidth: '480px', padding: 'var(--s6)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--s4)' }}>
+              <div>
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {selectedEvent.country} · {formatEventTime(selectedEvent.date)}
+                </span>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0 0 0' }}>
+                  {selectedEvent.title}
+                </h3>
               </div>
+              <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s3)', marginBottom: 'var(--s5)' }}>
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Impact</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: getImpactColor(selectedEvent.impact).main, marginTop: 2 }}>{selectedEvent.impact}</div>
-                </div>
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Forecast</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>{selectedEvent.forecast || '—'}</div>
-                </div>
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Previous</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginTop: 2 }}>{selectedEvent.previous || '—'}</div>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s3)', marginBottom: 'var(--s5)' }}>
+              <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Impact</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: getImpactColor(selectedEvent.impact).main, marginTop: 2 }}>{selectedEvent.impact}</div>
               </div>
+              <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Forecast</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>{selectedEvent.forecast || '—'}</div>
+              </div>
+              <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Previous</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginTop: 2 }}>{selectedEvent.previous || '—'}</div>
+              </div>
+            </div>
 
-              <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Zap size={14} style={{ color: 'var(--accent)' }} /> Expected Market Volatility
-                </div>
-                <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                  {selectedEvent.impact === 'High' 
-                    ? 'High volatility release. Expect sharp spread widening, potential slippage, and rapid 30-50+ tick repricing across related forex and index futures instruments.' 
-                    : selectedEvent.impact === 'Medium'
-                      ? 'Moderate impact release. Key liquidity pools may be swept before directional momentum resumes.'
-                      : 'Low impact economic release. Unlikely to disrupt established intraday market structure trends.'}
-                </p>
+            <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Zap size={14} style={{ color: 'var(--accent)' }} /> Expected Market Volatility
               </div>
+              <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                {selectedEvent.impact === 'High' 
+                  ? 'High volatility release. Expect sharp spread widening, potential slippage, and rapid 30-50+ tick repricing across related forex and index futures instruments.' 
+                  : selectedEvent.impact === 'Medium'
+                    ? 'Moderate impact release. Key liquidity pools may be swept before directional momentum resumes.'
+                    : 'Low impact economic release. Unlikely to disrupt established intraday market structure trends.'}
+              </p>
+            </div>
 
-              <div style={{ marginTop: 'var(--s5)', display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setSelectedEvent(null)}>Close</button>
-              </div>
-            </motion.div>
+            <div style={{ marginTop: 'var(--s5)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setSelectedEvent(null)}>Close</button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
-    </motion.div>
+    </div>
   );
 };
 
