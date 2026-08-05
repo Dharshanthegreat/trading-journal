@@ -59,8 +59,7 @@ const Journal = () => {
   const [accounts, setAccounts] = useState([]);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrMessage, setOcrMessage] = useState('');
-  const [extractingNotion, setExtractingNotion] = useState(false);
-  const [notionMessage, setNotionMessage] = useState('');
+
   const [activePlaybook, setActivePlaybook] = useState(null);
   const [loadingPlaybook, setLoadingPlaybook] = useState(false);
   const [playbookError, setPlaybookError] = useState('');
@@ -197,31 +196,6 @@ const Journal = () => {
     }
   };
 
-  const extractNotionLink = async () => {
-    if (!formData.notionLink.trim()) {
-      alert('Please enter a valid Notion Link first.');
-      return;
-    }
-    setExtractingNotion(true);
-    setNotionMessage('AI Agent reading Notion page...');
-    try {
-      const { notion } = await import('../services/api');
-      const result = await notion.readLink(formData.notionLink);
-      setFormData(prev => ({
-        ...prev,
-        notes: prev.notes
-          ? `${prev.notes}\n\n--- 📓 AI Playbook Checklist ---\n${result.summary}`
-          : `--- 📓 AI Playbook Checklist ---\n${result.summary}`
-      }));
-      setNotionMessage('Successfully imported playbook rules into notes!');
-    } catch (err) {
-      console.error('Failed to parse Notion link:', err);
-      setNotionMessage('Failed to extract: ensure link is correct & page public.');
-    } finally {
-      setExtractingNotion(false);
-      setTimeout(() => setNotionMessage(''), 4000);
-    }
-  };
 
   const fetchPlaybook = async (trade) => {
     if (!trade.notionLink) return;
@@ -886,33 +860,6 @@ const Journal = () => {
                   </select>
                 </div>
 
-                <div className="form-field full">
-                  <label className="form-label">Notion Strategy / Checklist Link</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      className="input"
-                      type="url"
-                      style={{ flex: 1 }}
-                      placeholder="e.g. https://notion.so/my-strategy-setup"
-                      value={formData.notionLink}
-                      onChange={e => handleFieldChange('notionLink', e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={extractNotionLink}
-                      disabled={extractingNotion}
-                      className="btn btn-ghost"
-                      style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', border: '1px solid var(--border)' }}
-                    >
-                      {extractingNotion ? 'Reading...' : 'Extract Setup via AI'}
-                    </button>
-                  </div>
-                  {notionMessage && (
-                    <div style={{ fontSize: '0.68rem', color: notionMessage.includes('Failed') ? 'var(--loss)' : 'var(--accent)', marginTop: '4px', fontWeight: 600 }}>
-                      ⚡ {notionMessage}
-                    </div>
-                  )}
-                </div>
 
                 <div className="form-field full">
                   <label className="form-label">Emotional State</label>
