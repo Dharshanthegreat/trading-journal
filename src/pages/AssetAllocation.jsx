@@ -14,6 +14,37 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#d946ef', '#06b6d4', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 2, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
+
 const AssetAllocation = () => {
   const { trades, fetchTrades } = useTrades();
   const { user } = useAuth();
@@ -31,7 +62,7 @@ const AssetAllocation = () => {
 
   // Fetch trades and user accounts on mount
   useEffect(() => {
-    fetchTrades();
+    fetchTrades({ limit: 1000 });
     const loadAccounts = async () => {
       try {
         if (!user?.isGuest) {
@@ -106,11 +137,15 @@ const AssetAllocation = () => {
 
   // Compute Initial Capital size dynamically
   const initialCapital = useMemo(() => {
-    if (activeAccountObj && activeAccountObj.accountBalance) {
-      return Number(activeAccountObj.accountBalance);
+    if (activeAccountObj && (activeAccountObj.accountBalance || activeAccountObj.startingBalance)) {
+      return Number(activeAccountObj.accountBalance || activeAccountObj.startingBalance);
     }
-    return Number(user?.accountSize) || 10000;
-  }, [user, activeAccountObj]);
+    if (accountList.length > 0) {
+      const sum = accountList.reduce((acc, curr) => acc + (Number(curr.accountBalance || curr.startingBalance) || 0), 0);
+      if (sum > 0) return sum;
+    }
+    return Number(user?.accountSize) || 25000;
+  }, [user, activeAccountObj, accountList]);
 
   // Dynamic KPI Stats computed strictly from user trades
   const liveStats = useMemo(() => {
@@ -235,7 +270,7 @@ const AssetAllocation = () => {
   // Selected item highlight
   const activeFocusItem = selectedItem || allocationData[0] || {};
 
-  // Equity Growth & Drawdown Curve Data (With Dual Axis Scaling)
+  // Equity Growth & Drawdown Curve Data
   const equityCurveData = useMemo(() => {
     const sorted = [...filteredTrades].sort((a, b) => new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt));
     
@@ -376,10 +411,10 @@ const AssetAllocation = () => {
   }, [filteredTrades, allocationMode]);
 
   return (
-    <div className="asset-allocation-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '80px' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="asset-allocation-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '80px' }}>
       
       {/* ═══ TOP CONTROL & PROFILE HEADER CARD ═══ */}
-      <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))' }}>
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
           
           {/* Top Row: User / Account Info & Account Switcher */}
@@ -406,7 +441,7 @@ const AssetAllocation = () => {
 
               <span className="badge" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--r-full)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Activity size={12} style={{ color: 'var(--accent)' }} />
-                {liveStats.totalTrades} Journaled Trades
+                <AnimatedNumber value={liveStats.totalTrades} decimals={0} /> Journaled Trades
               </span>
             </div>
 
@@ -430,13 +465,15 @@ const AssetAllocation = () => {
                 </select>
               </div>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={() => setShowInfoModal(true)}
                 style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: 'var(--r-md)', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 <Info size={14} /> Methodology
-              </button>
+              </motion.button>
             </div>
 
           </div>
@@ -450,47 +487,47 @@ const AssetAllocation = () => {
             {/* 4 Clean Balanced KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }}>
               
-              <div style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+              <motion.div whileHover={{ y: -3 }} style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Cumulative P&L Return
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: liveStats.totalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  {liveStats.totalPnl >= 0 ? '+' : ''}${liveStats.totalPnl.toLocaleString()} ({liveStats.returnPct}%)
+                  <AnimatedNumber value={liveStats.totalPnl} prefix={liveStats.totalPnl >= 0 ? '+$' : '$'} decimals={2} /> (<AnimatedNumber value={liveStats.returnPct} suffix="%" decimals={2} />)
                 </div>
-              </div>
+              </motion.div>
 
-              <div style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+              <motion.div whileHover={{ y: -3 }} style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Peak Drawdown Depth
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  -{liveStats.maxDdPct}%
+                  -<AnimatedNumber value={liveStats.maxDdPct} suffix="%" decimals={1} />
                 </div>
-              </div>
+              </motion.div>
 
-              <div style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+              <motion.div whileHover={{ y: -3 }} style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Overall Win Rate
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: liveStats.winRate >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)' }}>
-                  {liveStats.winRate}%
+                  <AnimatedNumber value={liveStats.winRate} suffix="%" decimals={1} />
                 </div>
-              </div>
+              </motion.div>
 
-              <div style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+              <motion.div whileHover={{ y: -3 }} style={{ background: 'var(--bg-primary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
                   Portfolio Net Capital
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                  ${liveStats.currentAum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <AnimatedNumber value={liveStats.currentAum} prefix="$" decimals={2} />
                 </div>
-              </div>
+              </motion.div>
 
             </div>
           </div>
 
         </div>
-      </div>
+      </motion.div>
 
       {/* ═══ SUB-NAVIGATION TABS & TIMEFRAME SELECTOR BAR ═══ */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s3)', flexWrap: 'wrap', gap: 'var(--s3)' }}>
@@ -506,8 +543,10 @@ const AssetAllocation = () => {
             const Icon = t.icon;
             const isActive = activeSubTab === t.id;
             return (
-              <button
+              <motion.button
                 key={t.id}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setActiveSubTab(t.id)}
                 style={{
                   background: isActive ? 'var(--accent)' : 'transparent',
@@ -525,7 +564,7 @@ const AssetAllocation = () => {
                 }}
               >
                 <Icon size={14} /> {t.label}
-              </button>
+              </motion.button>
             );
           })}
         </div>
@@ -533,8 +572,10 @@ const AssetAllocation = () => {
         {/* Timeframe Selector Pills */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-secondary)', padding: '3px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
           {['YTD', '1W', '1M', '3M', '6M', '1Y', '2Y', 'ALL'].map(tf => (
-            <button
+            <motion.button
               key={tf}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setTimeframe(tf)}
               style={{
                 background: timeframe === tf ? 'var(--bg-active)' : 'transparent',
@@ -549,513 +590,526 @@ const AssetAllocation = () => {
               }}
             >
               {tf}
-            </button>
+            </motion.button>
           ))}
         </div>
 
       </div>
 
-      {/* ═══ TAB 1: ASSETS & TIMEFRAME ═══ */}
-      {activeSubTab === 'assets' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-          
-          {/* Header Controls */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
-            <div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                Asset Allocation Breakdown
-              </h2>
-              <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: 0, marginTop: 4 }}>
-                Percentage of trades recorded in each asset class alongside net accumulated returns.
-              </p>
-            </div>
-
-            {/* Toggle Buttons: By Family | By Asset */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => { setAllocationMode('family'); setSelectedItem(null); }}
-                className={`btn btn-sm ${allocationMode === 'family' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ fontSize: '0.72rem', padding: '6px 14px' }}
-              >
-                By Asset Family
-              </button>
-              <button
-                onClick={() => { setAllocationMode('asset'); setSelectedItem(null); }}
-                className={`btn btn-sm ${allocationMode === 'asset' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ fontSize: '0.72rem', padding: '6px 14px' }}
-              >
-                By Individual Symbol
-              </button>
-            </div>
-          </div>
-
-          {/* Donut Chart & Focused Metric Cards Row */}
-          <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s6)', alignItems: 'center' }}>
+      <AnimatePresence mode="wait">
+        {/* ═══ TAB 1: ASSETS & TIMEFRAME ═══ */}
+        {activeSubTab === 'assets' && (
+          <motion.div key="tab-assets" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
             
-            {/* Donut Allocation Chart */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-              <div style={{ width: '100%', height: 230 }}>
-                {allocationData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={allocationData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={100}
-                        paddingAngle={4}
-                        dataKey="percent"
-                        onClick={(entry) => setSelectedItem(entry)}
-                      >
-                        {allocationData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                            stroke="var(--bg-primary)"
-                            strokeWidth={2}
-                            style={{
-                              cursor: 'pointer',
-                              filter: activeFocusItem?.name === entry.name ? 'drop-shadow(0 0 8px var(--accent))' : 'none',
-                              opacity: activeFocusItem?.name && activeFocusItem.name !== entry.name ? 0.6 : 1
-                            }}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(val) => [`${val}%`, 'Allocation']}
-                        contentStyle={{
-                          background: 'var(--bg-secondary)',
-                          border: '1px solid var(--border-mid)',
-                          borderRadius: 'var(--r-md)',
-                          color: 'var(--text-primary)',
-                          fontSize: '0.75rem',
-                          boxShadow: 'var(--shadow-md)'
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.78rem', gap: 6 }}>
-                    <Info size={24} />
-                    <span>No trades recorded for this account filter</span>
-                  </div>
-                )}
-
-                {/* Center Ring Stats */}
-                {allocationData.length > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none'
-                  }}>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {activeFocusItem?.percent ? `${activeFocusItem.percent}%` : '100%'}
-                    </div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {activeFocusItem?.name || 'Asset Class'}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Chart Legend */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', justifyContent: 'center', marginTop: 'var(--s3)' }}>
-                {allocationData.map((item, idx) => (
-                  <div
-                    key={item.name}
-                    onClick={() => setSelectedItem(item)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer',
-                      color: activeFocusItem?.name === item.name ? 'var(--text-primary)' : 'var(--text-muted)',
-                      fontWeight: activeFocusItem?.name === item.name ? 700 : 500
-                    }}
-                  >
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length] }} />
-                    <span>{item.name} ({item.percent}%)</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Selected Asset Metric Grid */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-              
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: COLORS[allocationData.findIndex(i => i.name === activeFocusItem?.name) % COLORS.length] || 'var(--accent)' }} />
-                  {activeFocusItem?.name || 'Selected Asset Metrics'}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {activeFocusItem?.percent || 0}% portfolio weight
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
-                
-                {/* Trades Executed */}
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Trades Executed
-                  </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                    {activeFocusItem?.count || 0}
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
-                    Total entries in group
-                  </div>
-                </div>
-
-                {/* Win Rate */}
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                    % Winners
-                  </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: (activeFocusItem?.winners || 0) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                    {activeFocusItem?.winners ? `${activeFocusItem.winners}%` : '0%'}
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
-                    Win/loss ratio
-                  </div>
-                </div>
-
-                {/* Accumulated PnL */}
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Accumulated P&L
-                  </div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: (activeFocusItem?.returnPnl || 0) >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                    {(activeFocusItem?.returnPnl || 0) >= 0 ? '+' : ''}${activeFocusItem?.returnPnl?.toLocaleString() || '0.00'}
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
-                    {(activeFocusItem?.returnPct || 0) >= 0 ? '+' : ''}{activeFocusItem?.returnPct || 0}% net return
-                  </div>
-                </div>
-
-                {/* Volume Exposure */}
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Traded Lots / Contracts
-                  </div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                    {activeFocusItem?.volume || 0} Lots
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
-                    Avg win: ${activeFocusItem?.avgWin || 0}
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* Asset Breakdown Data Table */}
-          <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={16} style={{ color: 'var(--accent)' }} />
-              Asset Breakdown Data Table
-            </div>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px', fontWeight: 600 }}>Asset / Symbol</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 600 }}>Allocation Weight</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Trades</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>% Winners</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Avg Win / Loss</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Accumulated P&L</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allocationData.length > 0 ? (
-                    allocationData.map((item, idx) => (
-                      <tr
-                        key={item.name}
-                        onClick={() => setSelectedItem(item)}
-                        style={{
-                          borderBottom: '1px solid var(--border)',
-                          cursor: 'pointer',
-                          background: activeFocusItem?.name === item.name ? 'var(--bg-active)' : 'transparent',
-                          transition: 'background var(--t-fast)'
-                        }}
-                      >
-                        <td style={{ padding: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length] }} />
-                          {item.name}
-                        </td>
-                        <td style={{ padding: '12px', width: '200px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${item.percent}%`, background: COLORS[idx % COLORS.length], borderRadius: 3 }} />
-                            </div>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{item.percent}%</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                          {item.count}
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.winners >= 50 ? 'var(--profit)' : 'var(--loss)' }}>
-                          {item.winners}%
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                          <span style={{ color: 'var(--profit)' }}>${item.avgWin}</span> / <span style={{ color: 'var(--loss)' }}>${item.avgLoss}</span>
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.returnPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                          {item.returnPnl >= 0 ? '+' : ''}${item.returnPnl.toLocaleString()} ({item.returnPct}%)
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No trade data recorded for this filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* ═══ TAB 2: RETURN & RISK METRICS ═══ */}
-      {activeSubTab === 'return_risk' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-          
-          {/* Dynamic Risk Metric Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 'var(--s3)' }}>
-            {[
-              { label: 'Sharpe Ratio', val: liveStats.sharpeRatio, desc: 'Annualized risk ratio', color: 'var(--profit)' },
-              { label: 'Profit Factor', val: liveStats.profitFactor, desc: 'Gross win / gross loss', color: 'var(--accent)' },
-              { label: 'Expectancy', val: `${liveStats.expectancy >= 0 ? '+' : ''}$${liveStats.expectancy}`, desc: 'Expected return / trade', color: liveStats.expectancy >= 0 ? 'var(--profit)' : 'var(--loss)' },
-              { label: 'Win/Loss Ratio', val: liveStats.winLossRatio, desc: 'Average R:R ratio', color: 'var(--text-primary)' },
-              { label: 'Avg Win', val: `$${liveStats.avgWin}`, desc: 'Average winning trade', color: 'var(--profit)' },
-              { label: 'Avg Loss', val: `$${liveStats.avgLoss}`, desc: 'Average losing trade', color: 'var(--loss)' },
-            ].map(m => (
-              <div key={m.label} className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{m.label}</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: m.color, fontFamily: 'var(--font-mono)' }}>{m.val}</div>
-                <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)' }}>{m.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Equity & Drawdown Area Chart (With Dual Y-Axes) */}
-          <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
+            {/* Header Controls */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  Cumulative Equity Growth & Peak Drawdown Depth
-                </h3>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Realized account equity trajectory alongside drawdown percentage from trade history
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--s4)', fontSize: '0.72rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}>
-                  <span style={{ width: 10, height: 3, background: 'var(--accent)', borderRadius: 2 }} /> Net Equity ($)
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--loss)' }}>
-                  <span style={{ width: 10, height: 3, background: 'var(--loss)', borderRadius: 2 }} /> Drawdown Depth (%)
-                </span>
-              </div>
-            </div>
-
-            <div style={{ width: '100%', height: 290 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={equityCurveData}>
-                  <defs>
-                    <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--loss)" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="var(--loss)" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={11} />
-                  <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={11} domain={['auto', 'auto']} tickFormatter={(v) => `$${v}`} />
-                  <YAxis yAxisId="right" orientation="right" stroke="var(--loss)" fontSize={11} domain={['auto', 0]} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', color: 'var(--text-primary)' }} />
-                  <Area yAxisId="left" type="monotone" dataKey="equity" stroke="var(--accent)" strokeWidth={2} fillOpacity={1} fill="url(#eqGrad)" name="Net Equity ($)" />
-                  <Area yAxisId="right" type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fillOpacity={1} fill="url(#ddGrad)" name="Drawdown Depth (%)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* ═══ TAB 3: STRATEGY ANALYSIS ═══ */}
-      {activeSubTab === 'strategy' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
-          
-          {/* Long vs Short Performance Card */}
-          <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
-              Trade Direction Performance (Long vs Short)
-            </h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-              <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--profit)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <TrendingUp size={14} /> LONG POSITIONS ({strategyStats.longCount})
-                </div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
-                  {strategyStats.longWinRate}% Win
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                  Net P&L: <strong style={{ color: strategyStats.longPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{strategyStats.longPnl >= 0 ? '+' : ''}${strategyStats.longPnl.toLocaleString()}</strong>
-                </div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Asset Allocation Breakdown
+                </h2>
+                <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: 0, marginTop: 4 }}>
+                  Percentage of trades recorded in each asset class alongside net accumulated returns.
+                </p>
               </div>
 
-              <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--loss)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <TrendingDown size={14} /> SHORT POSITIONS ({strategyStats.shortCount})
-                </div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
-                  {strategyStats.shortWinRate}% Win
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                  Net P&L: <strong style={{ color: strategyStats.shortPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>{strategyStats.shortPnl >= 0 ? '+' : ''}${strategyStats.shortPnl.toLocaleString()}</strong>
-                </div>
+              {/* Toggle Buttons: By Family | By Asset */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => { setAllocationMode('family'); setSelectedItem(null); }}
+                  className={`btn btn-sm ${allocationMode === 'family' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ fontSize: '0.72rem', padding: '6px 14px' }}
+                >
+                  By Asset Family
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => { setAllocationMode('asset'); setSelectedItem(null); }}
+                  className={`btn btn-sm ${allocationMode === 'asset' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ fontSize: '0.72rem', padding: '6px 14px' }}
+                >
+                  By Individual Symbol
+                </motion.button>
               </div>
             </div>
-          </div>
 
-          {/* Trading Session Performance Breakdown */}
-          <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
-              Trading Session Breakdown (UTC)
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-              {[
-                { name: 'New York Session (13:00 - 21:00 UTC)', stats: strategyStats.sessions.ny },
-                { name: 'London Session (07:00 - 13:00 UTC)', stats: strategyStats.sessions.london },
-                { name: 'Asian Session (21:00 - 07:00 UTC)', stats: strategyStats.sessions.asia },
-              ].map(s => (
-                <div key={s.name} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3) var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-                    <span>{s.name} ({s.stats.count} trades)</span>
-                    <span style={{ color: s.stats.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                      {s.stats.pnl >= 0 ? '+' : ''}${s.stats.pnl.toLocaleString()} ({s.stats.winRate}% win)
-                    </span>
-                  </div>
-                  <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${Math.min(100, liveStats.totalTrades > 0 ? (s.stats.count / liveStats.totalTrades) * 100 : 0)}%`, background: 'var(--accent)', borderRadius: 3 }} />
-                  </div>
+            {/* Donut Chart & Focused Metric Cards Row */}
+            <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s6)', alignItems: 'center' }}>
+              
+              {/* Donut Allocation Chart */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                <div style={{ width: '100%', height: 230 }}>
+                  {allocationData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={allocationData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={70}
+                          outerRadius={100}
+                          paddingAngle={4}
+                          dataKey="percent"
+                          onClick={(entry) => setSelectedItem(entry)}
+                        >
+                          {allocationData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                              stroke="var(--bg-primary)"
+                              strokeWidth={2}
+                              style={{
+                                cursor: 'pointer',
+                                filter: activeFocusItem?.name === entry.name ? 'drop-shadow(0 0 8px var(--accent))' : 'none',
+                                opacity: activeFocusItem?.name && activeFocusItem.name !== entry.name ? 0.6 : 1
+                              }}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(val) => [`${val}%`, 'Allocation']}
+                          contentStyle={{
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-mid)',
+                            borderRadius: 'var(--r-md)',
+                            color: 'var(--text-primary)',
+                            fontSize: '0.75rem',
+                            boxShadow: 'var(--shadow-md)'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.78rem', gap: 6 }}>
+                      <Info size={24} />
+                      <span>No trades recorded for this account filter</span>
+                    </div>
+                  )}
+
+                  {/* Center Ring Stats */}
+                  {allocationData.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      pointerEvents: 'none'
+                    }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                        <AnimatedNumber value={activeFocusItem?.percent || 100} suffix="%" decimals={1} />
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {activeFocusItem?.name || 'Asset Class'}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
 
-        </div>
-      )}
-
-      {/* ═══ TAB 4: ASSET CORRELATION MATRIX (DYNMICALLY CALCULATED) ═══ */}
-      {activeSubTab === 'correlation' && (
-        <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
-          
-          {correlationData.isSingle ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--s6)', textAlign: 'center', gap: 'var(--s3)' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
-                <Layers size={24} />
+                {/* Chart Legend */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', justifyContent: 'center', marginTop: 'var(--s3)' }}>
+                  {allocationData.map((item, idx) => (
+                    <motion.div
+                      key={item.name}
+                      whileHover={{ scale: 1.08 }}
+                      onClick={() => setSelectedItem(item)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.72rem',
+                        cursor: 'pointer',
+                        color: activeFocusItem?.name === item.name ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontWeight: activeFocusItem?.name === item.name ? 700 : 500
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length] }} />
+                      <span>{item.name} ({item.percent}%)</span>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                Single Asset Concentration ({correlationData.singleAsset})
-              </h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: 520, lineHeight: 1.5, margin: 0 }}>
-                All {filteredTrades.length} trades recorded for this filter are concentrated in <strong>{correlationData.singleAsset}</strong> (100% weight). Cross-asset correlation coefficients require trades executed across 2 or more distinct asset classes (e.g. Commodities, Forex, Stocks).
-              </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s4)', width: '100%', maxWidth: 600, marginTop: 'var(--s3)' }}>
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Asset Class</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent)', marginTop: 2 }}>{correlationData.singleAsset}</div>
-                </div>
-
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Realized P&L</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: liveStats.totalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', marginTop: 2 }}>
-                    {liveStats.totalPnl >= 0 ? '+' : ''}${liveStats.totalPnl.toLocaleString()}
+              {/* Selected Asset Metric Grid */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s2)' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: COLORS[allocationData.findIndex(i => i.name === activeFocusItem?.name) % COLORS.length] || 'var(--accent)' }} />
+                    {activeFocusItem?.name || 'Selected Asset Metrics'}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {activeFocusItem?.percent || 0}% portfolio weight
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Win Rate</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: liveStats.winRate >= 50 ? 'var(--profit)' : 'var(--loss)', marginTop: 2 }}>
-                    {liveStats.winRate}%
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
+                  
+                  {/* Trades Executed */}
+                  <motion.div whileHover={{ y: -2 }} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                      Trades Executed
+                    </div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                      <AnimatedNumber value={activeFocusItem?.count || 0} decimals={0} />
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
+                      Total entries in group
+                    </div>
+                  </motion.div>
+
+                  {/* Win Rate */}
+                  <motion.div whileHover={{ y: -2 }} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                      % Winners
+                    </div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: (activeFocusItem?.winners || 0) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                      <AnimatedNumber value={activeFocusItem?.winners || 0} suffix="%" decimals={1} />
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
+                      Win/loss ratio
+                    </div>
+                  </motion.div>
+
+                  {/* Accumulated PnL */}
+                  <motion.div whileHover={{ y: -2 }} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                      Accumulated P&L
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: (activeFocusItem?.returnPnl || 0) >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                      <AnimatedNumber value={activeFocusItem?.returnPnl || 0} prefix={(activeFocusItem?.returnPnl || 0) >= 0 ? '+$' : '$'} decimals={2} />
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
+                      {(activeFocusItem?.returnPct || 0) >= 0 ? '+' : ''}{activeFocusItem?.returnPct || 0}% net return
+                    </div>
+                  </motion.div>
+
+                  {/* Volume Exposure */}
+                  <motion.div whileHover={{ y: -2 }} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                      Traded Lots / Contracts
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                      <AnimatedNumber value={activeFocusItem?.volume || 0} suffix=" Lots" decimals={1} />
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
+                      Avg win: ${activeFocusItem?.avgWin || 0}
+                    </div>
+                  </motion.div>
+
                 </div>
+
               </div>
+
             </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s5)' }}>
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    Cross-Asset Correlation Matrix
-                  </h3>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    Statistically calculated Pearson correlation coefficient heatmap between your traded assets (-1.0 to +1.0)
-                  </div>
-                </div>
-                <span className="badge" style={{ background: 'var(--profit-soft)', color: 'var(--profit)', border: '1px solid var(--profit-border)', fontSize: '0.72rem', padding: '4px 12px', borderRadius: 'var(--r-full)', fontWeight: 700 }}>
-                  Active Portfolio Correlation ({correlationData.assets.length} Asset Classes)
-                </span>
+
+            {/* Asset Breakdown Data Table */}
+            <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={16} style={{ color: 'var(--accent)' }} />
+                Asset Breakdown Data Table
               </div>
 
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '12px', textAlign: 'left' }}>Asset</th>
-                      {correlationData.assets.map(ast => (
-                        <th key={ast} style={{ padding: '12px' }}>{ast}</th>
-                      ))}
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 12px', fontWeight: 600 }}>Asset / Symbol</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600 }}>Allocation Weight</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Trades</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>% Winners</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Avg Win / Loss</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Accumulated P&L</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {correlationData.matrix.map(r => (
-                      <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'left' }}>{r.name}</td>
-                        {correlationData.assets.map((ast, idx) => {
-                          const val = r[ast];
-                          return (
-                            <td key={idx} style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                              <span style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', background: val === 1.00 ? 'var(--bg-tertiary)' : (val < 0 ? 'var(--profit-soft)' : 'var(--warn-soft)'), color: val === 1.00 ? 'var(--text-muted)' : (val < 0 ? 'var(--profit)' : 'var(--warn)') }}>
-                                {val > 0 ? `+${val}` : val}
-                              </span>
-                            </td>
-                          );
-                        })}
+                    {allocationData.length > 0 ? (
+                      allocationData.map((item, idx) => (
+                        <motion.tr
+                          key={item.name}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25, delay: idx * 0.04 }}
+                          whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+                          onClick={() => setSelectedItem(item)}
+                          style={{
+                            borderBottom: '1px solid var(--border)',
+                            cursor: 'pointer',
+                            background: activeFocusItem?.name === item.name ? 'var(--bg-active)' : 'transparent',
+                            transition: 'background var(--t-fast)'
+                          }}
+                        >
+                          <td style={{ padding: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[idx % COLORS.length] }} />
+                            {item.name}
+                          </td>
+                          <td style={{ padding: '12px', width: '200px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                <motion.div initial={{ width: 0 }} animate={{ width: `${item.percent}%` }} transition={{ duration: 0.8 }} style={{ height: '100%', background: COLORS[idx % COLORS.length], borderRadius: 3 }} />
+                              </div>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{item.percent}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            {item.count}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.winners >= 50 ? 'var(--profit)' : 'var(--loss)' }}>
+                            {item.winners}%
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                            <span style={{ color: 'var(--profit)' }}>${item.avgWin}</span> / <span style={{ color: 'var(--loss)' }}>${item.avgLoss}</span>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.returnPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                            {item.returnPnl >= 0 ? '+' : ''}${item.returnPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({item.returnPct}%)
+                          </td>
+                        </motion.tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No trade data recorded for this filter.
+                        </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
-          )}
 
-        </div>
-      )}
+          </motion.div>
+        )}
+
+        {/* ═══ TAB 2: RETURN & RISK METRICS ═══ */}
+        {activeSubTab === 'return_risk' && (
+          <motion.div key="tab-risk" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
+            
+            {/* Dynamic Risk Metric Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 'var(--s3)' }}>
+              {[
+                { label: 'Sharpe Ratio', val: liveStats.sharpeRatio, desc: 'Annualized risk ratio', color: 'var(--profit)' },
+                { label: 'Profit Factor', val: liveStats.profitFactor, desc: 'Gross win / gross loss', color: 'var(--accent)' },
+                { label: 'Expectancy', val: liveStats.expectancy, isCurrency: true, desc: 'Expected return / trade', color: liveStats.expectancy >= 0 ? 'var(--profit)' : 'var(--loss)' },
+                { label: 'Win/Loss Ratio', val: liveStats.winLossRatio, desc: 'Average R:R ratio', color: 'var(--text-primary)' },
+                { label: 'Avg Win', val: liveStats.avgWin, isCurrency: true, desc: 'Average winning trade', color: 'var(--profit)' },
+                { label: 'Avg Loss', val: liveStats.avgLoss, isCurrency: true, desc: 'Average losing trade', color: 'var(--loss)' },
+              ].map(m => (
+                <motion.div whileHover={{ y: -3 }} key={m.label} className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{m.label}</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: m.color, fontFamily: 'var(--font-mono)' }}>
+                    <AnimatedNumber value={m.val} prefix={m.isCurrency ? (m.val >= 0 ? '+$' : '$') : ''} decimals={2} />
+                  </div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)' }}>{m.desc}</div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Equity & Drawdown Area Chart (With Dual Y-Axes) */}
+            <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                    Cumulative Equity Growth & Peak Drawdown Depth
+                  </h3>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Realized account equity trajectory alongside drawdown percentage from trade history
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--s4)', fontSize: '0.72rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)' }}>
+                    <span style={{ width: 10, height: 3, background: 'var(--accent)', borderRadius: 2 }} /> Net Equity ($)
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--loss)' }}>
+                    <span style={{ width: 10, height: 3, background: 'var(--loss)', borderRadius: 2 }} /> Drawdown Depth (%)
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ width: '100%', height: 290 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={equityCurveData}>
+                    <defs>
+                      <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--loss)" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="var(--loss)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={11} />
+                    <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={11} domain={['auto', 'auto']} tickFormatter={(v) => `$${v}`} />
+                    <YAxis yAxisId="right" orientation="right" stroke="var(--loss)" fontSize={11} domain={['auto', 0]} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', color: 'var(--text-primary)' }} />
+                    <Area yAxisId="left" type="monotone" dataKey="equity" stroke="var(--accent)" strokeWidth={2} fillOpacity={1} fill="url(#eqGrad)" name="Net Equity ($)" />
+                    <Area yAxisId="right" type="monotone" dataKey="drawdown" stroke="var(--loss)" strokeWidth={1.5} fillOpacity={1} fill="url(#ddGrad)" name="Drawdown Depth (%)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+          </motion.div>
+        )}
+
+        {/* ═══ TAB 3: STRATEGY ANALYSIS ═══ */}
+        {activeSubTab === 'strategy' && (
+          <motion.div key="tab-strategy" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
+            
+            {/* Long vs Short Performance Card */}
+            <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
+                Trade Direction Performance (Long vs Short)
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                <motion.div whileHover={{ scale: 1.02 }} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--profit)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <TrendingUp size={14} /> LONG POSITIONS ({strategyStats.longCount})
+                  </div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
+                    <AnimatedNumber value={strategyStats.longWinRate} suffix="%" decimals={1} /> Win
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    Net P&L: <strong style={{ color: strategyStats.longPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}><AnimatedNumber value={strategyStats.longPnl} prefix={strategyStats.longPnl >= 0 ? '+$' : '$'} decimals={2} /></strong>
+                  </div>
+                </motion.div>
+
+                <motion.div whileHover={{ scale: 1.02 }} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--loss)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <TrendingDown size={14} /> SHORT POSITIONS ({strategyStats.shortCount})
+                  </div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
+                    <AnimatedNumber value={strategyStats.shortWinRate} suffix="%" decimals={1} /> Win
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    Net P&L: <strong style={{ color: strategyStats.shortPnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}><AnimatedNumber value={strategyStats.shortPnl} prefix={strategyStats.shortPnl >= 0 ? '+$' : '$'} decimals={2} /></strong>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Trading Session Performance Breakdown */}
+            <div className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--s4)' }}>
+                Trading Session Breakdown (UTC)
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+                {[
+                  { name: 'New York Session (13:00 - 21:00 UTC)', stats: strategyStats.sessions.ny },
+                  { name: 'London Session (07:00 - 13:00 UTC)', stats: strategyStats.sessions.london },
+                  { name: 'Asian Session (21:00 - 07:00 UTC)', stats: strategyStats.sessions.asia },
+                ].map(s => (
+                  <motion.div whileHover={{ scale: 1.01 }} key={s.name} style={{ background: 'var(--bg-tertiary)', padding: 'var(--s3) var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                      <span>{s.name} ({s.stats.count} trades)</span>
+                      <span style={{ color: s.stats.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                        <AnimatedNumber value={s.stats.pnl} prefix={s.stats.pnl >= 0 ? '+$' : '$'} decimals={2} /> (<AnimatedNumber value={s.stats.winRate} suffix="%" decimals={1} /> win)
+                      </span>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, liveStats.totalTrades > 0 ? (s.stats.count / liveStats.totalTrades) * 100 : 0)}%` }} transition={{ duration: 0.8 }} style={{ height: '100%', background: 'var(--accent)', borderRadius: 3 }} />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+          </motion.div>
+        )}
+
+        {/* ═══ TAB 4: ASSET CORRELATION MATRIX ═══ */}
+        {activeSubTab === 'correlation' && (
+          <motion.div key="tab-correlation" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} className="glass" style={{ padding: 'var(--s6)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)' }}>
+            
+            {correlationData.isSingle ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--s6)', textAlign: 'center', gap: 'var(--s3)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                  <Layers size={24} />
+                </div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Single Asset Concentration ({correlationData.singleAsset})
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: 520, lineHeight: 1.5, margin: 0 }}>
+                  All {filteredTrades.length} trades recorded for this filter are concentrated in <strong>{correlationData.singleAsset}</strong> (100% weight). Cross-asset correlation coefficients require trades executed across 2 or more distinct asset classes (e.g. Commodities, Forex, Stocks).
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s4)', width: '100%', maxWidth: 600, marginTop: 'var(--s3)' }}>
+                  <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Asset Class</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent)', marginTop: 2 }}>{correlationData.singleAsset}</div>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Realized P&L</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: liveStats.totalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', marginTop: 2 }}>
+                      <AnimatedNumber value={liveStats.totalPnl} prefix={liveStats.totalPnl >= 0 ? '+$' : '$'} decimals={2} />
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Win Rate</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: liveStats.winRate >= 50 ? 'var(--profit)' : 'var(--loss)', marginTop: 2 }}>
+                      <AnimatedNumber value={liveStats.winRate} suffix="%" decimals={1} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s5)' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      Cross-Asset Correlation Matrix
+                    </h3>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Statistically calculated Pearson correlation coefficient heatmap between your traded assets (-1.0 to +1.0)
+                    </div>
+                  </div>
+                  <span className="badge" style={{ background: 'var(--profit-soft)', color: 'var(--profit)', border: '1px solid var(--profit-border)', fontSize: '0.72rem', padding: '4px 12px', borderRadius: 'var(--r-full)', fontWeight: 700 }}>
+                    Active Portfolio Correlation ({correlationData.assets.length} Asset Classes)
+                  </span>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Asset</th>
+                        {correlationData.assets.map(ast => (
+                          <th key={ast} style={{ padding: '12px' }}>{ast}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {correlationData.matrix.map(r => (
+                        <tr key={r.name} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'left' }}>{r.name}</td>
+                          {correlationData.assets.map((ast, idx) => {
+                            const val = r[ast];
+                            return (
+                              <td key={idx} style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                                <span style={{ padding: '4px 8px', borderRadius: 'var(--r-sm)', background: val === 1.00 ? 'var(--bg-tertiary)' : (val < 0 ? 'var(--profit-soft)' : 'var(--warn-soft)'), color: val === 1.00 ? 'var(--text-muted)' : (val < 0 ? 'var(--profit)' : 'var(--warn)') }}>
+                                  {val > 0 ? `+${val}` : val}
+                                </span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ METHODOLOGY MODAL ═══ */}
       <AnimatePresence>
@@ -1101,7 +1155,7 @@ const AssetAllocation = () => {
         )}
       </AnimatePresence>
 
-    </div>
+    </motion.div>
   );
 };
 
