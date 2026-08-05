@@ -204,6 +204,37 @@ const getWeekDays = (refDate) => {
   return days;
 };
 
+// --- Animated Count-Up Helper for Dashboard Metrics ---
+const AnimatedDashNumber = ({ value, prefix = '', suffix = '', decimals = 0, duration = 900 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
+
 /* ─── Dashboard ─────────────────────────────────── */
 const Dashboard = () => {
   const { trades, fetchTrades, analytics, fetchAnalytics, loading } = useTrades();
@@ -932,9 +963,19 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="tz-dashboard-container">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="tz-dashboard-container"
+    >
       {/* Header Row */}
-      <div className="tz-header">
+      <motion.div
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="tz-header"
+      >
         <div>
           <h1 className="tz-title">Welcome back, {user?.displayName || 'dharshan'}</h1>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'inherit' }}>
@@ -944,14 +985,16 @@ const Dashboard = () => {
         
         {/* Filters */}
         <div className="tz-filters">
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             className="tz-filter-btn" 
             onClick={handlePnlModeToggle}
             style={{ padding: '6px 10px', minWidth: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             title={pnlDisplayMode === 'USD' ? 'Switch to Percentage Mode' : 'Switch to Dollar Mode'}
           >
             <span style={{ fontWeight: 700 }}>{pnlDisplayMode === 'USD' ? '$' : '%'}</span>
-          </button>
+          </motion.button>
           
           {(dateRange !== 'all' || selectedSymbol !== 'All' || selectedSetup !== 'All' || selectedType !== 'All' || selectedAccount !== 'All') && (
             <div className="tz-filter-btn">
@@ -1122,7 +1165,7 @@ const Dashboard = () => {
           
 
         </div>
-      </div>
+      </motion.div>
       
       {/* Resync Bar */}
       <div className="tz-resync-bar" style={{ justifyContent: 'flex-start' }}>
@@ -1132,45 +1175,62 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Weekly Performance Row (New Template) */}
-      <div className="tz-card" style={{ padding: '16px', marginBottom: 'var(--s5)' }}>
+      {/* Weekly Performance Row */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.05 }}
+        className="tz-card"
+        style={{ padding: '16px', marginBottom: 'var(--s5)' }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
             <CalendarDays size={14} /> <span style={{ fontFamily: 'Georgia, serif' }}>Weekly Performance</span>
           </div>
           
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setWeekOffset(prev => prev - 1)}
               style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
             >
               &lt;
-            </button>
+            </motion.button>
             <span style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
               {weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : weekOffset === 1 ? 'Next Week' : `Week ${weekOffset > 0 ? '+' : ''}${weekOffset}`}
             </span>
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setWeekOffset(prev => prev + 1)}
               style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
             >
               &gt;
-            </button>
+            </motion.button>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
           {/* Summary Card */}
-          <div style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: '1px solid var(--text-primary)', borderRadius: 'var(--r-md)', padding: '10px 12px', flex: 1, minWidth: '85px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: '1px solid var(--text-primary)', borderRadius: 'var(--r-md)', padding: '10px 12px', flex: 1, minWidth: '85px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          >
             <span style={{ fontSize: '0.55rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px', fontWeight: 600 }}>This</span>
             <span style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'Georgia, serif' }}>Week</span>
-          </div>
+          </motion.div>
           
           {/* Days Cards */}
           {weekDaysData.map((day, idx) => {
             const isTodayDay = isSameDay(day.date, new Date());
             
             return (
-              <div key={idx} style={{ background: isTodayDay ? 'var(--bg-active)' : 'var(--bg-primary)', border: `1px solid ${isTodayDay ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 'var(--r-md)', padding: '10px 12px', flex: 1, minWidth: '85px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}>
+              <motion.div
+                key={idx}
+                whileHover={{ scale: 1.05, y: -2 }}
+                style={{ background: isTodayDay ? 'var(--bg-active)' : 'var(--bg-primary)', border: `1px solid ${isTodayDay ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 'var(--r-md)', padding: '10px 12px', flex: 1, minWidth: '85px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}
+              >
                 <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', fontWeight: 600 }}>{format(day.date, 'EEEE')}</span>
                 
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '2px', fontFamily: 'Georgia, serif', color: day.count > 0 ? (day.pnl > 0 ? 'var(--profit)' : day.pnl < 0 ? 'var(--loss)' : 'var(--text-primary)') : 'var(--text-primary)' }}>
@@ -1186,21 +1246,26 @@ const Dashboard = () => {
                 <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
                   {day.count === 0 ? 'No trades' : `${day.count} trade${day.count !== 1 ? 's' : ''}`}
                 </span>
-              </div>
+              </motion.div>
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       {/* Redesigned Metrics Top Grid */}
-      <div className="tz-dashboard-grid-top">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.1 }}
+        className="tz-dashboard-grid-top"
+      >
         {/* Column 1: Account Balance */}
-        <div className="tz-balance-card">
+        <motion.div whileHover={{ translateY: -3 }} className="tz-balance-card">
           <div className="tz-balance-header">
             <div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Account Balance</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
-                ${(startBalance + stats.totalPnL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <AnimatedDashNumber value={startBalance + stats.totalPnL} prefix="$" decimals={2} />
               </div>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Last 90 Days</div>
             </div>
@@ -1230,30 +1295,34 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Column 2: Performance Metrics (Winrate, Consistency, Avg Win/Loss, Profit Factor) */}
         <div className="tz-grid-column-flex">
           {/* Top Row: Winrate & Consistency */}
           <div style={{ display: 'flex', gap: 'var(--s5)', flex: 1, minHeight: '120px' }}>
             {/* Trade Winrate */}
-            <div className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
+            <motion.div whileHover={{ translateY: -3 }} className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trade Winrate</div>
                   <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
-                    {stats.winRate.toFixed(0)}%
+                    <AnimatedDashNumber value={stats.winRate} suffix="%" decimals={0} />
                   </div>
                 </div>
                 <div>
                   <svg width="40" height="40" viewBox="0 0 32 32">
                     <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
-                    <circle cx="16" cy="16" r="12" fill="none"
-                            stroke="var(--profit)"
-                            strokeWidth="3"
-                            strokeDasharray="75.4"
-                            strokeDashoffset={75.4 * (1 - stats.winRate / 100)}
-                            transform="rotate(-90 16 16)" />
+                    <motion.circle
+                      cx="16" cy="16" r="12" fill="none"
+                      stroke="var(--profit)"
+                      strokeWidth="3"
+                      strokeDasharray="75.4"
+                      initial={{ strokeDashoffset: 75.4 }}
+                      animate={{ strokeDashoffset: 75.4 * (1 - stats.winRate / 100) }}
+                      transition={{ duration: 1, ease: 'easeOut' }}
+                      transform="rotate(-90 16 16)"
+                    />
                   </svg>
                 </div>
               </div>
@@ -1261,22 +1330,22 @@ const Dashboard = () => {
                 <div>Losses <strong style={{ color: 'var(--text-secondary)' }}>{stats.losses}</strong></div>
                 <div>Wins <strong style={{ color: 'var(--profit)' }}>{stats.wins}</strong></div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Consistency */}
-            <div className="tz-card tz-hoverable" style={{ flex: 0.9, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
+            <motion.div whileHover={{ translateY: -3 }} className="tz-card tz-hoverable" style={{ flex: 0.9, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '14px 16px' }}>
               <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <span>CONSISTENCY</span>
                 <Shield size={13} style={{ opacity: 0.6 }} />
               </div>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
-                {Math.round(consistencyScore)}%
+                <AnimatedDashNumber value={consistencyScore} suffix="%" decimals={0} />
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Full-width Dedicated AVG WIN / LOSS Card */}
-          <div className="tz-card" style={{ flex: 1.1, minHeight: '130px', justifyContent: 'space-between', padding: '16px' }}>
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1.1, minHeight: '130px', justifyContent: 'space-between', padding: '16px' }}>
             <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               <span>AVG WIN / LOSS</span>
               <BarChart2 size={14} style={{ opacity: 0.6 }} />
@@ -1286,14 +1355,14 @@ const Dashboard = () => {
               <div style={{ background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', borderRadius: 'var(--r-lg)', padding: '8px 12px' }}>
                 <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG WIN</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
-                  {stats.avgWin > 0 ? '+$'+parseFloat(stats.avgWin).toFixed(2) : '$0.00'}
+                  <AnimatedDashNumber value={stats.avgWin} prefix="+$" decimals={2} />
                 </div>
               </div>
 
               <div style={{ background: 'rgba(248, 113, 113, 0.08)', border: '1px solid rgba(248, 113, 113, 0.2)', borderRadius: 'var(--r-lg)', padding: '8px 12px' }}>
                 <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG LOSS</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--loss)', marginTop: '2px' }}>
-                  {stats.avgLoss > 0 ? '-$'+parseFloat(stats.avgLoss).toFixed(2) : '$0.00'}
+                  <AnimatedDashNumber value={stats.avgLoss} prefix="-$" decimals={2} />
                 </div>
               </div>
             </div>
@@ -1304,14 +1373,14 @@ const Dashboard = () => {
                 {stats.avgLoss > 0 ? (stats.avgWin / stats.avgLoss).toFixed(2) + 'x' : '—'}
               </strong>
             </div>
-          </div>
+          </motion.div>
 
           {/* Profit Factor Card */}
-          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Profit Factor</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
-                {stats.profitFactor === 'Infinity' ? '—' : stats.profitFactor}
+                {stats.profitFactor === 'Infinity' ? '—' : <AnimatedDashNumber value={stats.profitFactor} decimals={2} />}
               </div>
             </div>
             
@@ -1341,13 +1410,13 @@ const Dashboard = () => {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Column 3: SCORE & Total Trades */}
         <div className="tz-grid-column-flex">
-          {/* SCORE Card (Moved to Top) */}
-          <div className="tz-card" style={{ flex: 1.4 }}>
+          {/* SCORE Card */}
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1.4 }}>
             <div className="tz-card-header" style={{ marginBottom: '6px' }}>
               <div className="tz-card-title">
                 <Brain size={14} /> SCORE
@@ -1370,11 +1439,18 @@ const Dashboard = () => {
               
               <div className="tz-score-display" style={{ marginTop: '2px' }}>
                 <div className="tz-score-label">YOUR SCORE</div>
-                <div className="tz-score-value" style={{ fontSize: '1.4rem' }}>{scoreValue}</div>
+                <div className="tz-score-value" style={{ fontSize: '1.4rem' }}>
+                  <AnimatedDashNumber value={scoreValue} decimals={1} />
+                </div>
                 
                 <div className="tz-score-bar-wrapper" style={{ marginTop: '4px' }}>
                   <div className="tz-score-bar-gradient" />
-                  <div className="tz-score-bar-pin" style={{ left: `${scoreValue}%` }} />
+                  <motion.div
+                    initial={{ left: '0%' }}
+                    animate={{ left: `${scoreValue}%` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                    className="tz-score-bar-pin"
+                  />
                 </div>
                 
                 <div className="tz-score-bar-ticks">
@@ -1387,14 +1463,14 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Total Trades */}
-          <div className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Trades</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
-                {stats.totalTrades}
+                <AnimatedDashNumber value={stats.totalTrades} decimals={0} />
               </div>
             </div>
             
@@ -1406,7 +1482,13 @@ const Dashboard = () => {
                   Winning
                 </span>
                 <div className="tz-outcome-bar-bg">
-                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.wins / stats.totalTrades) * 100 : 0}%`, background: 'var(--profit)' }} />
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stats.totalTrades > 0 ? (stats.wins / stats.totalTrades) * 100 : 0}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="tz-outcome-bar-fill"
+                    style={{ background: 'var(--profit)' }}
+                  />
                 </div>
                 <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right' }}>{stats.wins}</span>
               </div>
@@ -1418,7 +1500,13 @@ const Dashboard = () => {
                   Breakeven
                 </span>
                 <div className="tz-outcome-bar-bg">
-                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (breakevenTradesCount / stats.totalTrades) * 100 : 0}%`, background: 'var(--text-muted)' }} />
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stats.totalTrades > 0 ? (breakevenTradesCount / stats.totalTrades) * 100 : 0}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="tz-outcome-bar-fill"
+                    style={{ background: 'var(--text-muted)' }}
+                  />
                 </div>
                 <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right' }}>{breakevenTradesCount}</span>
               </div>
@@ -1430,17 +1518,28 @@ const Dashboard = () => {
                   Losing
                 </span>
                 <div className="tz-outcome-bar-bg">
-                  <div className="tz-outcome-bar-fill" style={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%`, background: 'var(--loss)' }} />
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="tz-outcome-bar-fill"
+                    style={{ background: 'var(--loss)' }}
+                  />
                 </div>
                 <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right' }}>{stats.losses}</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Bottom Grid: Recent Trades & High Impact News */}
-      <div className="tz-dashboard-grid-bottom">
+      <motion.div
+        initial={{ opacity: 0, y: 25 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.2 }}
+        className="tz-dashboard-grid-bottom"
+      >
         {/* Recent Trades Table */}
         <div className="tz-card">
           <div className="tz-card-header">
@@ -1461,7 +1560,12 @@ const Dashboard = () => {
                 </thead>
                 <tbody>
                   {recentTrades.map((t, idx) => (
-                    <tr key={t.id || idx}>
+                    <motion.tr
+                      key={t.id || idx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: idx * 0.05 }}
+                    >
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div style={{
@@ -1489,7 +1593,7 @@ const Dashboard = () => {
                       <td className={`tz-table-pnl ${t.pnl >= 0 ? 'profit' : 'loss'}`} style={{ fontWeight: 700, textAlign: 'right', fontFamily: 'JetBrains Mono' }}>
                         {t.pnl >= 0 ? '+' : '-'}${Math.abs(t.pnl).toFixed(2)}
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>
@@ -1525,7 +1629,14 @@ const Dashboard = () => {
           ) : todayHighImpactNews.length > 0 ? (
             <div className="tz-news-list">
               {todayHighImpactNews.map((event, idx) => (
-                <div key={event.id || idx} className="tz-news-row">
+                <motion.div
+                  key={event.id || idx}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.05 }}
+                  whileHover={{ scale: 1.01 }}
+                  className="tz-news-row"
+                >
                   <div className="tz-news-info">
                     <img 
                       src={getFlagUrl(event.country)} 
@@ -1543,7 +1654,7 @@ const Dashboard = () => {
                     <span className="tz-news-time">{getEventTime(event.date)}</span>
                     <span className="tz-news-stars">★★★</span>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : (
@@ -1552,7 +1663,7 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* DTG AI Chat Drawer Pop-up */}
       {showAiChat && (
@@ -1739,7 +1850,7 @@ const Dashboard = () => {
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 };
 
