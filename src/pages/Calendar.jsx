@@ -41,6 +41,24 @@ const CalendarPage = () => {
     });
   }, [trades, selectedAccountId]);
 
+  // Auto-select the latest date with trades on page load (no click needed)
+  useEffect(() => {
+    if (!selectedDate && filteredTrades.length > 0) {
+      const datesWithTrades = filteredTrades
+        .filter(t => t.entryTime)
+        .map(t => new Date(t.entryTime))
+        .sort((a, b) => b - a);
+
+      if (datesWithTrades.length > 0) {
+        const latestDate = datesWithTrades[0];
+        setSelectedDate(latestDate);
+        setCurrentMonth(latestDate);
+      } else {
+        setSelectedDate(new Date());
+      }
+    }
+  }, [filteredTrades, selectedDate]);
+
   const dailyData = useMemo(() => {
     const daily = {};
     filteredTrades.forEach(t => {
