@@ -490,7 +490,7 @@ const Emotions = () => {
 
           <select className="input" style={{ width: 'auto', flex: '1 1 90px', fontSize: '0.78rem', height: '34px', cursor: 'pointer' }} value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
             <option value="All">Grade: All</option>
-            {['A+', 'A', 'B', 'C', 'D', 'F'].map(g => <option key={g} value={g}>{g}</option>)}
+            {['A+', 'A', 'B', 'C', 'D'].map(g => <option key={g} value={g}>{g}</option>)}
           </select>
 
           <button className="btn btn-ghost" style={{ height: '34px', padding: '0 14px', fontSize: '0.75rem', gap: 4, cursor: 'pointer' }} onClick={handleClearFilters}>

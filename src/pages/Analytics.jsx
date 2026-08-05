@@ -573,7 +573,7 @@ const Analytics = () => {
 
         <select className="input" style={{ width: 'auto', flex: '1 1 120px', fontSize: '0.78rem', height: '36px', cursor: 'pointer' }} value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
           <option value="All">Grade: All</option>
-          {['A+', 'A', 'B', 'C', 'D', 'F'].map(g => <option key={g} value={g}>{g}</option>)}
+          {['A+', 'A', 'B', 'C', 'D'].map(g => <option key={g} value={g}>{g}</option>)}
         </select>
 
         <button className="btn btn-ghost" style={{ height: '36px', padding: '0 16px', fontSize: '0.78rem' }} onClick={handleClearFilters}>
