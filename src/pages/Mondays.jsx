@@ -1279,14 +1279,17 @@ const Mondays = () => {
 
                 <div className="form-field">
                   <label className="form-label">Setup</label>
-                  <select
+                  <input
+                    type="text"
                     className="input"
+                    list="mondays-setup-list"
+                    placeholder="e.g. OB, FVG, or type custom..."
                     value={newTradeData.setup}
                     onChange={e => setNewTradeData(prev => ({ ...prev, setup: e.target.value }))}
-                  >
-                    <option value="">— Select Setup —</option>
-                    {SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  />
+                  <datalist id="mondays-setup-list">
+                    {SETUPS.map(s => <option key={s} value={s} />)}
+                  </datalist>
                 </div>
 
                 <div className="form-field">

@@ -837,10 +837,17 @@ const Journal = () => {
                 </div>
                 <div className="form-field">
                   <label className="form-label">Setup</label>
-                  <select className="input" value={formData.setup} onChange={e => handleFieldChange('setup', e.target.value)}>
-                    <option value="">— Select —</option>
-                    {SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <input
+                    type="text"
+                    className="input"
+                    list="journal-setup-list"
+                    placeholder="e.g. OB, FVG, or type custom..."
+                    value={formData.setup}
+                    onChange={e => handleFieldChange('setup', e.target.value)}
+                  />
+                  <datalist id="journal-setup-list">
+                    {SETUPS.map(s => <option key={s} value={s} />)}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Trade Grade</label>
