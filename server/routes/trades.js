@@ -322,42 +322,7 @@ router.put('/:id', upload.array('chart', 10), async (req, res) => {
   }
 });
 
-// ─── Delete Trade ────────────────────────────────────
-router.delete('/:id', async (req, res) => {
-  try {
-    const tradeResult = await db.query(
-      'SELECT * FROM trades WHERE id = $1 AND user_id = $2',
-      [req.params.id, req.user.id]
-    );
-    const trade = tradeResult.rows[0];
 
-    if (!trade) {
-      return res.status(404).json({ error: 'Trade not found' });
-    }
-
-    // Delete associated image file(s)
-    if (trade.image_path) {
-      try {
-        if (trade.image_path.startsWith('[')) {
-          const paths = JSON.parse(trade.image_path);
-          paths.forEach(p => {
-            if (p && fs.existsSync(p)) fs.unlinkSync(p);
-          });
-        } else if (fs.existsSync(trade.image_path)) {
-          fs.unlinkSync(trade.image_path);
-        }
-      } catch (e) {
-        console.error('Failed to delete image file(s):', e);
-      }
-    }
-
-    await db.query('DELETE FROM trades WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Trade deleted' });
-  } catch (err) {
-    console.error('Delete trade error:', err);
-    res.status(500).json({ error: 'Failed to delete trade' });
-  }
-});
 
 // ─── Bulk Import ─────────────────────────────────────
 router.post('/import', async (req, res) => {

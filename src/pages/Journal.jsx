@@ -1446,8 +1446,8 @@ const Journal = () => {
         <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
           <div className="glass-deep modal-panel" style={{ width: 380, padding: 'var(--s8)' }} onClick={e => e.stopPropagation()}>
             <div className="modal-title" style={{ marginBottom: 'var(--s4)' }}>Delete Trade?</div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 'var(--s6)', lineHeight: 1.7 }}>
-              This will permanently remove this trade from your journal.
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 'var(--s6)', lineHeight: 1.6 }}>
+              This trade will be safely moved to your <strong>Backup page (Recycle Bin)</strong>. You can restore it anytime if deleted by mistake.
             </p>
             <div style={{ display: 'flex', gap: 'var(--s3)', justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
