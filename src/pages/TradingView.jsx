@@ -5,7 +5,38 @@ import {
   TrendingUp, Search, Wifi, WifiOff, Zap,
   Activity, BarChart2, RefreshCw, Clock, ChevronRight, AlertTriangle
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 1, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
 
 /* ─── TradingView Widget ───────────────────────────── */
 const TradingViewWidget = ({ symbol }) => {
@@ -196,10 +227,10 @@ const TradingView = () => {
 
   /* ─── Render ─────────────────────────────────────── */
   return (
-    <div className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
 
       {/* ── Search Header ─────────────────────────── */}
-      <div className="glass" style={{
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="glass" style={{
         padding: '20px 24px', borderRadius: 'var(--r-xl)',
         display: 'flex', flexDirection: 'column', gap: '16px',
       }}>
@@ -264,59 +295,65 @@ const TradingView = () => {
             </div>
 
             {/* Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="anim-fade-up" style={{
-                position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-                background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)',
-                borderRadius: 'var(--r-md)', zIndex: 100, maxHeight: '200px',
-                overflowY: 'auto', boxShadow: 'var(--shadow-lg)',
-              }}>
-                {allSymbols.userSymbols.length > 0 && (
-                  <div style={{ padding: '6px 10px', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
-                    Your Symbols
-                  </div>
-                )}
-                {suggestions.filter(s => allSymbols.userSymbols.includes(s)).map(s => (
-                  <button key={`u-${s}`} onMouseDown={() => { setSymbol(s); handleAnalyze(s); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                      padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer',
-                      color: 'var(--text-primary)', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace',
-                      textAlign: 'left', transition: 'background var(--t-fast)',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    <TrendingUp size={12} style={{ color: 'var(--accent)' }} /> {s}
-                  </button>
-                ))}
-                {suggestions.filter(s => !allSymbols.userSymbols.includes(s)).length > 0 && (
-                  <div style={{ padding: '6px 10px', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, borderTop: '1px solid var(--border)' }}>
-                    Popular
-                  </div>
-                )}
-                {suggestions.filter(s => !allSymbols.userSymbols.includes(s)).map(s => (
-                  <button key={`p-${s}`} onMouseDown={() => { setSymbol(s); handleAnalyze(s); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                      padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer',
-                      color: 'var(--text-secondary)', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace',
-                      textAlign: 'left', transition: 'background var(--t-fast)',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    <BarChart2 size={12} style={{ color: 'var(--text-muted)' }} /> {s}
-                  </button>
-                ))}
-              </div>
-            )}
+            <AnimatePresence>
+              {showSuggestions && suggestions.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.18 }} style={{
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border-mid)',
+                  borderRadius: 'var(--r-md)', zIndex: 100, maxHeight: '200px',
+                  overflowY: 'auto', boxShadow: 'var(--shadow-lg)',
+                }}>
+                  {allSymbols.userSymbols.length > 0 && (
+                    <div style={{ padding: '6px 10px', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
+                      Your Symbols
+                    </div>
+                  )}
+                  {suggestions.filter(s => allSymbols.userSymbols.includes(s)).map(s => (
+                    <button key={`u-${s}`} onMouseDown={() => { setSymbol(s); handleAnalyze(s); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                        padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer',
+                        color: 'var(--text-primary)', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace',
+                        textAlign: 'left', transition: 'background var(--t-fast)',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <TrendingUp size={12} style={{ color: 'var(--accent)' }} /> {s}
+                    </button>
+                  ))}
+                  {suggestions.filter(s => !allSymbols.userSymbols.includes(s)).length > 0 && (
+                    <div style={{ padding: '6px 10px', fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, borderTop: '1px solid var(--border)' }}>
+                      Popular
+                    </div>
+                  )}
+                  {suggestions.filter(s => !allSymbols.userSymbols.includes(s)).map(s => (
+                    <button key={`p-${s}`} onMouseDown={() => { setSymbol(s); handleAnalyze(s); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                        padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer',
+                        color: 'var(--text-secondary)', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace',
+                        textAlign: 'left', transition: 'background var(--t-fast)',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <BarChart2 size={12} style={{ color: 'var(--text-muted)' }} /> {s}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Timeframe Pills */}
           <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-primary)', borderRadius: 'var(--r-md)', padding: '3px', border: '1px solid var(--border)' }}>
             {timeframes.map(tf => (
-              <button key={tf} onClick={() => setTimeframe(tf)}
+              <motion.button
+                key={tf}
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setTimeframe(tf)}
                 style={{
                   padding: '6px 12px', border: 'none', borderRadius: 'var(--r-sm)',
                   background: timeframe === tf ? 'var(--accent)' : 'transparent',
@@ -324,30 +361,30 @@ const TradingView = () => {
                   cursor: 'pointer', fontSize: '0.68rem', fontWeight: 600,
                   fontFamily: 'JetBrains Mono, monospace',
                   transition: 'all var(--t-fast)',
-                }}>
+                }}
+              >
                 {tf}
-              </button>
+              </motion.button>
             ))}
           </div>
 
-
         </div>
-      </div>
+      </motion.div>
 
       {/* Error State */}
       {error && (
-        <div className="anim-fade-in" style={{
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{
           padding: '12px 16px', borderRadius: 'var(--r-md)',
           background: '#f8717115', border: '1px solid #f8717130',
           color: '#fca5a5', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px',
         }}>
           <AlertTriangle size={14} /> {error}
-        </div>
+        </motion.div>
       )}
 
       {/* Empty State */}
       {!analysis && !loading && !error && (
-        <div className="glass anim-fade-in" style={{
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }} className="glass" style={{
           padding: '60px 24px', borderRadius: 'var(--r-xl)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
           textAlign: 'center',
@@ -372,7 +409,11 @@ const TradingView = () => {
           {/* Quick symbols */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '8px' }}>
             {['AAPL', 'TSLA', 'BTCUSD', 'SPY', 'NVDA', 'EURUSD'].map(s => (
-              <button key={s} onClick={() => { setSymbol(s); handleAnalyze(s); }}
+              <motion.button
+                key={s}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => { setSymbol(s); handleAnalyze(s); }}
                 style={{
                   padding: '6px 14px', border: '1px solid var(--border)',
                   borderRadius: 'var(--r-full)', background: 'var(--bg-secondary)',
@@ -380,14 +421,12 @@ const TradingView = () => {
                   fontFamily: 'JetBrains Mono, monospace', fontWeight: 500,
                   transition: 'all var(--t-fast)',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
               >
                 {s}
-              </button>
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Loading Skeleton */}
@@ -401,20 +440,20 @@ const TradingView = () => {
 
       {/* ── Analysis Results ──────────────────────── */}
       {analysis && (
-        <div className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
 
           {/* Main Layout: Chart on Top, Trades on Bottom */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             {/* Live Interactive Chart Card */}
-            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
               <div style={cardHeaderStyle}>
                 <TrendingUp size={13} style={{ color: 'var(--accent)' }} /> Live Interactive Technical Chart
               </div>
               <TradingViewWidget symbol={analysis.symbol} />
-            </div>
+            </motion.div>
 
             {/* Trade Cross-Reference Card */}
-            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ ...cardHeaderStyle, marginBottom: 0 }}>
                 <ChevronRight size={13} /> Your Trades · {analysis.symbol}
               </div>
@@ -423,7 +462,7 @@ const TradingView = () => {
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', width: '100%' }}>
                   
                   {/* Net P&L Summary */}
-                  <div style={{
+                  <motion.div whileHover={{ scale: 1.02 }} style={{
                     display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 20px', borderRadius: 'var(--r-md)',
                     background: symbolTrades.netPnl >= 0 ? 'var(--profit-soft)' : 'var(--loss-soft)',
                     border: `1px solid ${symbolTrades.netPnl >= 0 ? 'var(--profit-border)' : 'var(--loss-border)'}`,
@@ -434,32 +473,38 @@ const TradingView = () => {
                       fontSize: '1.25rem', fontWeight: 800,
                       fontFamily: 'JetBrains Mono', color: symbolTrades.netPnl >= 0 ? 'var(--profit)' : 'var(--loss)',
                     }}>
-                      {symbolTrades.netPnl >= 0 ? '+' : ''}${symbolTrades.netPnl.toFixed(2)}
+                      <AnimatedNumber value={symbolTrades.netPnl} prefix={symbolTrades.netPnl >= 0 ? '+$' : '$'} decimals={2} />
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Horizontal Metrics Rows */}
                   <div style={{ display: 'flex', gap: '10px', flex: '3 1 auto', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                    <motion.div whileHover={{ y: -2 }} style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>Trades</div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>{symbolTrades.total}</div>
-                    </div>
-                    <div style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>
+                        <AnimatedNumber value={symbolTrades.total} decimals={0} />
+                      </div>
+                    </motion.div>
+                    <motion.div whileHover={{ y: -2 }} style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>Win Rate</div>
-                      <div style={{ fontWeight: 700, color: parseFloat(symbolTrades.winRate) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>{symbolTrades.winRate}%</div>
-                    </div>
-                    <div style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 700, color: parseFloat(symbolTrades.winRate) >= 50 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>
+                        <AnimatedNumber value={symbolTrades.winRate} suffix="%" decimals={1} />
+                      </div>
+                    </motion.div>
+                    <motion.div whileHover={{ y: -2 }} style={{ flex: '1 1 80px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>W / L</div>
                       <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>
-                        <span style={{ color: 'var(--profit)' }}>{symbolTrades.wins}</span>
+                        <span style={{ color: 'var(--profit)' }}><AnimatedNumber value={symbolTrades.wins} decimals={0} /></span>
                         <span style={{ color: 'var(--text-muted)' }}> / </span>
-                        <span style={{ color: 'var(--loss)' }}>{symbolTrades.losses}</span>
+                        <span style={{ color: 'var(--loss)' }}><AnimatedNumber value={symbolTrades.losses} decimals={0} /></span>
                       </div>
-                    </div>
-                    <div style={{ flex: '1 1 100px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
+                    </motion.div>
+                    <motion.div whileHover={{ y: -2 }} style={{ flex: '1 1 100px', padding: '10px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-primary)', textAlign: 'center' }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', marginBottom: '4px' }}>Avg Entry</div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>${symbolTrades.avgEntry}</div>
-                    </div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>
+                        <AnimatedNumber value={symbolTrades.avgEntry} prefix="$" decimals={2} />
+                      </div>
+                    </motion.div>
                   </div>
 
                   {symbolTrades.lastTradeDate && (
@@ -477,13 +522,12 @@ const TradingView = () => {
                   <span>No trades logged for {analysis.symbol}. Log trades in the Journal to see cross-reference data.</span>
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
 
-
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
