@@ -8,6 +8,38 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { TrendingUp, TrendingDown, Target, Award, BarChart2, Zap, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 0, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
 
 // Classify trade entry time into London, New York, or Asian session
 const getTradeSession = (t) => {
@@ -489,15 +521,30 @@ const Analytics = () => {
     axisLine: false,
   };
 
+  const cardContainerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Analytics</h1>
           <p className="page-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>What actually makes you money</p>
         </div>
-        <button 
+        <motion.button 
+          whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(0,240,255,0.4)' }}
+          whileTap={{ scale: 0.95 }}
           className="btn" 
           onClick={() => navigate('/journal')} 
           style={{ 
@@ -514,11 +561,11 @@ const Analytics = () => {
           }}
         >
           <Plus size={14} /> New Trade
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Filters Row */}
-      <div className="glass" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }} className="glass" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
         <input 
           type="date" 
           className="input" 
@@ -576,13 +623,13 @@ const Analytics = () => {
           {['A+', 'A', 'B', 'C', 'D'].map(g => <option key={g} value={g}>{g}</option>)}
         </select>
 
-        <button className="btn btn-ghost" style={{ height: '36px', padding: '0 16px', fontSize: '0.78rem' }} onClick={handleClearFilters}>
+        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost" style={{ height: '36px', padding: '0 16px', fontSize: '0.78rem' }} onClick={handleClearFilters}>
           Clear
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Top Cards: SteelNQ Score & Win Rate */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--s4)' }}>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--s4)' }}>
         {/* SteelNQ Score Card */}
         <div className="glass" style={{ padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
           <div>
@@ -616,11 +663,13 @@ const Analytics = () => {
                   strokeLinecap="round"
                   transform="rotate(-90 55 55)"
                   filter="url(#glow)"
-                  style={{ transition: 'stroke-dashoffset var(--t-slow)' }}
+                  style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
                 />
               </svg>
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{stats.steelNQScore}</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>
+                  <AnimatedNumber value={stats.steelNQScore} />
+                </span>
                 <span style={{ fontSize: '0.62rem', fontWeight: 700, color: stats.steelNQScore >= 70 ? 'var(--profit)' : (stats.steelNQScore >= 50 ? 'var(--warn)' : 'var(--loss)'), textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>
                   {stats.steelNQScore >= 80 ? 'Superb' : (stats.steelNQScore >= 70 ? 'Strong' : (stats.steelNQScore >= 50 ? 'Average' : (stats.steelNQScore >= 35 ? 'Weak' : 'Poor')))}
                 </span>
@@ -633,15 +682,20 @@ const Analytics = () => {
                 <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', width: '100px', minWidth: '100px' }}>{f.label}</span>
                   <div style={{ flex: 1, height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${f.val}%`,
-                      background: 'linear-gradient(90deg, #00d2ff 0%, #0072ff 100%)',
-                      borderRadius: '3px',
-                      transition: 'width var(--t-slow)'
-                    }} />
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${f.val}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                      style={{
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #00d2ff 0%, #0072ff 100%)',
+                        borderRadius: '3px'
+                      }}
+                    />
                   </div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, width: '28px', textAlign: 'right', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>{f.val}</span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, width: '28px', textAlign: 'right', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
+                    <AnimatedNumber value={f.val} />
+                  </span>
                 </div>
               ))}
             </div>
@@ -656,65 +710,75 @@ const Analytics = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
             <div>
-              <span style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', lineHeight: 1 }}>{stats.winRate.toFixed(1)}%</span>
+              <span style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', lineHeight: 1 }}>
+                <AnimatedNumber value={stats.winRate} suffix="%" decimals={1} />
+              </span>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 2 }}>win rate</p>
             </div>
             {/* Stacked Progress Bar */}
             <div style={{ display: 'flex', height: '10px', background: 'var(--border-strong)', borderRadius: '5px', overflow: 'hidden', margin: '16px 0 12px 0' }}>
-              <div style={{ width: `${(stats.wins / (stats.totalTrades || 1)) * 100}%`, background: 'var(--profit)', transition: 'width var(--t-slow)' }} />
-              <div style={{ width: `${(stats.breakevens / (stats.totalTrades || 1)) * 100}%`, background: 'var(--warn)', transition: 'width var(--t-slow)' }} />
-              <div style={{ width: `${(stats.losses / (stats.totalTrades || 1)) * 100}%`, background: 'var(--loss)', transition: 'width var(--t-slow)' }} />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.wins / (stats.totalTrades || 1)) * 100}%` }} transition={{ duration: 0.8 }} style={{ background: 'var(--profit)' }} />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.breakevens / (stats.totalTrades || 1)) * 100}%` }} transition={{ duration: 0.8, delay: 0.1 }} style={{ background: 'var(--warn)' }} />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.losses / (stats.totalTrades || 1)) * 100}%` }} transition={{ duration: 0.8, delay: 0.2 }} style={{ background: 'var(--loss)' }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ color: 'var(--profit)' }}>{stats.wins} wins</span>
-              <span style={{ color: 'var(--warn)' }}>{stats.breakevens} BE</span>
-              <span style={{ color: 'var(--loss)' }}>{stats.losses} losses</span>
+              <span style={{ color: 'var(--profit)' }}><AnimatedNumber value={stats.wins} decimals={0} /> wins</span>
+              <span style={{ color: 'var(--warn)' }}><AnimatedNumber value={stats.breakevens} decimals={0} /> BE</span>
+              <span style={{ color: 'var(--loss)' }}><AnimatedNumber value={stats.losses} decimals={0} /> losses</span>
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* KPI Cards Grid */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Row 1: 7 cards */}
-        <div className="analytics-kpi-row-1">
+        <motion.div variants={cardContainerVariants} initial="hidden" animate="show" className="analytics-kpi-row-1">
           {[
-            { label: 'NET PNL', val: `${stats.netPnL >= 0 ? '+' : ''}$${stats.netPnL.toLocaleString()}`, col: stats.netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', labelColor: 'var(--text-tertiary)' },
-            { label: 'TOTAL R', val: `${stats.totalR >= 0 ? '+' : ''}${stats.totalR}R`, col: stats.totalR >= 0 ? 'var(--profit)' : 'var(--loss)', labelColor: 'var(--text-tertiary)' },
-            { label: 'WIN RATE', val: `${stats.winRate.toFixed(1)}%`, sub: `${stats.wins}W - ${stats.losses}L - ${stats.breakevens}BE`, col: 'var(--text-primary)', subCol: 'var(--text-muted)' },
-            { label: 'PROFIT FACTOR', val: stats.profitFactor === 99.9 ? '∞' : stats.profitFactor.toFixed(2), col: 'var(--text-primary)' },
-            { label: 'EXPECTANCY', val: `${stats.expectancy >= 0 ? '+' : ''}$${stats.expectancy.toFixed(2)}`, sub: 'per trade', col: stats.expectancy >= 0 ? 'var(--profit)' : 'var(--loss)', subCol: 'var(--text-muted)' },
-            { label: 'AVG R', val: `${stats.avgR >= 0 ? '+' : ''}${stats.avgR}R`, col: stats.avgR >= 0 ? 'var(--profit)' : 'var(--loss)' },
-            { label: 'AVG WIN', val: `$${stats.avgWin.toLocaleString()}`, col: 'var(--profit)' }
+            { label: 'NET PNL', val: stats.netPnL, isCurrency: true, col: stats.netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', labelColor: 'var(--text-tertiary)' },
+            { label: 'TOTAL R', val: stats.totalR, suffix: 'R', prefix: stats.totalR >= 0 ? '+' : '', decimals: 2, col: stats.totalR >= 0 ? 'var(--profit)' : 'var(--loss)', labelColor: 'var(--text-tertiary)' },
+            { label: 'WIN RATE', val: stats.winRate, suffix: '%', decimals: 1, sub: `${stats.wins}W - ${stats.losses}L - ${stats.breakevens}BE`, col: 'var(--text-primary)', subCol: 'var(--text-muted)' },
+            { label: 'PROFIT FACTOR', val: stats.profitFactor === 99.9 ? '∞' : stats.profitFactor, decimals: 2, col: 'var(--text-primary)' },
+            { label: 'EXPECTANCY', val: stats.expectancy, isCurrency: true, sub: 'per trade', col: stats.expectancy >= 0 ? 'var(--profit)' : 'var(--loss)', subCol: 'var(--text-muted)' },
+            { label: 'AVG R', val: stats.avgR, suffix: 'R', prefix: stats.avgR >= 0 ? '+' : '', decimals: 2, col: stats.avgR >= 0 ? 'var(--profit)' : 'var(--loss)' },
+            { label: 'AVG WIN', val: stats.avgWin, isCurrency: true, col: 'var(--profit)' }
           ].map((k, i) => (
-            <div key={i} className="glass stat-card" style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <motion.div variants={cardVariants} whileHover={{ y: -3, scale: 1.02 }} key={i} className="glass stat-card" style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.04em', color: k.labelColor || 'var(--text-tertiary)' }}>{k.label}</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', wordBreak: 'break-word', lineHeight: 1.2 }}>{k.val}</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                {typeof k.val === 'number' ? (
+                  <AnimatedNumber value={k.val} prefix={k.isCurrency ? (k.val >= 0 ? '+$' : '$') : (k.prefix || '')} suffix={k.suffix || ''} decimals={k.decimals ?? 2} />
+                ) : (
+                  k.val
+                )}
+              </div>
               {k.sub && <div style={{ fontSize: '0.62rem', color: k.subCol || 'var(--text-muted)', fontWeight: 500 }}>{k.sub}</div>}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Row 2: 5 cards */}
-        <div className="analytics-kpi-row-2">
+        <motion.div variants={cardContainerVariants} initial="hidden" animate="show" className="analytics-kpi-row-2">
           {[
-            { label: 'AVG LOSS', val: stats.avgLoss > 0 ? `-$${stats.avgLoss.toLocaleString()}` : '$0.00', col: 'var(--loss)' },
-            { label: 'MAX DRAWDOWN', val: stats.maxDrawdown > 0 ? `-$${stats.maxDrawdown.toLocaleString()}` : '$0.00', col: 'var(--loss)' },
-            { label: 'LARGEST WIN', val: `$${stats.largestWin.toLocaleString()}`, col: 'var(--profit)' },
-            { label: 'LARGEST LOSS', val: stats.largestLoss < 0 ? `-$${Math.abs(stats.largestLoss).toLocaleString()}` : '$0.00', col: 'var(--loss)' },
-            { label: 'TRADES', val: stats.totalTrades, sub: stats.streak, subCol: stats.streakType === 'profit' ? 'var(--profit)' : (stats.streakType === 'loss' ? 'var(--loss)' : 'var(--text-muted)') }
+            { label: 'AVG LOSS', val: stats.avgLoss > 0 ? -stats.avgLoss : 0, isCurrency: true, col: 'var(--loss)' },
+            { label: 'MAX DRAWDOWN', val: stats.maxDrawdown > 0 ? -stats.maxDrawdown : 0, isCurrency: true, col: 'var(--loss)' },
+            { label: 'LARGEST WIN', val: stats.largestWin, isCurrency: true, col: 'var(--profit)' },
+            { label: 'LARGEST LOSS', val: stats.largestLoss, isCurrency: true, col: 'var(--loss)' },
+            { label: 'TRADES', val: stats.totalTrades, decimals: 0, sub: stats.streak, subCol: stats.streakType === 'profit' ? 'var(--profit)' : (stats.streakType === 'loss' ? 'var(--loss)' : 'var(--text-muted)') }
           ].map((k, i) => (
-            <div key={i} className="glass stat-card" style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <motion.div variants={cardVariants} whileHover={{ y: -3, scale: 1.02 }} key={i} className="glass stat-card" style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.04em', color: k.labelColor || 'var(--text-tertiary)' }}>{k.label}</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', wordBreak: 'break-word', lineHeight: 1.2 }}>{k.val}</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                <AnimatedNumber value={k.val} prefix={k.isCurrency ? (k.val >= 0 ? '+$' : '$') : ''} decimals={k.decimals ?? 2} />
+              </div>
               {k.sub && <div style={{ fontSize: '0.62rem', color: k.subCol || 'var(--text-muted)', fontWeight: 500 }}>{k.sub}</div>}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
       {/* Performance Over Time — Equity Growth Curve */}
-      <div className="glass" style={{ padding: 'var(--s5)', position: 'relative', overflow: 'hidden' }}>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="glass" style={{ padding: 'var(--s5)', position: 'relative', overflow: 'hidden' }}>
         {/* Subtle ambient glow behind the chart — dynamic color */}
         <div style={{
           position: 'absolute', top: '20%', left: '15%', width: '70%', height: '60%',
@@ -733,12 +797,12 @@ const Analytics = () => {
               Balance growth from a ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting point (filtered trades)
             </p>
             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px', lineHeight: 1 }}>
-              ${(hoveredPoint !== null ? hoveredPoint : (startBalance + stats.netPnL)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              <AnimatedNumber value={hoveredPoint !== null ? hoveredPoint : (startBalance + stats.netPnL)} prefix="$" decimals={0} />
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
             <div style={{ fontSize: '2rem', fontWeight: 800, color: stats.netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', lineHeight: 1 }}>
-              ${(startBalance + stats.netPnL).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              <AnimatedNumber value={startBalance + stats.netPnL} prefix="$" decimals={0} />
             </div>
           </div>
         </div>
@@ -791,8 +855,8 @@ const Analytics = () => {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
