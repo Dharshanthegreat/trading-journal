@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { Brain, Zap, Activity, ArrowRight, TrendingUp, TrendingDown, Target, Plus, Filter, RotateCcw, ShieldCheck, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const EMOTION_COLORS = {
   Calm: '#818cf8', Confident: '#34d399', Anxious: '#fbbf24',
@@ -23,6 +24,37 @@ const formatCurrency = (val) => {
   const isNegative = num < 0;
   const absVal = Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return isNegative ? `-$${absVal}` : `+$${absVal}`;
+};
+
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 1, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
 };
 
 // Classify trade entry time into London, New York, or Asian session
@@ -397,11 +429,24 @@ const Emotions = () => {
     </div>
   );
 
+  const cardContainerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '60px' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)', paddingBottom: '60px' }}>
       
       {/* ═══ PAGE HEADER ═══ */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Trading Psychology</h1>
           <p className="page-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0, marginTop: 2 }}>
@@ -409,7 +454,9 @@ const Emotions = () => {
           </p>
         </div>
 
-        <button 
+        <motion.button 
+          whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(99,102,241,0.4)' }}
+          whileTap={{ scale: 0.95 }}
           className="btn btn-primary" 
           onClick={() => navigate('/journal')} 
           style={{ 
@@ -425,11 +472,11 @@ const Emotions = () => {
           }}
         >
           <Plus size={14} /> New Trade
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* ═══ SLEEK CLEAN FILTERS BAR ═══ */}
-      <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }} className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>
           <Filter size={14} style={{ color: 'var(--accent)' }} />
           Psychology Filters & Scope
@@ -493,11 +540,11 @@ const Emotions = () => {
             {['A+', 'A', 'B', 'C', 'D'].map(g => <option key={g} value={g}>{g}</option>)}
           </select>
 
-          <button className="btn btn-ghost" style={{ height: '34px', padding: '0 14px', fontSize: '0.75rem', gap: 4, cursor: 'pointer' }} onClick={handleClearFilters}>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost" style={{ height: '34px', padding: '0 14px', fontSize: '0.75rem', gap: 4, cursor: 'pointer' }} onClick={handleClearFilters}>
             <RotateCcw size={12} /> Clear
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {!analytics ? (
         <div className="glass empty-state" style={{ padding: 'var(--s12)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s3)' }}>
@@ -510,7 +557,7 @@ const Emotions = () => {
       ) : (
         <>
           {/* ═══ DISCIPLINE INDEX & MINDSET PROFILE ROW ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
             
             {/* Discipline Index Gauge Card */}
             <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
@@ -546,11 +593,13 @@ const Emotions = () => {
                       strokeLinecap="round"
                       transform="rotate(-90 55 55)"
                       filter="url(#glow)"
-                      style={{ transition: 'stroke-dashoffset var(--t-slow)' }}
+                      style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
                     />
                   </svg>
                   <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{analytics.disciplineScore}</span>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>
+                      <AnimatedNumber value={analytics.disciplineScore} decimals={0} />
+                    </span>
                     <span style={{ fontSize: '0.62rem', fontWeight: 700, color: analytics.disciplineScore >= 80 ? 'var(--profit)' : (analytics.disciplineScore >= 65 ? 'var(--accent)' : (analytics.disciplineScore >= 45 ? 'var(--warn)' : 'var(--loss)')), textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>
                       {analytics.disciplineScore >= 80 ? 'Disciplined' : (analytics.disciplineScore >= 65 ? 'Balanced' : (analytics.disciplineScore >= 45 ? 'Impulsive' : 'High Risk'))}
                     </span>
@@ -562,15 +611,13 @@ const Emotions = () => {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '4px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>FOMO Resistance</span>
-                      <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{(10 - analytics.avgFomo).toFixed(1)}/10</span>
+                      <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}><AnimatedNumber value={10 - analytics.avgFomo} decimals={1} />/10</span>
                     </div>
                     <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${(10 - analytics.avgFomo) * 10}%` }} transition={{ duration: 0.8 }} style={{
                         height: '100%',
-                        width: `${(10 - analytics.avgFomo) * 10}%`,
                         background: analytics.avgFomo <= 4 ? 'var(--profit)' : (analytics.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)'),
-                        borderRadius: '3px',
-                        transition: 'width var(--t-slow)'
+                        borderRadius: '3px'
                       }} />
                     </div>
                   </div>
@@ -578,15 +625,13 @@ const Emotions = () => {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '4px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Average Confidence</span>
-                      <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{analytics.avgConf.toFixed(1)}/10</span>
+                      <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}><AnimatedNumber value={analytics.avgConf} decimals={1} />/10</span>
                     </div>
                     <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${analytics.avgConf * 10}%` }} transition={{ duration: 0.8, delay: 0.1 }} style={{
                         height: '100%',
-                        width: `${analytics.avgConf * 10}%`,
                         background: 'linear-gradient(90deg, #818cf8 0%, #34d399 100%)',
-                        borderRadius: '3px',
-                        transition: 'width var(--t-slow)'
+                        borderRadius: '3px'
                       }} />
                     </div>
                   </div>
@@ -603,7 +648,7 @@ const Emotions = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)', justifyContent: 'center', flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                <motion.div whileHover={{ x: 3 }} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>🧘</span>
                   <span style={{ lineHeight: 1.4 }}>
                     {analytics.disciplineScore >= 80 
@@ -612,9 +657,9 @@ const Emotions = () => {
                         ? 'Good balance. However, minor emotional friction exists. Monitor setups that trigger FOMO.'
                         : 'Significant emotional slippage. You are likely chasing trades or executing out of boredom.')}
                   </span>
-                </div>
+                </motion.div>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                <motion.div whileHover={{ x: 3 }} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>📊</span>
                   <span style={{ lineHeight: 1.4 }}>
                     Chasing setups has cost you a net total of{' '}
@@ -622,9 +667,9 @@ const Emotions = () => {
                       {formatCurrency(analytics.fomoCost)}
                     </strong>. Keep FOMO levels low to avoid capital leaks.
                   </span>
-                </div>
+                </motion.div>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                <motion.div whileHover={{ x: 3 }} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: 'var(--bg-tertiary)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>🔥</span>
                   <span style={{ lineHeight: 1.4 }}>
                     Disciplined trades (FOMO &le; 3, Conf &ge; 7) generated{' '}
@@ -632,14 +677,14 @@ const Emotions = () => {
                       {formatCurrency(analytics.disciplinedPnL)}
                     </strong>. Focus on standardizing this execution model.
                   </span>
-                </div>
+                </motion.div>
               </div>
             </div>
 
-          </div>
+          </motion.div>
 
           {/* ═══ ACCOUNT EQUITY CURVE CARD ═══ */}
-          <div className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16 }} className="glass" style={{ padding: 'var(--s5)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: 'var(--s4)' }}>
               <div>
                 <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0 }}>
@@ -649,13 +694,13 @@ const Emotions = () => {
                   Balance growth trajectory from ${startBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} starting balance
                 </p>
                 <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '6px', lineHeight: 1, fontFamily: 'JetBrains Mono' }}>
-                  ${(hoveredPoint !== null ? hoveredPoint : (startBalance + netPnL)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <AnimatedNumber value={hoveredPoint !== null ? hoveredPoint : (startBalance + netPnL)} prefix="$" decimals={2} />
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
                 <span className="badge" style={{ background: netPnL >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', color: netPnL >= 0 ? 'var(--profit)' : 'var(--loss)', border: `1px solid ${netPnL >= 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, fontSize: '0.78rem', padding: '6px 14px', borderRadius: 'var(--r-full)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-                  {formatCurrency(netPnL)} Total P&L
+                  <AnimatedNumber value={netPnL} prefix={netPnL >= 0 ? '+$' : '$'} decimals={2} /> TOTAL P&L
                 </span>
               </div>
             </div>
@@ -706,26 +751,28 @@ const Emotions = () => {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </motion.div>
 
           {/* ═══ PSYCHOLOGY KPI METRIC GRID ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--s3)' }}>
+          <motion.div variants={cardContainerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--s3)' }}>
             {[
-              { label: 'AVG FOMO', val: `${analytics.avgFomo}/10`, col: analytics.avgFomo <= 4 ? 'var(--profit)' : (analytics.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)'), sub: 'Lower is better' },
-              { label: 'AVG CONFIDENCE', val: `${analytics.avgConf}/10`, col: 'var(--accent)', sub: 'Ideal is 6-8' },
-              { label: 'WIN CONFIDENCE', val: `${analytics.avgWinConf}/10`, col: 'var(--profit)', sub: 'On winning trades' },
-              { label: 'LOSS CONFIDENCE', val: `${analytics.avgLossConf}/10`, col: 'var(--loss)', sub: 'On losing trades' },
-              { label: 'REVENGE TRADES', val: `${analytics.revengeCount}`, col: analytics.revengeCount > 0 ? 'var(--loss)' : 'var(--text-secondary)', sub: 'Over-trading count' },
-              { label: 'FOMO PNL COST', val: formatCurrency(analytics.fomoCost), col: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'On FOMO >= 7' },
-              { label: 'DISCIPLINED PNL', val: formatCurrency(analytics.disciplinedPnL), col: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'FOMO <=3, Conf >=7' }
+              { label: 'AVG FOMO', val: analytics.avgFomo, suffix: '/10', decimals: 1, col: analytics.avgFomo <= 4 ? 'var(--profit)' : (analytics.avgFomo <= 7 ? 'var(--warn)' : 'var(--loss)'), sub: 'Lower is better' },
+              { label: 'AVG CONFIDENCE', val: analytics.avgConf, suffix: '/10', decimals: 1, col: 'var(--accent)', sub: 'Ideal is 6-8' },
+              { label: 'WIN CONFIDENCE', val: analytics.avgWinConf, suffix: '/10', decimals: 2, col: 'var(--profit)', sub: 'On winning trades' },
+              { label: 'LOSS CONFIDENCE', val: analytics.avgLossConf, suffix: '/10', decimals: 2, col: 'var(--loss)', sub: 'On losing trades' },
+              { label: 'REVENGE TRADES', val: analytics.revengeCount, decimals: 0, col: analytics.revengeCount > 0 ? 'var(--loss)' : 'var(--text-secondary)', sub: 'Over-trading count' },
+              { label: 'FOMO PNL COST', val: analytics.fomoCost, isCurrency: true, decimals: 2, col: analytics.fomoCost >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'On FOMO >= 7' },
+              { label: 'DISCIPLINED PNL', val: analytics.disciplinedPnL, isCurrency: true, decimals: 2, col: analytics.disciplinedPnL >= 0 ? 'var(--profit)' : 'var(--loss)', sub: 'FOMO <=3, Conf >=7' }
             ].map((k, i) => (
-              <div key={i} className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <motion.div variants={cardVariants} whileHover={{ y: -3, scale: 1.02 }} key={i} className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{k.label}</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', lineHeight: 1.2 }}>{k.val}</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: k.col, fontFamily: 'JetBrains Mono', lineHeight: 1.2 }}>
+                  <AnimatedNumber value={k.val} prefix={k.isCurrency ? (k.val >= 0 ? '+$' : '$') : ''} suffix={k.suffix || ''} decimals={k.decimals ?? 1} />
+                </div>
                 <div style={{ fontSize: '0.64rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>{k.sub}</div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* ═══ PSYCHOLOGY SCATTER & BAR CHARTS GRID ═══ */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s5)' }}>
@@ -822,16 +869,21 @@ const Emotions = () => {
                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>Logged Emotion Frequency</div>
                 <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
                   {analytics.topTags.map(([tag, count]) => (
-                    <div key={tag} style={{
-                      display: 'flex', alignItems: 'center', gap: 'var(--s2)',
-                      padding: '6px 14px', background: `${EMOTION_COLORS[tag] || '#818cf8'}12`,
-                      border: `1px solid ${EMOTION_COLORS[tag] || '#818cf8'}30`,
-                      borderRadius: 'var(--r-full)', fontSize: '0.75rem',
-                      color: EMOTION_COLORS[tag] || '#818cf8', fontWeight: 600,
-                    }}>
+                    <motion.div
+                      whileHover={{ scale: 1.08 }}
+                      key={tag}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 'var(--s2)',
+                        padding: '6px 14px', background: `${EMOTION_COLORS[tag] || '#818cf8'}12`,
+                        border: `1px solid ${EMOTION_COLORS[tag] || '#818cf8'}30`,
+                        borderRadius: 'var(--r-full)', fontSize: '0.75rem',
+                        color: EMOTION_COLORS[tag] || '#818cf8', fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
                       {tag}
                       <span style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--r-full)', padding: '1px 7px', fontSize: '0.62rem', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono' }}>{count}</span>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
@@ -839,7 +891,7 @@ const Emotions = () => {
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 };
 
