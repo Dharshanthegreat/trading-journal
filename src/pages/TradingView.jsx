@@ -330,20 +330,7 @@ const TradingView = () => {
             ))}
           </div>
 
-          {/* Analyze Button */}
-          <button onClick={() => handleAnalyze()} disabled={loading || !symbol.trim()}
-            style={{
-              padding: '10px 20px', border: 'none', borderRadius: 'var(--r-md)',
-              background: loading ? 'var(--bg-active)' : 'linear-gradient(135deg, var(--accent), #a78bfa)',
-              color: '#fff', cursor: loading ? 'default' : 'pointer',
-              fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
-              opacity: !symbol.trim() ? 0.5 : 1,
-              transition: 'all var(--t-fast)',
-              boxShadow: loading ? 'none' : '0 2px 12px rgba(99, 102, 241, 0.3)',
-            }}>
-            {loading ? <RefreshCw size={14} className="spin-anim" /> : <Zap size={14} />}
-            {loading ? 'Analyzing...' : 'Analyze'}
-          </button>
+
         </div>
       </div>
 

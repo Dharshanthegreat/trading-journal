@@ -1120,9 +1120,7 @@ const Dashboard = () => {
             </select>
           </div>
           
-          <button className="tz-filter-btn" onClick={() => setShowAiChat(true)} style={{ background: 'var(--accent-soft)', borderColor: 'var(--border-accent)', color: 'var(--text-primary)', fontWeight: 600 }}>
-            <Brain size={13} style={{ color: 'var(--accent)' }} /> DTG AI
-          </button>
+
         </div>
       </div>
       
