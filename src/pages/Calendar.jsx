@@ -2,9 +2,41 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTrades } from '../contexts/TradeContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays, TrendingUp, TrendingDown, Target, Wallet, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { toNewYorkDateString, formatInNewYork } from '../utils/timezone';
 import { accounts as accountsApi, ai } from '../services/api';
+
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 2, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
 
 const CalendarPage = () => {
   const { analytics, fetchAnalytics, trades, fetchTrades, loading } = useTrades();
@@ -41,7 +73,7 @@ const CalendarPage = () => {
     });
   }, [trades, selectedAccountId]);
 
-  // Auto-select the latest date with trades on page load (no click needed)
+  // Auto-select the latest date with trades on page load
   useEffect(() => {
     if (!selectedDate && filteredTrades.length > 0) {
       const datesWithTrades = filteredTrades
@@ -157,20 +189,25 @@ const CalendarPage = () => {
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const getPnLColor = (pnl) => {
-    if (pnl > 0) {
-      const intensity = Math.min(pnl / 500, 1);
-      return `rgba(52, 211, 153, ${0.1 + intensity * 0.35})`;
-    } else if (pnl < 0) {
-      const intensity = Math.min(Math.abs(pnl) / 500, 1);
-      return `rgba(248, 113, 113, ${0.1 + intensity * 0.35})`;
+  const gridVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.012
+      }
     }
-    return 'transparent';
+  };
+
+  const cellVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 10 },
+    show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-      <div className="page-header" style={{ marginBottom: 'var(--s2)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="page-header" style={{ marginBottom: 'var(--s2)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)' }}>
         <div>
           <div className="page-title" style={{ margin: 0, fontSize: '1.25rem' }}><CalendarDays size={18} style={{ opacity: 0.6 }}/> Calendar</div>
           <div className="page-subtitle">Monthly P&L overview</div>
@@ -206,53 +243,65 @@ const CalendarPage = () => {
 
           {/* Compact Month Navigation in Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', background: 'var(--surface-glass)', padding: '4px 8px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', height: '34px' }}>
-            <button className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
               <ChevronLeft size={14}/>
-            </button>
+            </motion.button>
             <span style={{ fontWeight: 700, fontSize: '0.82rem', minWidth: 90, textAlign: 'center', color: 'var(--text-primary)' }}>
               {format(currentMonth, 'MMM yyyy')}
             </span>
-            <button className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="btn btn-ghost" style={{ padding: '4px', minHeight: 'auto', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
               <ChevronRight size={14}/>
-            </button>
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-        {/* Calendar */}
-        <div className="glass anim-fade-up delay-1" style={{ padding: 'var(--s4)' }}>
-          {/* Compact Inline Stats */}
+        {/* Calendar Card Container */}
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }} className="glass" style={{ padding: 'var(--s4)' }}>
+          {/* Compact Inline Stats Header */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s4)', paddingBottom: 'var(--s3)', marginBottom: 'var(--s4)', borderBottom: '1px solid var(--border)', fontSize: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Net P&L:</span>
               <span style={{ fontWeight: 700, color: monthlySummary.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                {monthlySummary.pnl >= 0 ? '+' : ''}${monthlySummary.pnl.toFixed(2)}
+                {monthlySummary.pnl >= 0 ? '+' : ''}$<AnimatedNumber value={monthlySummary.pnl} decimals={2} />
               </span>
             </div>
             <span style={{ color: 'var(--border)', userSelect: 'none' }}>|</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Trades:</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{monthlySummary.tradeCount}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                <AnimatedNumber value={monthlySummary.tradeCount} decimals={0} />
+              </span>
             </div>
             <span style={{ color: 'var(--border)', userSelect: 'none' }}>|</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <TrendingUp size={11} style={{ color: 'var(--profit)' }}/> Green:
               </span>
-              <span style={{ fontWeight: 600, color: 'var(--profit)' }}>{monthlySummary.winDays}d</span>
+              <span style={{ fontWeight: 600, color: 'var(--profit)' }}>
+                <AnimatedNumber value={monthlySummary.winDays} decimals={0} />d
+              </span>
             </div>
             <span style={{ color: 'var(--border)', userSelect: 'none' }}>|</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <TrendingDown size={11} style={{ color: 'var(--loss)' }}/> Red:
               </span>
-              <span style={{ fontWeight: 600, color: 'var(--loss)' }}>{monthlySummary.lossDays}d</span>
+              <span style={{ fontWeight: 600, color: 'var(--loss)' }}>
+                <AnimatedNumber value={monthlySummary.lossDays} decimals={0} />d
+              </span>
             </div>
           </div>
 
           {/* Weekday Headers */}
-          <div className="calendar-grid">
+          <motion.div
+            key={format(currentMonth, 'yyyy-MM')}
+            variants={gridVariants}
+            initial="hidden"
+            animate="show"
+            className="calendar-grid"
+          >
             {weekDays.map(d => (
               <div key={d} className="calendar-header-cell">{d}</div>
             ))}
@@ -279,12 +328,15 @@ const CalendarPage = () => {
               const isLoss = hasData && pnlValue < 0;
 
               return (
-                <div
+                <motion.div
                   key={i}
+                  variants={cellVariants}
+                  whileHover={inMonth ? { scale: 1.04, y: -2, zIndex: 5 } : {}}
+                  whileTap={inMonth ? { scale: 0.96 } : {}}
                   className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''} ${isProfit ? 'profit-day' : ''} ${isLoss ? 'loss-day' : ''}`}
                   style={{
                     borderColor: isSelected ? 'var(--accent)' : undefined,
-                    boxShadow: isSelected ? '0 0 8px var(--accent-glow)' : undefined,
+                    boxShadow: isSelected ? '0 0 12px var(--accent-glow)' : undefined,
                   }}
                   onClick={() => {
                     if (inMonth) {
@@ -318,259 +370,273 @@ const CalendarPage = () => {
                       <div className="calendar-trades">0 trades</div>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Day Detail Panel */}
-        {selectedDate && (
-          <div className="glass anim-fade-up" style={{ padding: 'var(--s5)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                Trades for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+        <AnimatePresence>
+          {selectedDate && (
+            <motion.div
+              key={format(selectedDate, 'yyyy-MM-dd')}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="glass"
+              style={{ padding: 'var(--s5)' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s4)' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  Trades for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+                </div>
               </div>
-            </div>
-            {(() => {
-              const dateStr = format(selectedDate, 'yyyy-MM-dd');
-              const dayData = dailyData[dateStr];
-              const isSaturday = selectedDate.getDay() === 6;
-              const weekTotal = isSaturday ? getWeekTotal(selectedDate) : null;
+              {(() => {
+                const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                const dayData = dailyData[dateStr];
+                const isSaturday = selectedDate.getDay() === 6;
+                const weekTotal = isSaturday ? getWeekTotal(selectedDate) : null;
 
-              const renderTradeCard = (t, i) => {
-                const pnlVal = parseFloat(t.pnl) || 0;
-                const pnlFormatted = pnlVal > 0 ? `+$${pnlVal.toFixed(2)}` : pnlVal < 0 ? `-$${Math.abs(pnlVal).toFixed(2)}` : `$0.00`;
-                const accountObj = accounts.find(a => String(a.id) === String(t.accountId));
-                const accountName = accountObj?.accountName || '';
-                
-                const entryTimeFormatted = t.entryTime ? formatInNewYork(t.entryTime, 'hh:mm a') : '';
-                const exitTimeFormatted = t.exitTime ? formatInNewYork(t.exitTime, 'hh:mm a') : '';
-                const timeRange = entryTimeFormatted ? (exitTimeFormatted ? `${entryTimeFormatted} → ${exitTimeFormatted}` : entryTimeFormatted) : null;
-                
-                const entryPrice = t.entryPrice !== undefined && t.entryPrice !== null && t.entryPrice !== '' ? t.entryPrice : null;
-                const exitPrice = t.exitPrice !== undefined && t.exitPrice !== null && t.exitPrice !== '' ? t.exitPrice : null;
-                const priceRange = (entryPrice || exitPrice) ? `${entryPrice || '—'} → ${exitPrice || '—'}` : null;
-                
-                const lotSize = t.lotSize ? `${t.lotSize} ${parseFloat(t.lotSize) === 1 ? 'lot' : 'lots'}` : null;
-                const rrGradeParts = [];
-                if (t.riskRewardRatio) rrGradeParts.push(`${t.riskRewardRatio}R`);
-                if (t.grade) rrGradeParts.push(`Grade ${t.grade}`);
-                const rrGradeStr = rrGradeParts.length > 0 ? rrGradeParts.join(' · ') : null;
+                const renderTradeCard = (t, i) => {
+                  const pnlVal = parseFloat(t.pnl) || 0;
+                  const pnlFormatted = pnlVal > 0 ? `+$${pnlVal.toFixed(2)}` : pnlVal < 0 ? `-$${Math.abs(pnlVal).toFixed(2)}` : `$0.00`;
+                  const accountObj = accounts.find(a => String(a.id) === String(t.accountId));
+                  const accountName = accountObj?.accountName || '';
+                  
+                  const entryTimeFormatted = t.entryTime ? formatInNewYork(t.entryTime, 'hh:mm a') : '';
+                  const exitTimeFormatted = t.exitTime ? formatInNewYork(t.exitTime, 'hh:mm a') : '';
+                  const timeRange = entryTimeFormatted ? (exitTimeFormatted ? `${entryTimeFormatted} → ${exitTimeFormatted}` : entryTimeFormatted) : null;
+                  
+                  const entryPrice = t.entryPrice !== undefined && t.entryPrice !== null && t.entryPrice !== '' ? t.entryPrice : null;
+                  const exitPrice = t.exitPrice !== undefined && t.exitPrice !== null && t.exitPrice !== '' ? t.exitPrice : null;
+                  const priceRange = (entryPrice || exitPrice) ? `${entryPrice || '—'} → ${exitPrice || '—'}` : null;
+                  
+                  const lotSize = t.lotSize ? `${t.lotSize} ${parseFloat(t.lotSize) === 1 ? 'lot' : 'lots'}` : null;
+                  const rrGradeParts = [];
+                  if (t.riskRewardRatio) rrGradeParts.push(`${t.riskRewardRatio}R`);
+                  if (t.grade) rrGradeParts.push(`Grade ${t.grade}`);
+                  const rrGradeStr = rrGradeParts.length > 0 ? rrGradeParts.join(' · ') : null;
 
-                const rawTags = t.tags;
-                const tagsList = Array.isArray(rawTags) ? rawTags : (typeof rawTags === 'string' && rawTags ? rawTags.split(',').map(s => s.trim()).filter(Boolean) : []);
+                  const rawTags = t.tags;
+                  const tagsList = Array.isArray(rawTags) ? rawTags : (typeof rawTags === 'string' && rawTags ? rawTags.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+                  return (
+                    <motion.div 
+                      key={t.id || i}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        padding: '12px 14px',
+                        background: 'var(--surface-glass)',
+                        borderRadius: 'var(--r-md)',
+                        border: '1px solid var(--border)',
+                        fontSize: '0.78rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {/* Header Row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span 
+                            className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} 
+                            style={{ fontSize: '0.6rem', padding: '2px 8px', fontWeight: 700, letterSpacing: '0.04em' }}
+                          >
+                            {t.type === 'Long' ? 'LONG ↑' : 'SHORT ↓'}
+                          </span>
+                          <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {t.symbol}
+                          </span>
+                          {accountName && (
+                            <span style={{ fontSize: '0.6rem', padding: '2px 6px', background: 'var(--surface-glass-h)', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                              {accountName}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontWeight: 800, color: pnlVal > 0 ? 'var(--profit)' : pnlVal < 0 ? 'var(--loss)' : 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.95rem' }}>
+                          {pnlFormatted}
+                        </span>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+                        gap: '6px 12px', 
+                        padding: '8px 10px', 
+                        background: 'var(--surface-glass)', 
+                        borderRadius: '6px', 
+                        border: '1px solid var(--border)' 
+                      }}>
+                        {priceRange && (
+                          <div>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Price (Entry → Exit)</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>{priceRange}</span>
+                          </div>
+                        )}
+                        {timeRange && (
+                          <div>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Time (NY)</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{timeRange}</span>
+                          </div>
+                        )}
+                        {lotSize && (
+                          <div>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Size</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{lotSize}</span>
+                          </div>
+                        )}
+                        {rrGradeStr && (
+                          <div>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>R/R & Grade</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rrGradeStr}</span>
+                          </div>
+                        )}
+                        {t.setup && (
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Setup</span>
+                            <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{t.setup}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer: Tags and Notes */}
+                      {(tagsList.length > 0 || t.notes) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px', borderTop: '1px solid var(--border)' }}>
+                          {tagsList.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {tagsList.map((tag, idx) => (
+                                <span key={idx} style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'var(--surface-glass)', borderRadius: '4px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {t.notes && (
+                            <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: 'var(--text-secondary)', lineHeight: '1.3' }}>
+                              "{t.notes}"
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                };
+                
+                if (isSaturday) {
+                   return (
+                     <>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)', flexWrap: 'wrap', gap: 'var(--s3)' }}>
+                         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                           Weekly Summary (Sun - Sat)
+                         </div>
+                         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn" style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 12px', fontSize: '0.75rem', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer' }} onClick={() => handleAnalyzeWeek(selectedDate)} disabled={isAnalyzing}>
+                           <Sparkles size={14} />
+                           {isAnalyzing ? 'Analyzing...' : 'AI Weekly Analysis'}
+                         </motion.button>
+                       </div>
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '400px' }}>
+                         <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                           <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Total P&L</div>
+                           <div style={{ fontSize: '1.05rem', fontWeight: 700, color: weekTotal.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                             <AnimatedNumber value={weekTotal.pnl} prefix={weekTotal.pnl >= 0 ? '+' : ''} decimals={2} />
+                           </div>
+                         </div>
+                         <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                           <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Trades Count</div>
+                           <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                             <AnimatedNumber value={weekTotal.count} decimals={0} />
+                           </div>
+                         </div>
+                       </div>
+                       
+                       {weeklyAnalysis && (
+                          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--s3)', color: '#6366f1', fontWeight: 600 }}>
+                              <Sparkles size={16} /> AI Coach Analysis
+                            </div>
+                            <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                              {weeklyAnalysis}
+                            </div>
+                          </motion.div>
+                       )}
+
+                       {dayData && dayData.count > 0 && (
+                         <>
+                           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)', marginTop: 'var(--s4)' }}>
+                             Saturday Trade Details
+                           </div>
+                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s3)' }}>
+                             {selectedDateTrades.map((t, i) => renderTradeCard(t, i))}
+                           </div>
+                         </>
+                       )}
+                     </>
+                   );
+                }
+
+                if (!dayData) {
+                  return <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: 'var(--s3) 0' }}>No trades on this day</div>;
+                }
+
+                const dayTotalPnl = selectedDateTrades.reduce((sum, t) => sum + (parseFloat(t.pnl) || 0), 0);
+                const dayWins = selectedDateTrades.filter(t => (parseFloat(t.pnl) || 0) > 0).length;
+                const dayLosses = selectedDateTrades.filter(t => (parseFloat(t.pnl) || 0) < 0).length;
+                const dayWinRate = selectedDateTrades.length > 0 ? ((dayWins / selectedDateTrades.length) * 100).toFixed(0) : '0';
+                const dayAvgPnl = selectedDateTrades.length > 0 ? dayTotalPnl / selectedDateTrades.length : 0;
 
                 return (
-                  <div 
-                    key={t.id || i} 
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                      padding: '12px 14px',
-                      background: 'var(--surface-glass)',
-                      borderRadius: 'var(--r-md)',
-                      border: '1px solid var(--border)',
-                      fontSize: '0.78rem',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    {/* Header Row */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span 
-                          className={`badge ${t.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} 
-                          style={{ fontSize: '0.6rem', padding: '2px 8px', fontWeight: 700, letterSpacing: '0.04em' }}
-                        >
-                          {t.type === 'Long' ? 'LONG ↑' : 'SHORT ↓'}
-                        </span>
-                        <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
-                          {t.symbol}
-                        </span>
-                        {accountName && (
-                          <span style={{ fontSize: '0.6rem', padding: '2px 6px', background: 'var(--surface-glass-h)', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                            {accountName}
-                          </span>
-                        )}
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)' }}>
+                      <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Total P&L</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayTotalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                          <AnimatedNumber value={dayTotalPnl} prefix={dayTotalPnl >= 0 ? '+' : ''} decimals={2} />
+                        </div>
                       </div>
-                      <span style={{ fontWeight: 800, color: pnlVal > 0 ? 'var(--profit)' : pnlVal < 0 ? 'var(--loss)' : 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.95rem' }}>
-                        {pnlFormatted}
-                      </span>
+                      <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Trades Count</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                          <AnimatedNumber value={selectedDateTrades.length} decimals={0} /> <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({dayWins}W / {dayLosses}L)</span>
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Win Rate</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: parseInt(dayWinRate) >= 50 ? 'var(--profit)' : 'var(--text-primary)' }}>
+                          <AnimatedNumber value={dayWinRate} suffix="%" decimals={0} />
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Avg Trade</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayAvgPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
+                          <AnimatedNumber value={dayAvgPnl} prefix={dayAvgPnl >= 0 ? '+' : ''} decimals={2} />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Details Grid */}
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
-                      gap: '6px 12px', 
-                      padding: '8px 10px', 
-                      background: 'var(--surface-glass)', 
-                      borderRadius: '6px', 
-                      border: '1px solid var(--border)' 
-                    }}>
-                      {priceRange && (
-                        <div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Price (Entry → Exit)</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>{priceRange}</span>
-                        </div>
-                      )}
-                      {timeRange && (
-                        <div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Time (NY)</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{timeRange}</span>
-                        </div>
-                      )}
-                      {lotSize && (
-                        <div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Size</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{lotSize}</span>
-                        </div>
-                      )}
-                      {rrGradeStr && (
-                        <div>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>R/R & Grade</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rrGradeStr}</span>
-                        </div>
-                      )}
-                      {t.setup && (
-                        <div style={{ gridColumn: '1 / -1' }}>
-                          <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', letterSpacing: '0.04em' }}>Setup</span>
-                          <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{t.setup}</span>
-                        </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)' }}>
+                      Trade Details
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s3)' }}>
+                      {selectedDateTrades.map((t, i) => renderTradeCard(t, i))}
+                      {selectedDateTrades.length === 0 && (
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Trade details loading...</div>
                       )}
                     </div>
-
-                    {/* Footer: Tags and Notes */}
-                    {(tagsList.length > 0 || t.notes) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px', borderTop: '1px solid var(--border)' }}>
-                        {tagsList.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                            {tagsList.map((tag, idx) => (
-                              <span key={idx} style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'var(--surface-glass)', borderRadius: '4px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {t.notes && (
-                          <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: 'var(--text-secondary)', lineHeight: '1.3' }}>
-                            "{t.notes}"
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  </>
                 );
-              };
-              
-              if (isSaturday) {
-                 return (
-                   <>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)', flexWrap: 'wrap', gap: 'var(--s3)' }}>
-                       <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                         Weekly Summary (Sun - Sat)
-                       </div>
-                       <button className="btn" style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 12px', fontSize: '0.75rem', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer' }} onClick={() => handleAnalyzeWeek(selectedDate)} disabled={isAnalyzing}>
-                         <Sparkles size={14} />
-                         {isAnalyzing ? 'Analyzing...' : 'AI Weekly Analysis'}
-                       </button>
-                     </div>
-                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)', maxWidth: '400px' }}>
-                       <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                         <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Total P&L</div>
-                         <div style={{ fontSize: '1.05rem', fontWeight: 700, color: weekTotal.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
-                           {weekTotal.pnl >= 0 ? '+' : ''}${weekTotal.pnl.toFixed(2)}
-                         </div>
-                       </div>
-                       <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                         <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Week Trades Count</div>
-                         <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-                           {weekTotal.count}
-                         </div>
-                       </div>
-                     </div>
-                     
-                     {weeklyAnalysis && (
-                        <div className="glass anim-fade-up" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--s3)', color: '#6366f1', fontWeight: 600 }}>
-                            <Sparkles size={16} /> AI Coach Analysis
-                          </div>
-                          <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                            {weeklyAnalysis}
-                          </div>
-                        </div>
-                     )}
-
-                     {dayData && dayData.count > 0 && (
-                       <>
-                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)', marginTop: 'var(--s4)' }}>
-                           Saturday Trade Details
-                         </div>
-                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s3)' }}>
-                           {selectedDateTrades.map((t, i) => renderTradeCard(t, i))}
-                         </div>
-                       </>
-                     )}
-                   </>
-                 );
-              }
-
-              if (!dayData) {
-                return <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: 'var(--s3) 0' }}>No trades on this day</div>;
-              }
-
-              const dayTotalPnl = selectedDateTrades.reduce((sum, t) => sum + (parseFloat(t.pnl) || 0), 0);
-              const dayWins = selectedDateTrades.filter(t => (parseFloat(t.pnl) || 0) > 0).length;
-              const dayLosses = selectedDateTrades.filter(t => (parseFloat(t.pnl) || 0) < 0).length;
-              const dayWinRate = selectedDateTrades.length > 0 ? ((dayWins / selectedDateTrades.length) * 100).toFixed(0) : '0';
-              const dayAvgPnl = selectedDateTrades.length > 0 ? dayTotalPnl / selectedDateTrades.length : 0;
-
-              return (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--s3)', marginBottom: 'var(--s4)' }}>
-                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Total P&L</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayTotalPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
-                        {dayTotalPnl >= 0 ? '+' : ''}${dayTotalPnl.toFixed(2)}
-                      </div>
-                    </div>
-                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Trades Count</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
-                        {selectedDateTrades.length} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({dayWins}W / {dayLosses}L)</span>
-                      </div>
-                    </div>
-                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Win Rate</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: parseInt(dayWinRate) >= 50 ? 'var(--profit)' : 'var(--text-primary)' }}>
-                        {dayWinRate}%
-                      </div>
-                    </div>
-                    <div style={{ padding: '8px var(--s4)', background: 'var(--surface-glass)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Avg Trade</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: dayAvgPnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono' }}>
-                        {dayAvgPnl >= 0 ? '+' : ''}${dayAvgPnl.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--s3)' }}>
-                    Trade Details
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s3)' }}>
-                    {selectedDateTrades.map((t, i) => renderTradeCard(t, i))}
-                    {selectedDateTrades.length === 0 && (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Trade details loading...</div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        )}
+              })()}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
