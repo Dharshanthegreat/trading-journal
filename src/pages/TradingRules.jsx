@@ -4,7 +4,35 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   ListTodo, Plus, X, Trash2, Edit2, Check, CheckCircle, AlertTriangle, Shield, Play, Ban, RefreshCw, Percent
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 0, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  return (
+    <span>
+      {prefix}{Math.round(displayValue).toLocaleString()}{suffix}
+    </span>
+  );
+};
 
 const TradingRules = () => {
   const { user } = useAuth();
@@ -159,6 +187,7 @@ const TradingRules = () => {
       triggerError(err.message || 'Failed to delete rule.');
     }
   };
+
   // Metrics calculations
   const totalCount = rules.length;
   const activeCount = rules.filter(r => r.isActive).length;
@@ -168,10 +197,23 @@ const TradingRules = () => {
   // Selected account detail
   const currentAccount = accounts.find(a => String(a.id) === String(selectedAccountId));
 
+  const kpiContainerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const kpiCardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <div className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ListTodo size={24} style={{ color: 'var(--accent)' }} />
@@ -204,67 +246,77 @@ const TradingRules = () => {
             ))}
           </select>
         </div>
-      </div>
+      </motion.div>
 
       {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }} className="rules-kpi-grid">
-        <div className="glass stat-card">
+      <motion.div variants={kpiContainerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)' }} className="rules-kpi-grid">
+        <motion.div variants={kpiCardVariants} whileHover={{ scale: 1.02, translateY: -3 }} className="glass stat-card">
           <div className="stat-label">
             <span style={{ color: 'var(--accent)' }}><ListTodo size={13} /></span> Total Rules
           </div>
-          <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{totalCount}</div>
+          <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
+            <AnimatedNumber value={totalCount} />
+          </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rules logged for workspace</div>
-        </div>
+        </motion.div>
 
-        <div className="glass stat-card">
+        <motion.div variants={kpiCardVariants} whileHover={{ scale: 1.02, translateY: -3 }} className="glass stat-card">
           <div className="stat-label">
             <span style={{ color: 'var(--profit)' }}><CheckCircle size={13} /></span> Active Rules
           </div>
-          <div className="stat-value" style={{ color: 'var(--profit)' }}>{activeCount}</div>
+          <div className="stat-value" style={{ color: 'var(--profit)' }}>
+            <AnimatedNumber value={activeCount} />
+          </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Currently enforced constraints</div>
-        </div>
+        </motion.div>
 
-        <div className="glass stat-card">
+        <motion.div variants={kpiCardVariants} whileHover={{ scale: 1.02, translateY: -3 }} className="glass stat-card">
           <div className="stat-label">
             <span style={{ color: 'var(--text-muted)' }}><Ban size={13} /></span> Inactive Rules
           </div>
-          <div className="stat-value" style={{ color: 'var(--text-tertiary)' }}>{inactiveCount}</div>
+          <div className="stat-value" style={{ color: 'var(--text-tertiary)' }}>
+            <AnimatedNumber value={inactiveCount} />
+          </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Archived or disabled rules</div>
-        </div>
+        </motion.div>
 
-        <div className="glass stat-card">
+        <motion.div variants={kpiCardVariants} whileHover={{ scale: 1.02, translateY: -3 }} className="glass stat-card">
           <div className="stat-label">
             <span style={{ color: 'var(--profit)' }}><Percent size={13} /></span> Completion Score
           </div>
-          <div className="stat-value" style={{ color: 'var(--profit)' }}>{completionScore}%</div>
+          <div className="stat-value" style={{ color: 'var(--profit)' }}>
+            <AnimatedNumber value={completionScore} suffix="%" />
+          </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeCount} of {totalCount} rules active</div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Notification banners */}
-      {success && (
-        <div className="anim-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'var(--profit-soft)', border: '1px solid var(--profit-border)', color: 'var(--profit)', fontSize: '0.75rem', fontWeight: 600 }}>
-          ✓ {success}
-        </div>
-      )}
-      {error && (
-        <div className="anim-fade-in" style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)', color: 'var(--loss)', fontSize: '0.75rem', fontWeight: 600 }}>
-          ⚠️ {error}
-        </div>
-      )}
+      <AnimatePresence>
+        {success && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'var(--profit-soft)', border: '1px solid var(--profit-border)', color: 'var(--profit)', fontSize: '0.75rem', fontWeight: 600 }}>
+            ✓ {success}
+          </motion.div>
+        )}
+        {error && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)', color: 'var(--loss)', fontSize: '0.75rem', fontWeight: 600 }}>
+            ⚠️ {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Rule management list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
         
         {/* Rules container */}
-        <div className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }} className="glass" style={{ padding: 'var(--s5)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
           <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Rules List {selectedAccountId !== 'All' ? `for ${currentAccount?.accountName || ''}` : '(Global View)'}
             </span>
-            <button className="btn btn-ghost btn-sm" onClick={() => { fetchRules(); fetchTrades(); }} title="Reload rules">
+            <motion.button whileHover={{ rotate: 180 }} transition={{ duration: 0.3 }} className="btn btn-ghost btn-sm" onClick={() => { fetchRules(); fetchTrades(); }} title="Reload rules">
               <RefreshCw size={12} />
-            </button>
+            </motion.button>
           </div>
 
           {/* Add Rule Inline Form */}
@@ -283,14 +335,16 @@ const TradingRules = () => {
               onChange={e => setRuleTextInput(e.target.value)}
               disabled={submitting}
             />
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.05, boxShadow: '0 0 12px rgba(99,102,241,0.35)' }}
+              whileTap={{ scale: 0.95 }}
               className="btn btn-primary" 
               type="submit" 
               style={{ height: '36px', padding: '0 var(--s4)', display: 'flex', alignItems: 'center', gap: '6px' }}
               disabled={submitting || !ruleTextInput.trim()}
             >
               <Plus size={15} /> Add Rule
-            </button>
+            </motion.button>
           </form>
 
           {/* Rule checklist renderer */}
@@ -308,132 +362,147 @@ const TradingRules = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {rules.map((rule, idx) => {
-                const isEditing = editingRuleId === rule.id;
-                return (
-                  <div
-                    key={rule.id}
-                    className="glass-deep"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderRadius: 'var(--r-md)',
-                      border: '1px solid var(--border)',
-                      opacity: rule.isActive ? 1 : 0.6,
-                      background: rule.isActive ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.1)',
-                      gap: '16px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: '12px', flex: 1, alignItems: 'center' }}>
-                      {/* Interactive checkmark toggle */}
-                      <button
-                        onClick={() => handleToggleRule(rule)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
-                          display: 'flex',
-                          color: rule.isActive ? 'var(--profit)' : 'var(--text-tertiary)',
-                          transition: 'color var(--t-fast)'
-                        }}
-                        title={rule.isActive ? "Click to deactivate rule" : "Click to activate rule"}
-                      >
-                        {rule.isActive ? (
-                          <CheckCircle size={18} fill="rgba(52,211,153,0.15)" />
-                        ) : (
-                          <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--border-strong)' }} />
-                        )}
-                      </button>
+              <AnimatePresence>
+                {rules.map((rule, idx) => {
+                  const isEditing = editingRuleId === rule.id;
+                  return (
+                    <motion.div
+                      key={rule.id}
+                      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -30, height: 0, padding: 0 }}
+                      transition={{ duration: 0.25, delay: idx * 0.04 }}
+                      whileHover={{ scale: 1.008, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                      className="glass-deep"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderRadius: 'var(--r-md)',
+                        border: '1px solid var(--border)',
+                        opacity: rule.isActive ? 1 : 0.6,
+                        background: rule.isActive ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.1)',
+                        gap: '16px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: '12px', flex: 1, alignItems: 'center' }}>
+                        {/* Interactive checkmark toggle */}
+                        <motion.button
+                          whileHover={{ scale: 1.2 }}
+                          whileTap={{ scale: 0.85 }}
+                          onClick={() => handleToggleRule(rule)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            color: rule.isActive ? 'var(--profit)' : 'var(--text-tertiary)',
+                            transition: 'color var(--t-fast)'
+                          }}
+                          title={rule.isActive ? "Click to deactivate rule" : "Click to activate rule"}
+                        >
+                          {rule.isActive ? (
+                            <motion.div initial={{ scale: 0.6, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}>
+                              <CheckCircle size={18} fill="rgba(52,211,153,0.15)" />
+                            </motion.div>
+                          ) : (
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--border-strong)' }} />
+                          )}
+                        </motion.button>
 
-                      {/* Rule content column */}
-                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                        {/* Rule content column */}
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                          {isEditing ? (
+                            <input
+                              className="input"
+                              style={{
+                                flex: 1,
+                                fontSize: '0.78rem',
+                                padding: '2px 8px',
+                                height: '28px',
+                                background: 'var(--bg-secondary)',
+                                borderColor: 'var(--accent)'
+                              }}
+                              value={editTextInput}
+                              onChange={e => setEditTextInput(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && handleSaveEdit(rule.id)}
+                              autoFocus
+                            />
+                          ) : (
+                            <span 
+                              style={{ 
+                                fontSize: '0.78rem', 
+                                color: rule.isActive ? 'var(--text-secondary)' : 'var(--text-muted)',
+                                textDecoration: rule.isActive ? 'none' : 'line-through',
+                                lineHeight: 1.4,
+                                fontWeight: 500
+                              }}
+                            >
+                              <strong>{idx + 1}.</strong> {rule.ruleText}
+                              {selectedAccountId === 'All' && rule.accountId && (
+                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '4px', marginLeft: '8px', border: '1px solid var(--border-accent)' }}>
+                                  Account #{rule.accountId}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action buttons (Edit, Delete, Save) */}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                         {isEditing ? (
-                          <input
-                            className="input"
-                            style={{
-                              flex: 1,
-                              fontSize: '0.78rem',
-                              padding: '2px 8px',
-                              height: '28px',
-                              background: 'var(--bg-secondary)',
-                              borderColor: 'var(--accent)'
-                            }}
-                            value={editTextInput}
-                            onChange={e => setEditTextInput(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSaveEdit(rule.id)}
-                            autoFocus
-                          />
+                          <>
+                            <button
+                              onClick={() => handleSaveEdit(rule.id)}
+                              className="btn btn-primary btn-sm"
+                              style={{ padding: '0 6px', height: '24px', fontSize: '0.65rem' }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingRuleId(null)}
+                              className="btn btn-ghost btn-sm"
+                              style={{ padding: '0 4px', height: '24px', fontSize: '0.65rem' }}
+                            >
+                              ✕
+                            </button>
+                          </>
                         ) : (
-                          <span 
-                            style={{ 
-                              fontSize: '0.78rem', 
-                              color: rule.isActive ? 'var(--text-secondary)' : 'var(--text-muted)',
-                              textDecoration: rule.isActive ? 'none' : 'line-through',
-                              lineHeight: 1.4,
-                              fontWeight: 500
-                            }}
-                          >
-                            <strong>{idx + 1}.</strong> {rule.ruleText}
-                            {selectedAccountId === 'All' && rule.accountId && (
-                              <span style={{ fontSize: '0.6rem', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '4px', marginLeft: '8px', border: '1px solid var(--border-accent)' }}>
-                                Account #{rule.accountId}
-                              </span>
-                            )}
-                          </span>
+                          <>
+                            <motion.button
+                              whileHover={{ scale: 1.25 }}
+                              whileTap={{ scale: 0.85 }}
+                              onClick={() => startEditRule(rule)}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
+                              title="Modify rule description"
+                            >
+                              <Edit2 size={12} />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.25, color: 'var(--loss)' }}
+                              whileTap={{ scale: 0.85 }}
+                              onClick={() => handleDeleteRule(rule.id)}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
+                              title="Remove rule"
+                            >
+                              <Trash2 size={12} className="trash-icon" />
+                            </motion.button>
+                          </>
                         )}
                       </div>
-                    </div>
-
-                    {/* Action buttons (Edit, Delete, Save) */}
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-                      {isEditing ? (
-                        <>
-                          <button
-                            onClick={() => handleSaveEdit(rule.id)}
-                            className="btn btn-primary btn-sm"
-                            style={{ padding: '0 6px', height: '24px', fontSize: '0.65rem' }}
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingRuleId(null)}
-                            className="btn btn-ghost btn-sm"
-                            style={{ padding: '0 4px', height: '24px', fontSize: '0.65rem' }}
-                          >
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => startEditRule(rule)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
-                            title="Modify rule description"
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteRule(rule.id)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
-                            title="Remove rule"
-                          >
-                            <Trash2 size={12} className="trash-icon" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           )}
-        </div>
+        </motion.div>
 
       </div>
-    </div>
+    </motion.div>
   );
 };
 
