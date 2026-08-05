@@ -378,7 +378,7 @@ const CalendarPage = () => {
                           {t.symbol}
                         </span>
                         {accountName && (
-                          <span style={{ fontSize: '0.6rem', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: '0.6rem', padding: '2px 6px', background: 'var(--surface-glass-h)', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                             {accountName}
                           </span>
                         )}
@@ -394,9 +394,9 @@ const CalendarPage = () => {
                       gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
                       gap: '6px 12px', 
                       padding: '8px 10px', 
-                      background: 'rgba(0, 0, 0, 0.15)', 
+                      background: 'var(--surface-glass)', 
                       borderRadius: '6px', 
-                      border: '1px solid rgba(255, 255, 255, 0.03)' 
+                      border: '1px solid var(--border)' 
                     }}>
                       {priceRange && (
                         <div>
@@ -432,11 +432,11 @@ const CalendarPage = () => {
 
                     {/* Footer: Tags and Notes */}
                     {(tagsList.length > 0 || t.notes) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px', borderTop: '1px solid var(--border)' }}>
                         {tagsList.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                             {tagsList.map((tag, idx) => (
-                              <span key={idx} style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                              <span key={idx} style={{ fontSize: '0.6rem', padding: '1px 6px', background: 'var(--surface-glass)', borderRadius: '4px', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                                 #{tag}
                               </span>
                             ))}
