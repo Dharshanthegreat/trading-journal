@@ -623,23 +623,26 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.25); border-radius: var(--r-full); }
 ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.4); }
 
-/* ═══ FLAT PANELS (CLEAN & NEAT) ═══ */
-/* ═══ FLAT & GLASS PANELS (ULTRA CLEAN & NEAT) ═══ */
+/* ═══ FLAT & GLASS PANELS (ULTRA FAST & SMOOTH 60FPS) ═══ */
 .glass {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-xs);
+  transform: translateZ(0);
+  will-change: transform;
 }
 .glass-deep {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-mid);
   border-radius: var(--r-xl);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-sm);
+  transform: translateZ(0);
+  will-change: transform;
+}
+.modal-overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .glass-hover { transition: transform var(--t-fast), background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast); }
 .glass-hover:hover {

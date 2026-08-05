@@ -814,7 +814,8 @@ const Analytics = () => {
               margin={{ top: 10, right: 10, bottom: 0, left: -20 }}
               onMouseMove={(state) => {
                 if (state && state.activePayload && state.activePayload.length > 0) {
-                  setHoveredPoint(state.activePayload[0].payload.equity);
+                  const val = state.activePayload[0].payload.equity;
+                  if (val !== hoveredPoint) setHoveredPoint(val);
                 }
               }}
               onMouseLeave={() => setHoveredPoint(null)}
@@ -850,6 +851,7 @@ const Analytics = () => {
                 strokeWidth={2} 
                 fill="url(#eqGradient)" 
                 dot={false}
+                isAnimationActive={false}
                 activeDot={{ r: 5, fill: eqCurveColor, stroke: 'var(--bg-primary)', strokeWidth: 2 }}
               />
             </AreaChart>
