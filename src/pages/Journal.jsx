@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import {
   Plus, X, Search, Trash2,
   ArrowUpRight, ArrowDownRight,
-  Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn, Globe, Shield, ListTodo
+  Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn, Globe, Shield, ListTodo, Wallet
 } from 'lucide-react';
 
 const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
@@ -546,28 +546,33 @@ const Journal = () => {
               </button>
             ))}
             
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', margin: '0 4px 0 12px' }}>Account:</span>
-            <select
-              className="input"
-              value={filterAccount}
-              onChange={e => setFilterAccount(e.target.value)}
-              style={{
-                fontSize: '0.72rem',
-                height: '30px',
-                padding: '0 24px 0 8px',
-                width: '180px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderColor: 'var(--border-mid)',
-                borderRadius: 'var(--r-md)',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)'
-              }}
-            >
-              <option value="All">All Accounts</option>
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>{acc.accountName}</option>
-              ))}
-            </select>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--surface-glass)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', padding: '0 4px 0 10px', height: '32px', marginLeft: '6px', boxShadow: 'var(--shadow-xs)' }}>
+              <Wallet size={13} style={{ color: 'var(--accent)', opacity: 0.9 }} />
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600 }}>Account:</span>
+              <select
+                className="input"
+                value={filterAccount}
+                onChange={e => setFilterAccount(e.target.value)}
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  height: '28px',
+                  padding: '0 24px 0 6px',
+                  minWidth: '150px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  boxShadow: 'none'
+                }}
+              >
+                <option value="All">All Accounts</option>
+                {accounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.accountName}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>

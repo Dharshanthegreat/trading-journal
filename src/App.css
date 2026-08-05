@@ -2119,6 +2119,60 @@ body.theme-minimal .chart-card-setup {
   letter-spacing: 0.5px;
 }
 
+/* ═══ HIGH-END CUSTOM SELECT DROPDOWN STYLING ═══ */
+select.input, select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23818cf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 11px !important;
+  padding-right: 28px !important;
+  border-radius: var(--r-md);
+  transition: all var(--t-fast);
+}
+
+select.input:hover, select:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
+}
+
+select.input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 12px var(--accent-glow) !important;
+}
+
+select option {
+  background-color: #141622 !important;
+  color: #f0f1f5 !important;
+  padding: 10px 14px !important;
+  font-weight: 500 !important;
+  font-size: 0.8rem !important;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #252840 !important;
+  color: #818cf8 !important;
+}
+
+/* Light / Minimalist theme support */
+body.theme-minimal select option,
+body.theme-chill-white select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+body.theme-minimal select option:checked,
+body.theme-chill-white select option:checked {
+  background-color: #f1f5f9 !important;
+  color: #000000 !important;
+}
+
 
 
 
