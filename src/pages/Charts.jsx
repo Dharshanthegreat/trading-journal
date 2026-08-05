@@ -3,8 +3,40 @@ import { useTrades } from '../contexts/TradeContext';
 import { Image as ImageIcon, X, ZoomIn, Calendar, TrendingUp, Plus, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatInNewYork, toNewYorkDatetimeString, parseNewYorkDatetimeToDate } from '../utils/timezone';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SETUPS = ['FVG', 'SMT', 'OB', 'BB', 'IRL-ERL', 'ERL-IRL'];
+
+// --- Animated Count-Up Number Helper ---
+const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 2, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const numVal = parseFloat(value) || 0;
+  const isNeg = numVal < 0;
+
+  return (
+    <span>
+      {isNeg ? '-' : ''}{prefix}{Math.abs(displayValue).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
 
 const Charts = () => {
   const { trades, fetchTrades, addTrade, updateTrade } = useTrades();
@@ -185,14 +217,29 @@ const Charts = () => {
     return [...noCharts, ...withCharts];
   }, [trades]);
 
+  const gridVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.04 }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 15, scale: 0.96 },
+    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s6)' }}>
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="page-title"><ImageIcon size={18} style={{ opacity: 0.6 }}/> Chart Gallery</div>
           <div className="page-subtitle">{chartTrades.length} chart{chartTrades.length !== 1 ? 's' : ''} uploaded</div>
         </div>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           className="btn btn-primary"
           onClick={() => setShowAddChart(true)}
           style={{
@@ -207,15 +254,17 @@ const Charts = () => {
           }}
         >
           <Plus size={12} /> Add Chart
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {chartTrades.length === 0 ? (
-        <div className="glass empty-state" style={{ padding: 'var(--s12)' }}>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="glass empty-state" style={{ padding: 'var(--s12)' }}>
           <ImageIcon size={36} style={{ opacity: 0.25 }}/>
           <div className="empty-title">No charts uploaded</div>
           <div className="empty-desc">Attach chart screenshots when logging trades in the Journal to build your visual library.</div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             className="btn btn-primary"
             onClick={() => setShowAddChart(true)}
             style={{
@@ -231,12 +280,20 @@ const Charts = () => {
             }}
           >
             <Plus size={14} /> Upload First Chart
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       ) : (
-        <div className="chart-gallery-grid">
+        <motion.div variants={gridVariants} initial="hidden" animate="show" className="chart-gallery-grid">
           {chartTrades.map(trade => (
-            <div key={trade.id} className="glass chart-card" onClick={() => setLightbox(trade)}>
+            <motion.div
+              key={trade.id}
+              variants={cardVariants}
+              whileHover={{ y: -6, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="glass chart-card"
+              onClick={() => setLightbox(trade)}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="chart-card-img-wrapper">
                 <img src={trade.imageUrl} alt={`${trade.symbol} chart`}/>
                 <div className="chart-card-hover-overlay">
@@ -247,7 +304,7 @@ const Charts = () => {
                 <div className="chart-card-row">
                   <span className="chart-card-symbol">{trade.symbol}</span>
                   <span className={`badge ${trade.pnl >= 0 ? 'badge-profit' : 'badge-loss'}`}>
-                    {trade.pnl >= 0 ? '+' : ''}${Math.abs(trade.pnl).toFixed(2)}
+                    <AnimatedNumber value={trade.pnl} prefix={trade.pnl >= 0 ? '+$' : '$'} decimals={2} />
                   </span>
                 </div>
                 <div className="chart-card-row">
@@ -258,243 +315,265 @@ const Charts = () => {
                   {trade.setup && <span className="chart-card-setup">{trade.setup}</span>}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
-      {lightbox && (
-        <div className="modal-overlay" style={{ padding: 'var(--s8)' }} onClick={() => setLightbox(null)}>
-          <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close glass" onClick={() => setLightbox(null)}
-              style={{ position: 'absolute', top: -40, right: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)' }}>
-              <X size={16}/> <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Close</span>
-            </button>
-            <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-xl)', overflow: 'hidden' }}>
-              <img src={lightbox.imageUrl} alt={lightbox.symbol}
-                style={{ maxWidth: '100%', maxHeight: '75vh', display: 'block', borderRadius: 'var(--r-lg)' }}/>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--s4) var(--s2) var(--s2)', borderTop: '1px solid var(--border)', marginTop: 'var(--s4)' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)', marginBottom: 4 }}>{lightbox.symbol}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {lightbox.entryTime ? formatInNewYork(lightbox.entryTime, 'MMMM d, yyyy HH:mm') : ''}
-                    {lightbox.setup && ` · ${lightbox.setup}`}
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {lightbox && (
+          <div className="modal-overlay" style={{ padding: 'var(--s8)' }} onClick={() => setLightbox(null)}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button className="modal-close glass" onClick={() => setLightbox(null)}
+                style={{ position: 'absolute', top: -40, right: 0, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)', cursor: 'pointer' }}>
+                <X size={16}/> <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Close</span>
+              </button>
+              <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-xl)', overflow: 'hidden' }}>
+                <img src={lightbox.imageUrl} alt={lightbox.symbol}
+                  style={{ maxWidth: '100%', maxHeight: '75vh', display: 'block', borderRadius: 'var(--r-lg)' }}/>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--s4) var(--s2) var(--s2)', borderTop: '1px solid var(--border)', marginTop: 'var(--s4)' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)', marginBottom: 4 }}>{lightbox.symbol}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {lightbox.entryTime ? formatInNewYork(lightbox.entryTime, 'MMMM d, yyyy HH:mm') : ''}
+                      {lightbox.setup && ` · ${lightbox.setup}`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+                    <span className={`badge ${lightbox.type === 'Long' ? 'badge-profit' : 'badge-loss'}`}>{lightbox.type}</span>
+                    <span style={{ fontWeight: 700, fontSize: '1.1rem', fontFamily: 'JetBrains Mono', color: lightbox.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
+                      <AnimatedNumber value={lightbox.pnl} prefix={lightbox.pnl >= 0 ? '+$' : '$'} decimals={2} />
+                    </span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-                  <span className={`badge ${lightbox.type === 'Long' ? 'badge-profit' : 'badge-loss'}`}>{lightbox.type}</span>
-                  <span style={{ fontWeight: 700, fontSize: '1.1rem', fontFamily: 'JetBrains Mono', color: lightbox.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                    {lightbox.pnl >= 0 ? '+' : ''}${Math.abs(lightbox.pnl).toFixed(2)}
-                  </span>
-                </div>
+                {lightbox.notes && (
+                  <div style={{ padding: 'var(--s3) var(--s2)', fontSize: '0.78rem', color: 'var(--text-tertiary)', lineHeight: 1.7, fontStyle: 'italic', borderTop: '1px solid var(--border)' }}>
+                    "{lightbox.notes}"
+                  </div>
+                )}
               </div>
-              {lightbox.notes && (
-                <div style={{ padding: 'var(--s3) var(--s2)', fontSize: '0.78rem', color: 'var(--text-tertiary)', lineHeight: 1.7, fontStyle: 'italic', borderTop: '1px solid var(--border)' }}>
-                  "{lightbox.notes}"
-                </div>
-              )}
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Add Chart Modal */}
-      {showAddChart && (
-        <div className="modal-overlay" onClick={() => setShowAddChart(false)}>
-          <div className="glass-deep modal-panel" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ImageIcon size={18} style={{ color: 'var(--accent)' }}/>
-                <span>Add Chart</span>
+      <AnimatePresence>
+        {showAddChart && (
+          <div className="modal-overlay" onClick={() => setShowAddChart(false)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="glass-deep modal-panel"
+              style={{ maxWidth: '500px' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ImageIcon size={18} style={{ color: 'var(--accent)' }}/>
+                  <span>Add Chart</span>
+                </div>
+                <button className="modal-close" onClick={() => setShowAddChart(false)}><X size={18}/></button>
               </div>
-              <button className="modal-close" onClick={() => setShowAddChart(false)}><X size={18}/></button>
-            </div>
-            
-            {/* Modal Tabs */}
-            <div className="glass" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', marginBottom: 'var(--s5)' }}>
-              {[
-                { id: 'existing', label: 'Attach to Existing Trade' },
-                { id: 'new', label: 'Create New Trade' }
-              ].map(mode => (
-                <button
-                  type="button"
-                  key={mode.id}
-                  onClick={() => {
-                    setAddMode(mode.id);
-                    setErrorMsg('');
-                  }}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    padding: '8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    color: addMode === mode.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    background: addMode === mode.id ? 'var(--bg-hover)' : 'transparent',
-                    border: 'none',
-                    borderRadius: 'var(--r-sm)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
+              
+              {/* Modal Tabs */}
+              <div className="glass" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', marginBottom: 'var(--s5)' }}>
+                {[
+                  { id: 'existing', label: 'Attach to Existing Trade' },
+                  { id: 'new', label: 'Create New Trade' }
+                ].map(mode => (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    key={mode.id}
+                    onClick={() => {
+                      setAddMode(mode.id);
+                      setErrorMsg('');
+                    }}
+                    style={{
+                      flex: 1,
+                      textAlign: 'center',
+                      padding: '8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      color: addMode === mode.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      background: addMode === mode.id ? 'var(--bg-hover)' : 'transparent',
+                      border: 'none',
+                      borderRadius: 'var(--r-sm)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {mode.label}
+                  </motion.button>
+                ))}
+              </div>
 
-            <form onSubmit={addMode === 'existing' ? handleExistingSubmit : handleNewSubmit}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-                {errorMsg && (
-                  <div style={{ color: 'var(--loss)', fontSize: '0.75rem', fontWeight: 600, padding: '8px 12px', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)', borderRadius: 'var(--r-md)' }}>
-                    {errorMsg}
-                  </div>
-                )}
-
-                {addMode === 'existing' ? (
-                  <div className="form-field">
-                    <label className="form-label">Select Trade *</label>
-                    <select
-                      className="input"
-                      value={selectedTradeId}
-                      onChange={e => setSelectedTradeId(e.target.value)}
-                      required
-                      style={{ width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                    >
-                      <option value="">— Choose a Trade —</option>
-                      {dropdownTrades.map(t => {
-                        const dateFormatted = t.entryTime ? formatInNewYork(t.entryTime, 'MMM d, yyyy') : '—';
-                        const chartStatus = t.imageUrl ? '🖼️ Has chart' : '❌ No chart';
-                        return (
-                          <option key={t.id} value={t.id}>
-                            {dateFormatted} · {t.symbol} ({t.type}) · {t.pnl >= 0 ? '+' : ''}${t.pnl} · {chartStatus}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    {dropdownTrades.length === 0 && (
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>
-                        No trades found. You can log one in the Journal or use the 'Create New Trade' tab.
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                      <div className="form-field">
-                        <label className="form-label">Symbol *</label>
-                        <input
-                          required
-                          className="input"
-                          placeholder="EURUSD"
-                          value={newTradeData.symbol}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label className="form-label">Direction *</label>
-                        <select
-                          className="input"
-                          value={newTradeData.type}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, type: e.target.value }))}
-                        >
-                          <option value="Long">Long ↑</option>
-                          <option value="Short">Short ↓</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                      <div className="form-field">
-                        <label className="form-label">Net P&L ($) *</label>
-                        <input
-                          required
-                          className="input"
-                          type="number"
-                          step="any"
-                          placeholder="150.00"
-                          value={newTradeData.pnl}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, pnl: e.target.value }))}
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label className="form-label">Entry Time *</label>
-                        <input
-                          required
-                          className="input"
-                          type="datetime-local"
-                          value={newTradeData.entryTime}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-field">
-                      <label className="form-label">Setup</label>
-                      <input
-                        type="text"
-                        className="input"
-                        list="charts-setup-list"
-                        placeholder="e.g. OB, FVG, or type custom..."
-                        value={newTradeData.setup}
-                        onChange={e => setNewTradeData(prev => ({ ...prev, setup: e.target.value }))}
-                      />
-                      <datalist id="charts-setup-list">
-                        {SETUPS.map(s => <option key={s} value={s} />)}
-                      </datalist>
-                    </div>
-
-                    <div className="form-field">
-                      <label className="form-label">Notes</label>
-                      <textarea
-                        className="input"
-                        placeholder="Trade reflections or setup notes..."
-                        rows={2}
-                        value={newTradeData.notes}
-                        onChange={e => setNewTradeData(prev => ({ ...prev, notes: e.target.value }))}
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="form-field full">
-                  <label className="form-label">Chart Screenshot *</label>
-                  <label style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--s2)',
-                    padding: '20px', border: '1px dashed var(--border-mid)',
-                    borderRadius: 'var(--r-md)', cursor: 'pointer',
-                    fontSize: '0.75rem', color: 'var(--text-muted)',
-                    transition: 'border-color var(--t-fast)', background: 'var(--surface-glass)',
-                    textAlign: 'center'
-                  }}>
-                    <Upload size={20} style={{ opacity: 0.6 }}/>
-                    {chartFile ? (
-                      <div style={{ color: 'var(--accent)', fontWeight: 600 }}>{chartFile.name}</div>
-                    ) : (
-                      <div>Click to select or drag chart image here (PNG, JPG, WEBP)</div>
-                    )}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} required={!chartFile}/>
-                  </label>
-                  {imagePreview && (
-                    <div style={{ marginTop: '10px', textAlign: 'center' }}>
-                      <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }} />
+              <form onSubmit={addMode === 'existing' ? handleExistingSubmit : handleNewSubmit}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+                  {errorMsg && (
+                    <div style={{ color: 'var(--loss)', fontSize: '0.75rem', fontWeight: 600, padding: '8px 12px', background: 'var(--loss-soft)', border: '1px solid var(--loss-border)', borderRadius: 'var(--r-md)' }}>
+                      {errorMsg}
                     </div>
                   )}
-                </div>
 
-                <div className="form-actions" style={{ marginTop: 'var(--s2)' }}>
-                  <button type="button" className="btn btn-ghost" onClick={() => setShowAddChart(false)} disabled={isSaving}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                    {isSaving ? 'Saving...' : 'Add Chart'}
-                  </button>
+                  {addMode === 'existing' ? (
+                    <div className="form-field">
+                      <label className="form-label">Select Trade *</label>
+                      <select
+                        className="input"
+                        value={selectedTradeId}
+                        onChange={e => setSelectedTradeId(e.target.value)}
+                        required
+                        style={{ width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                      >
+                        <option value="">— Choose a Trade —</option>
+                        {dropdownTrades.map(t => {
+                          const dateFormatted = t.entryTime ? formatInNewYork(t.entryTime, 'MMM d, yyyy') : '—';
+                          const chartStatus = t.imageUrl ? '🖼️ Has chart' : '❌ No chart';
+                          return (
+                            <option key={t.id} value={t.id}>
+                              {dateFormatted} · {t.symbol} ({t.type}) · {t.pnl >= 0 ? '+' : ''}${t.pnl} · {chartStatus}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      {dropdownTrades.length === 0 && (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>
+                          No trades found. You can log one in the Journal or use the 'Create New Trade' tab.
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                        <div className="form-field">
+                          <label className="form-label">Symbol *</label>
+                          <input
+                            required
+                            className="input"
+                            placeholder="EURUSD"
+                            value={newTradeData.symbol}
+                            onChange={e => setNewTradeData(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label className="form-label">Direction *</label>
+                          <select
+                            className="input"
+                            value={newTradeData.type}
+                            onChange={e => setNewTradeData(prev => ({ ...prev, type: e.target.value }))}
+                          >
+                            <option value="Long">Long ↑</option>
+                            <option value="Short">Short ↓</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                        <div className="form-field">
+                          <label className="form-label">Net P&L ($) *</label>
+                          <input
+                            required
+                            className="input"
+                            type="number"
+                            step="any"
+                            placeholder="150.00"
+                            value={newTradeData.pnl}
+                            onChange={e => setNewTradeData(prev => ({ ...prev, pnl: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label className="form-label">Entry Time *</label>
+                          <input
+                            required
+                            className="input"
+                            type="datetime-local"
+                            value={newTradeData.entryTime}
+                            onChange={e => setNewTradeData(prev => ({ ...prev, entryTime: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-field">
+                        <label className="form-label">Setup</label>
+                        <input
+                          type="text"
+                          className="input"
+                          list="charts-setup-list"
+                          placeholder="e.g. OB, FVG, or type custom..."
+                          value={newTradeData.setup}
+                          onChange={e => setNewTradeData(prev => ({ ...prev, setup: e.target.value }))}
+                        />
+                        <datalist id="charts-setup-list">
+                          {SETUPS.map(s => <option key={s} value={s} />)}
+                        </datalist>
+                      </div>
+
+                      <div className="form-field">
+                        <label className="form-label">Notes</label>
+                        <textarea
+                          className="input"
+                          placeholder="Trade reflections or setup notes..."
+                          rows={2}
+                          value={newTradeData.notes}
+                          onChange={e => setNewTradeData(prev => ({ ...prev, notes: e.target.value }))}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="form-field full">
+                    <label className="form-label">Chart Screenshot *</label>
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--s2)',
+                      padding: '20px', border: '1px dashed var(--border-mid)',
+                      borderRadius: 'var(--r-md)', cursor: 'pointer',
+                      fontSize: '0.75rem', color: 'var(--text-muted)',
+                      transition: 'border-color var(--t-fast)', background: 'var(--surface-glass)',
+                      textAlign: 'center'
+                    }}>
+                      <Upload size={20} style={{ opacity: 0.6 }}/>
+                      {chartFile ? (
+                        <div style={{ color: 'var(--accent)', fontWeight: 600 }}>{chartFile.name}</div>
+                      ) : (
+                        <div>Click to select or drag chart image here (PNG, JPG, WEBP)</div>
+                      )}
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} required={!chartFile}/>
+                    </label>
+                    {imagePreview && (
+                      <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                        <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form-actions" style={{ marginTop: 'var(--s2)' }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => setShowAddChart(false)} disabled={isSaving}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                      {isSaving ? 'Saving...' : 'Add Chart'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
