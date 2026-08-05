@@ -2186,6 +2186,84 @@ body.theme-chill-white select option:checked {
   color: #000000 !important;
 }
 
+/* ═══ TROPHY & CERTIFICATE ANIMATION STYLES ═══ */
+@keyframes certShimmer {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(200%) rotate(25deg); }
+}
+
+@keyframes pulseGlowGold {
+  0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.25), inset 0 0 15px rgba(245, 158, 11, 0.1); }
+  50% { box-shadow: 0 0 35px rgba(245, 158, 11, 0.5), inset 0 0 25px rgba(245, 158, 11, 0.2); }
+}
+
+@keyframes pulseGlowEmerald {
+  0%, 100% { box-shadow: 0 0 15px rgba(52, 211, 153, 0.25), inset 0 0 15px rgba(52, 211, 153, 0.1); }
+  50% { box-shadow: 0 0 35px rgba(52, 211, 153, 0.5), inset 0 0 25px rgba(52, 211, 153, 0.2); }
+}
+
+@keyframes floatParticle {
+  0% { transform: translateY(0px) scale(0.8) rotate(0deg); opacity: 0.3; }
+  50% { transform: translateY(-18px) scale(1.1) rotate(180deg); opacity: 0.9; }
+  100% { transform: translateY(-36px) scale(0.7) rotate(360deg); opacity: 0; }
+}
+
+.trophy-card-wrapper {
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  perspective: 1000px;
+}
+
+.shimmer-overlay {
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%) rotate(25deg);
+  pointer-events: none;
+}
+
+.trophy-card-wrapper:hover .shimmer-overlay {
+  animation: certShimmer 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.cert-modal-glow-passed {
+  animation: pulseGlowGold 3s infinite ease-in-out;
+}
+
+.cert-modal-glow-payout {
+  animation: pulseGlowEmerald 3s infinite ease-in-out;
+}
+
+.sparkle-particle {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  animation: floatParticle 3.5s infinite linear;
+}
+
+.cert-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.cert-image-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 40%, rgba(0,0,0,0.3) 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+
 
 
 
