@@ -1533,6 +1533,9 @@ const Dashboard = () => {
                       className="tz-news-flag"
                       onError={(e) => { e.target.style.display = 'none'; }}
                     />
+                    <span className="tz-currency-badge">
+                      {(event.country || '').toUpperCase()}
+                    </span>
                     <span className="tz-news-title">{event.title}</span>
                   </div>
                   <div className="tz-news-meta">
