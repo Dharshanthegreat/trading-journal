@@ -672,12 +672,12 @@ body {
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #ffffff;
+  color: var(--accent-text, #ffffff);
   box-shadow: 0 2px 10px var(--accent-soft);
 }
 .btn-primary:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--accent-hover, var(--accent));
+  border-color: var(--accent-hover, var(--accent));
   box-shadow: 0 4px 18px var(--accent-glow);
   transform: translateY(-1px);
 }

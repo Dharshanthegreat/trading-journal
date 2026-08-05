@@ -2156,8 +2156,8 @@ select option:hover,
 select option:focus,
 select option:active,
 select option:checked {
-  background-color: #252840 !important;
-  color: #818cf8 !important;
+  background-color: var(--accent-soft, #252840) !important;
+  color: var(--accent, #818cf8) !important;
 }
 
 /* Light / Minimalist theme support */
