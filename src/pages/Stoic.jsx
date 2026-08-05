@@ -4,6 +4,7 @@ import {
   Shield, Brain, Sparkles, Send, Cpu, Trash2, Info, RefreshCw,
   Eye, Check, List, HelpCircle, ArrowRight, BookOpen, Clock
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const DEFAULT_STOIC_QUOTES = [
   // Marcus Aurelius
@@ -282,11 +283,11 @@ const Stoic = () => {
   const activeQuote = quotes[activeQuoteIdx];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)', height: 'calc(100vh - 120px)', minHeight: '520px' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)', height: 'calc(100vh - 120px)', minHeight: '520px' }}>
       
       {/* 1. TOP HERO: Stoic Quote Card */}
       {activeQuote && (
-        <div className="glass anim-fade-up delay-1" style={{
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="glass" style={{
           padding: 'var(--s4) var(--s6)',
           borderRadius: 'var(--r-lg)',
           background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)',
@@ -296,46 +297,51 @@ const Stoic = () => {
           alignItems: 'center',
           gap: 'var(--s5)'
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{
-                color: 'var(--accent)',
-                fontSize: '0.58rem',
+          <AnimatePresence mode="wait">
+            <motion.div key={activeQuote.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.25 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{
+                  color: 'var(--accent)',
+                  fontSize: '0.58rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  background: 'var(--accent-soft)',
+                  padding: '2px 8px',
+                  borderRadius: '4px'
+                }}>
+                  Stoic Axiom of the day
+                </span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>— {activeQuote.author}</span>
+              </div>
+              <p style={{
+                fontSize: '1rem',
                 fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                background: 'var(--accent-soft)',
-                padding: '2px 8px',
-                borderRadius: '4px'
+                color: 'var(--text-primary)',
+                lineHeight: '1.4',
+                fontStyle: 'italic',
+                margin: '0 0 6px 0'
               }}>
-                Stoic Axiom of the day
-              </span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>— {activeQuote.author}</span>
-            </div>
-            <p style={{
-              fontSize: '1rem',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              lineHeight: '1.4',
-              fontStyle: 'italic',
-              margin: '0 0 6px 0'
-            }}>
-              “{activeQuote.quote}”
-            </p>
-            <p style={{
-              fontSize: '0.75rem',
-              color: 'var(--text-secondary)',
-              lineHeight: '1.4',
-              margin: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span style={{ color: 'var(--accent)' }}><Sparkles size={11} /></span>
-              <strong>Trading Reframe:</strong> {activeQuote.translation}
-            </p>
-          </div>
-          <button
+                “{activeQuote.quote}”
+              </p>
+              <p style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                lineHeight: '1.4',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <span style={{ color: 'var(--accent)' }}><Sparkles size={11} /></span>
+                <strong>Trading Reframe:</strong> {activeQuote.translation}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.92 }}
             onClick={handleNextQuote}
             className="btn btn-secondary"
             style={{
@@ -345,12 +351,13 @@ const Stoic = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              height: '34px'
+              height: '34px',
+              cursor: 'pointer'
             }}
           >
             <RefreshCw size={11} /> Cycle Quote
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       )}
 
       {/* 2. BOTTOM MAIN: Full-Width Dichotomy Journal */}
@@ -363,7 +370,7 @@ const Stoic = () => {
         overflow: 'hidden'
       }}>
         {/* Dichotomy Control Journal */}
-        <div className="glass anim-fade-up delay-2" style={{
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }} className="glass" style={{
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -418,11 +425,13 @@ const Stoic = () => {
                   />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.95 }}
                     type="submit"
                     className="btn btn-primary"
                     disabled={analyzing || !situation.trim()}
-                    style={{ gap: '6px', padding: '6px var(--s4)', fontSize: '0.72rem', height: '30px' }}
+                    style={{ gap: '6px', padding: '6px var(--s4)', fontSize: '0.72rem', height: '30px', cursor: 'pointer' }}
                   >
                     {analyzing ? (
                       <>
@@ -433,7 +442,7 @@ const Stoic = () => {
                         <Brain size={11} /> Analyze Control
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </div>
@@ -487,87 +496,95 @@ const Stoic = () => {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-                  {pastReframes.map((item) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        padding: 'var(--s4)',
-                        background: 'var(--bg-tertiary)',
-                        borderRadius: 'var(--r-md)',
-                        border: '1px solid var(--border)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 'var(--s3)',
-                        position: 'relative'
-                      }}
-                      className="stoic-history-card"
-                    >
-                      <button
-                        onClick={(e) => handleDeleteReframe(item.id, e)}
+                  <AnimatePresence>
+                    {pastReframes.map((item, idx) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.25, delay: Math.min(idx * 0.05, 0.3) }}
                         style={{
-                          position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: '4px',
+                          padding: 'var(--s4)',
+                          background: 'var(--bg-tertiary)',
+                          borderRadius: 'var(--r-md)',
+                          border: '1px solid var(--border)',
                           display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
+                          flexDirection: 'column',
+                          gap: 'var(--s3)',
+                          position: 'relative'
                         }}
-                        className="delete-reframe-btn"
-                        title="Delete Entry"
+                        className="stoic-history-card"
                       >
-                        <Trash2 size={12} />
-                      </button>
+                        <motion.button
+                          whileHover={{ scale: 1.25, color: 'var(--loss)' }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => handleDeleteReframe(item.id, e)}
+                          style={{
+                            position: 'absolute',
+                            top: '12px',
+                            right: '12px',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          className="delete-reframe-btn"
+                          title="Delete Entry"
+                        >
+                          <Trash2 size={12} />
+                        </motion.button>
 
-                      {/* Situation */}
-                      <div>
-                        <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Frustrating Event</span>
-                        <p style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600, margin: '2px 0 0 0', paddingRight: '20px' }}>
-                          {item.situation}
-                        </p>
-                      </div>
-
-                      {/* Dichotomy Split Columns */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.12)', padding: 'var(--s3)', borderRadius: 'var(--r-sm)' }}>
-                          <span style={{ fontSize: '0.55rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>In Your Control</span>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                            {formatMessageContent(item.in_control)}
-                          </div>
+                        {/* Situation */}
+                        <div>
+                          <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Frustrating Event</span>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600, margin: '2px 0 0 0', paddingRight: '20px' }}>
+                            {item.situation}
+                          </p>
                         </div>
-                        <div style={{ background: 'rgba(248, 113, 113, 0.04)', border: '1px solid rgba(248, 113, 113, 0.12)', padding: 'var(--s3)', borderRadius: 'var(--r-sm)' }}>
-                          <span style={{ fontSize: '0.55rem', color: '#f87171', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Out of Your Control</span>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                            {formatMessageContent(item.out_of_control)}
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Stoic Reframe Guidance */}
-                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)' }}>
-                        <span style={{ fontSize: '0.55rem', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                          <Brain size={10} /> Stoic Guidance
-                        </span>
-                        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.4', margin: 0 }}>
-                          {item.stoic_reframe}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                        {/* Dichotomy Split Columns */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+                          <motion.div whileHover={{ scale: 1.01 }} style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.12)', padding: 'var(--s3)', borderRadius: 'var(--r-sm)' }}>
+                            <span style={{ fontSize: '0.55rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>In Your Control</span>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                              {formatMessageContent(item.in_control)}
+                            </div>
+                          </motion.div>
+                          <motion.div whileHover={{ scale: 1.01 }} style={{ background: 'rgba(248, 113, 113, 0.04)', border: '1px solid rgba(248, 113, 113, 0.12)', padding: 'var(--s3)', borderRadius: 'var(--r-sm)' }}>
+                            <span style={{ fontSize: '0.55rem', color: '#f87171', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Out of Your Control</span>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                              {formatMessageContent(item.out_of_control)}
+                            </div>
+                          </motion.div>
+                        </div>
+
+                        {/* Stoic Reframe Guidance */}
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s3)' }}>
+                          <span style={{ fontSize: '0.55rem', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                            <Brain size={10} /> Stoic Guidance
+                          </span>
+                          <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.4', margin: 0 }}>
+                            {item.stoic_reframe}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
 
           </div>
-        </div>
+        </motion.div>
       </div>
 
-    </div>
+    </motion.div>
   );
 };
 
