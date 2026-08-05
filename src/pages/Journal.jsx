@@ -553,20 +553,22 @@ const Journal = () => {
   const totalPnL = filtered.reduce((a, t) => a + (t.pnl || 0), 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <div className="page-title">Trade Journal</div>
-          <div className="page-subtitle">{filtered.length} trades · Net P&L: <span style={{ color: totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{totalPnL >= 0 ? '+' : ''}${Math.abs(totalPnL).toFixed(2)}</span></div>
+          <div className="page-subtitle">
+            {filtered.length} trades · Net P&L: <span style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}><AnimatedPnL value={totalPnL} /></span>
+          </div>
         </div>
         {!user?.isGuest && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+          <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(99,102,241,0.4)' }} whileTap={{ scale: 0.95 }} className="btn btn-primary" onClick={() => setShowForm(true)}>
             <Plus size={15}/> Add Trade
-          </button>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
 
-      <div className="journal-toolbar" style={{ marginBottom: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }} className="journal-toolbar" style={{ marginBottom: 0 }}>
         <div className="journal-filters">
           <div className="search-box">
             <Search size={13} className="search-icon"/>
@@ -574,9 +576,9 @@ const Journal = () => {
           </div>
           <div style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center' }}>
             {['All', 'Long', 'Short', 'Win', 'Loss'].map(f => (
-              <button key={f} onClick={() => setFilterType(f)} className={`btn btn-sm ${filterType === f ? 'btn-primary' : 'btn-ghost'}`}>
+              <motion.button key={f} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={() => setFilterType(f)} className={`btn btn-sm ${filterType === f ? 'btn-primary' : 'btn-ghost'}`}>
                 {f}
-              </button>
+              </motion.button>
             ))}
             
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--surface-glass)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-md)', padding: '0 4px 0 10px', height: '32px', marginLeft: '6px', boxShadow: 'var(--shadow-xs)' }}>
@@ -608,9 +610,9 @@ const Journal = () => {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="glass" style={{ overflow: 'hidden' }}>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }} className="glass" style={{ overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table" style={{ minWidth: 800 }}>
             <thead>
@@ -665,8 +667,16 @@ const Journal = () => {
                   </td>
                 </tr>
               ) : (
-                filtered.map(t => (
-                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedTrade(t)}>
+                filtered.map((t, idx) => (
+                  <motion.tr
+                    key={t.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: Math.min(idx * 0.02, 0.4) }}
+                    whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedTrade(t)}
+                  >
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                       {t.entryTime ? formatInNewYork(t.entryTime, 'MMM d, yy HH:mm') : '—'}
                     </td>
@@ -713,13 +723,13 @@ const Journal = () => {
                         </div>
                       )}
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </motion.div>
 
       {/* Add Trade Modal */}
       {showForm && (
@@ -1752,7 +1762,7 @@ const Journal = () => {
         )}
       </AnimatePresence>
 
-    </div>
+    </motion.div>
   );
 };
 
