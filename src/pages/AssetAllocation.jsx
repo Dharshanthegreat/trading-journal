@@ -401,7 +401,7 @@ const AssetAllocation = () => {
                 gap: '8px'
               }}>
                 <PieIcon size={18} />
-                {activeAccountObj ? activeAccountObj.accountName.toUpperCase() : (user?.displayName?.toUpperCase() || 'TRADING JOURNAL')}
+                {activeAccountObj ? `PORTFOLIO — ${activeAccountObj.accountName.toUpperCase()}` : 'PORTFOLIO'}
               </div>
 
               <span className="badge" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--r-full)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
