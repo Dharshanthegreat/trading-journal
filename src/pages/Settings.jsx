@@ -385,6 +385,12 @@ const Settings = () => {
                 { id: 'techno', name: 'Futuristic', font: 'var(--font-techno)' },
                 { id: 'classic', name: 'Classical', font: 'var(--font-classic)' },
                 { id: 'rounded', name: 'Rounded', font: 'var(--font-rounded)' },
+                { id: 'sora', name: 'Neo-Grotesk', font: 'var(--font-sora)' },
+                { id: 'syne', name: 'Avant-Garde', font: 'var(--font-syne)' },
+                { id: 'firacode', name: 'Developer', font: 'var(--font-firacode)' },
+                { id: 'cormorant', name: 'High-End', font: 'var(--font-cormorant)' },
+                { id: 'lexend', name: 'Dynamic', font: 'var(--font-lexend)' },
+                { id: 'cinzel', name: 'Luxury Royal', font: 'var(--font-cinzel)' },
               ].map(f => (
                 <div
                   key={f.id}

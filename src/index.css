@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Poppins:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lexend:wght@300;400;500;600;700&family=Cinzel:wght@500;600;700;800&display=swap');
 
 :root {
   --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -9,6 +9,12 @@
   --font-techno: 'Space Grotesk', sans-serif;
   --font-classic: 'Merriweather', serif;
   --font-rounded: 'Poppins', sans-serif;
+  --font-sora: 'Sora', sans-serif;
+  --font-syne: 'Syne', sans-serif;
+  --font-firacode: 'Fira Code', monospace;
+  --font-cormorant: 'Cormorant Garamond', serif;
+  --font-lexend: 'Lexend', sans-serif;
+  --font-cinzel: 'Cinzel', serif;
 
   /* Default */
   --font-heading: var(--font-sans);
@@ -115,6 +121,36 @@ body.font-classic {
 body.font-rounded {
   --font-heading: var(--font-rounded);
   --font-body: var(--font-rounded);
+}
+
+body.font-sora {
+  --font-heading: var(--font-sora);
+  --font-body: var(--font-sora);
+}
+
+body.font-syne {
+  --font-heading: var(--font-syne);
+  --font-body: var(--font-syne);
+}
+
+body.font-firacode {
+  --font-heading: var(--font-firacode);
+  --font-body: var(--font-firacode);
+}
+
+body.font-cormorant {
+  --font-heading: var(--font-cormorant);
+  --font-body: var(--font-cormorant);
+}
+
+body.font-lexend {
+  --font-heading: var(--font-lexend);
+  --font-body: var(--font-lexend);
+}
+
+body.font-cinzel {
+  --font-heading: var(--font-cinzel);
+  --font-body: var(--font-cinzel);
 }
 
 

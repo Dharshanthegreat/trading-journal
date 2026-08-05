@@ -22,7 +22,7 @@ export const ThemeProvider = ({ children }) => {
 
   const [fontStyle, setFontStyleState] = useState(() => {
     const saved = localStorage.getItem('font_style');
-    const validStyles = ['sans', 'serif', 'mono', 'display', 'geometric', 'techno', 'classic', 'rounded'];
+    const validStyles = ['sans', 'serif', 'mono', 'display', 'geometric', 'techno', 'classic', 'rounded', 'sora', 'syne', 'firacode', 'cormorant', 'lexend', 'cinzel'];
     return validStyles.includes(saved) ? saved : 'sans';
   });
 
@@ -56,7 +56,8 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     document.body.classList.remove(
-      'font-sans', 'font-serif', 'font-mono', 'font-display', 'font-geometric', 'font-techno', 'font-classic', 'font-rounded'
+      'font-sans', 'font-serif', 'font-mono', 'font-display', 'font-geometric', 'font-techno', 'font-classic', 'font-rounded',
+      'font-sora', 'font-syne', 'font-firacode', 'font-cormorant', 'font-lexend', 'font-cinzel'
     );
     document.body.classList.add(`font-${fontStyle}`);
     localStorage.setItem('font_style', fontStyle);
@@ -84,7 +85,7 @@ export const ThemeProvider = ({ children }) => {
   };
 
   const changeFontStyle = (style) => {
-    const validStyles = ['sans', 'serif', 'mono', 'display', 'geometric', 'techno', 'classic', 'rounded'];
+    const validStyles = ['sans', 'serif', 'mono', 'display', 'geometric', 'techno', 'classic', 'rounded', 'sora', 'syne', 'firacode', 'cormorant', 'lexend', 'cinzel'];
     setFontStyleState(validStyles.includes(style) ? style : 'sans');
   };
 
