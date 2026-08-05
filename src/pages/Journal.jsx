@@ -8,6 +8,39 @@ import {
   ArrowUpRight, ArrowDownRight,
   Upload, FileText, Share2, Copy, Check, ExternalLink, ZoomIn, Globe, Shield, ListTodo, Wallet
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Animated Count-Up PnL Component ---
+const AnimatedPnL = ({ value, duration = 800 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endValue = parseFloat(value) || 0;
+    
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(easedProgress * endValue);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
+  }, [value, duration]);
+
+  const pnlNum = parseFloat(value) || 0;
+  const isPositive = pnlNum >= 0;
+
+  return (
+    <span style={{ color: isPositive ? 'var(--profit)' : 'var(--loss)' }}>
+      {isPositive ? '+' : ''}${Math.abs(displayValue).toFixed(2)}
+    </span>
+  );
+};
+
 
 const EMOTIONS = ['Calm', 'Confident', 'Anxious', 'Fearful', 'Greedy', 'FOMO', 'Disciplined', 'Revenge'];
 const SETUPS = ['FVG', 'SMT', 'OB', 'BB', 'IRL-ERL', 'ERL-IRL'];
@@ -1130,393 +1163,595 @@ const Journal = () => {
       )}
 
       {/* Trade Details & Share Modal */}
-      {currentSelectedTrade && (
-        <div className="modal-overlay" onClick={() => setSelectedTrade(null)}>
-          <div className="glass-deep modal-panel" style={{ width: 840, maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-                <span className={`badge ${currentSelectedTrade.type === 'Long' ? 'badge-profit' : 'badge-loss'}`} style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
-                  {currentSelectedTrade.type}
-                </span>
-                <span className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>{currentSelectedTrade.symbol}</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  {currentSelectedTrade.entryTime ? formatInNewYork(currentSelectedTrade.entryTime, 'MMM d, yyyy HH:mm') : '—'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-                {!user?.isGuest && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => startEditTrade(currentSelectedTrade)}
-                    style={{ gap: '4px', padding: '4px 8px', fontSize: '0.72rem', height: 28 }}
+      <AnimatePresence>
+        {currentSelectedTrade && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(10px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setSelectedTrade(null)}
+          >
+            <motion.div
+              className="glass-deep modal-panel"
+              initial={{ opacity: 0, scale: 0.88, y: 35, rotateX: 4 }}
+              animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              style={{
+                width: 840, maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: 'var(--s5)',
+                background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.12)', position: 'relative', overflow: 'hidden'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 }}
+                className="modal-header"
+                style={{ borderBottom: '1px solid var(--border)', paddingBottom: 'var(--s4)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+                  <motion.span
+                    whileHover={{ scale: 1.1 }}
+                    className={`badge ${currentSelectedTrade.type === 'Long' ? 'badge-profit' : 'badge-loss'}`}
+                    style={{ fontSize: '0.75rem', padding: '4px 10px', textTransform: 'uppercase', fontWeight: 800 }}
                   >
-                    Edit Trade
-                  </button>
-                )}
-                <button className="modal-close" onClick={() => setSelectedTrade(null)} style={{ margin: 0 }}><X size={18}/></button>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--s6)', overflowY: 'auto', maxHeight: '70vh', paddingRight: 'var(--s2)' }}>
-              {/* Left Column: Stats and Screenshot */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-                {/* Stats Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s3)' }}>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Net Return</div>
-                    <div style={{ fontWeight: 800, color: currentSelectedTrade.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono', fontSize: '1.1rem', marginTop: 2 }}>
-                      {currentSelectedTrade.pnl >= 0 ? '+' : ''}${Math.abs(currentSelectedTrade.pnl).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Entry Price</div>
-                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2 }}>
-                      {currentSelectedTrade.entryPrice || '—'}
-                    </div>
-                  </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Exit Price</div>
-                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2 }}>
-                      {currentSelectedTrade.exitPrice || '—'}
-                    </div>
-                  </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Volume</div>
-                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2 }}>
-                      {currentSelectedTrade.lotSize || '—'}
-                    </div>
-                  </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Tags</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center', alignItems: 'center' }}>
-                      {currentSelectedTrade.tags && currentSelectedTrade.tags.length > 0 ? (
-                        currentSelectedTrade.tags.map((tag, tagIdx) => (
-                          <span key={tagIdx} style={{ fontSize: '0.62rem', background: 'rgba(167, 139, 250, 0.08)', border: '1px solid rgba(167, 139, 250, 0.2)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>
-                            {tag}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="glass-deep" style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>R/R</div>
-                    <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2, color: 'var(--text-secondary)' }}>
-                      {currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—'}
-                    </div>
-                  </div>
+                    {currentSelectedTrade.type}
+                  </motion.span>
+                  <span className="modal-title" style={{ fontSize: '1.3rem', fontWeight: 800 }}>{currentSelectedTrade.symbol}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                    {currentSelectedTrade.entryTime ? formatInNewYork(currentSelectedTrade.entryTime, 'MMM d, yyyy HH:mm') : '—'}
+                  </span>
                 </div>
-
-                {/* Screenshot Chart */}
-                {currentSelectedTrade.imageUrls && currentSelectedTrade.imageUrls.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: '#0e1017', border: '1px solid var(--border)', aspectRatio: '16/10' }}>
-                      <img src={currentSelectedTrade.imageUrls[activeImageIdx]} alt="Trade Chart" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button onClick={() => setZoomImage(currentSelectedTrade.imageUrls[activeImageIdx])} className="btn btn-sm" style={{ position: 'absolute', right: 8, bottom: 8, background: '#ffffff', padding: '4px 8px', fontSize: '0.68rem', gap: '4px', color: '#000000', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>
-                        <ZoomIn size={12}/> View Chart
-                      </button>
-                    </div>
-                    {currentSelectedTrade.imageUrls.length > 1 && (
-                      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: 4 }}>
-                        {currentSelectedTrade.imageUrls.map((url, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => setActiveImageIdx(idx)}
-                            style={{
-                              width: 60, height: 40, borderRadius: 'var(--r-sm)', overflow: 'hidden',
-                              border: activeImageIdx === idx ? '2px solid var(--accent)' : '1px solid var(--border-mid)',
-                              cursor: 'pointer', opacity: activeImageIdx === idx ? 1 : 0.6,
-                              transition: 'all 0.15s ease'
-                            }}
-                          >
-                            <img src={url} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 160, borderRadius: 'var(--r-lg)', border: '1px dashed var(--border)', color: 'var(--text-tertiary)', gap: 'var(--s2)' }}>
-                    <FileText size={24} style={{ opacity: 0.2 }}/>
-                    <span style={{ fontSize: '0.72rem' }}>No screenshot uploaded for this trade</span>
-                  </div>
-                )}
-
-                {/* Notes */}
-                <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s2)', fontWeight: 600 }}>Notes</div>
-                  <div style={{ fontSize: '0.78rem', lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                    {currentSelectedTrade.notes || 'No notes logged.'}
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+                  {!user?.isGuest && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => startEditTrade(currentSelectedTrade)}
+                      style={{ gap: '4px', padding: '4px 10px', fontSize: '0.72rem', height: 28, border: '1px solid var(--border)' }}
+                    >
+                      Edit Trade
+                    </motion.button>
+                  )}
+                  <motion.button
+                    whileHover={{ scale: 1.15, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="modal-close"
+                    onClick={() => setSelectedTrade(null)}
+                    style={{ margin: 0 }}
+                  >
+                    <X size={18}/>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Right Column: Parameters, Emotions & Sharing */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
-                {/* Parameters */}
-                <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s3)', fontWeight: 600 }}>Parameters</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                    {[
-                      { label: 'Setup / Strategy', value: currentSelectedTrade.setup || '—' },
-                      { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
-                      { label: 'Risk/Reward Ratio (R/R)', value: currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—' },
-                      { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
-                      { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' },
-                      {
-                        label: 'Notion Playbook',
-                        value: currentSelectedTrade.notionLink ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <a href={currentSelectedTrade.notionLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                              View <ExternalLink size={10} />
-                            </a>
-                            <button onClick={() => fetchPlaybook(currentSelectedTrade)} className="btn btn-sm btn-ghost" style={{ padding: '1px 4px', fontSize: '0.6rem', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                              AI
-                            </button>
-                          </div>
-                        ) : '—'
-                      }
-                    ].map(item => (
-                      <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingBottom: 'var(--s1.5)', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
-                        <span style={{ fontWeight: 600 }}>{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rules Compliance */}
-                {currentSelectedTrade.accountId && (
-                  <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s3)', fontWeight: 600 }}>Rules Compliance</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {detailsRules.length > 0 ? (
-                        detailsRules.map((rule, idx) => {
-                          const isFollowed = currentSelectedTrade.rulesChecklist && currentSelectedTrade.rulesChecklist[rule.id] !== false;
-                          return (
-                            <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}>
-                              <span style={{ color: isFollowed ? 'var(--profit)' : 'var(--loss)', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
-                                {isFollowed ? '✓' : '✗'}
-                              </span>
-                              <span style={{ color: isFollowed ? 'var(--text-secondary)' : 'var(--text-muted)', textDecoration: isFollowed ? 'none' : 'line-through' }}>
-                                {rule.ruleText}
-                              </span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>No active rules configured for this account.</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Psychology & Tags */}
-                <div className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--s3.5)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Psychology & Tags</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--s6)', overflowY: 'auto', maxHeight: '70vh', paddingRight: 'var(--s2)' }}>
+                {/* Left Column: Stats and Screenshot */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
                   
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>FOMO Level</span>
-                      <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{currentSelectedTrade.fomoLevel}/10</span>
-                    </div>
-                    <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }}>
-                      <div style={{ height: '100%', width: `${currentSelectedTrade.fomoLevel * 10}%`, background: 'var(--accent)', borderRadius: 2 }}/>
-                    </div>
-                  </div>
+                  {/* Stats Grid */}
+                  <motion.div
+                    initial="hidden"
+                    animate="show"
+                    variants={{
+                      hidden: { opacity: 0 },
+                      show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+                    }}
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s3)' }}
+                  >
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, y: 15, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                      whileHover={{ scale: 1.03 }}
+                      className="glass-deep"
+                      style={{
+                        padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center',
+                        border: currentSelectedTrade.pnl >= 0 ? '1px solid rgba(52,211,153,0.3)' : '1px solid rgba(248,113,113,0.3)',
+                        background: currentSelectedTrade.pnl >= 0 ? 'rgba(52,211,153,0.04)' : 'rgba(248,113,113,0.04)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>Net Return</div>
+                      <div style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', fontSize: '1.15rem', marginTop: 2 }}>
+                        <AnimatedPnL value={currentSelectedTrade.pnl} />
+                      </div>
+                    </motion.div>
 
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Confidence Level</span>
-                      <span style={{ fontWeight: 700, color: 'var(--profit)' }}>{currentSelectedTrade.confidenceLevel}/10</span>
-                    </div>
-                    <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }}>
-                      <div style={{ height: '100%', width: `${currentSelectedTrade.confidenceLevel * 10}%`, background: 'var(--profit)', borderRadius: 2 }}/>
-                    </div>
-                  </div>
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, y: 15, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                      whileHover={{ scale: 1.03 }}
+                      className="glass-deep"
+                      style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}
+                    >
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>Entry Price</div>
+                      <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2, color: 'var(--text-primary)' }}>
+                        {currentSelectedTrade.entryPrice || '—'}
+                      </div>
+                    </motion.div>
 
-                  <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4 }}>Emotions</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {currentSelectedTrade.emotionTags && currentSelectedTrade.emotionTags.length > 0 ? (
-                        currentSelectedTrade.emotionTags.map(tag => (
-                          <span key={tag} className="badge badge-accent" style={{ fontSize: '0.62rem', padding: '2px 6px' }}>{tag}</span>
-                        ))
-                      ) : (
-                        <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>None</span>
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, y: 15, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                      whileHover={{ scale: 1.03 }}
+                      className="glass-deep"
+                      style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}
+                    >
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>Exit Price</div>
+                      <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2, color: 'var(--text-primary)' }}>
+                        {currentSelectedTrade.exitPrice || '—'}
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, y: 15, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                      whileHover={{ scale: 1.03 }}
+                      className="glass-deep"
+                      style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center' }}
+                    >
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>Volume</div>
+                      <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2, color: 'var(--text-primary)' }}>
+                        {currentSelectedTrade.lotSize || '—'}
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, y: 15, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                      whileHover={{ scale: 1.03 }}
+                      className="glass-deep"
+                      style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+                    >
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6, fontWeight: 700 }}>Tags</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center', alignItems: 'center' }}>
+                        {currentSelectedTrade.tags && currentSelectedTrade.tags.length > 0 ? (
+                          currentSelectedTrade.tags.map((tag, tagIdx) => (
+                            <span key={tagIdx} style={{ fontSize: '0.62rem', background: 'rgba(167, 139, 250, 0.08)', border: '1px solid rgba(167, 139, 250, 0.2)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, y: 15, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                      whileHover={{ scale: 1.03 }}
+                      className="glass-deep"
+                      style={{ padding: 'var(--s3)', borderRadius: 'var(--r-md)', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+                    >
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6, fontWeight: 700 }}>R/R</div>
+                      <div style={{ fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '1.0rem', marginTop: 2, color: 'var(--text-secondary)' }}>
+                        {currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—'}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Screenshot Chart */}
+                  {currentSelectedTrade.imageUrls && currentSelectedTrade.imageUrls.length > 0 ? (
+                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--r-lg)', background: '#0e1017', border: '1px solid var(--border)', aspectRatio: '16/10' }}>
+                        <motion.img
+                          key={activeImageIdx}
+                          initial={{ opacity: 0.6, scale: 1.02 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                          src={currentSelectedTrade.imageUrls[activeImageIdx]}
+                          alt="Trade Chart"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.06 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setZoomImage(currentSelectedTrade.imageUrls[activeImageIdx])}
+                          className="btn btn-sm"
+                          style={{ position: 'absolute', right: 8, bottom: 8, background: '#ffffff', padding: '5px 10px', fontSize: '0.68rem', gap: '5px', color: '#000000', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 700 }}
+                        >
+                          <ZoomIn size={13}/> View Chart
+                        </motion.button>
+                      </div>
+                      {currentSelectedTrade.imageUrls.length > 1 && (
+                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: 4 }}>
+                          {currentSelectedTrade.imageUrls.map((url, idx) => (
+                            <motion.div
+                              key={idx}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setActiveImageIdx(idx)}
+                              style={{
+                                width: 60, height: 40, borderRadius: 'var(--r-sm)', overflow: 'hidden',
+                                border: activeImageIdx === idx ? '2px solid var(--accent)' : '1px solid var(--border-mid)',
+                                cursor: 'pointer', opacity: activeImageIdx === idx ? 1 : 0.6,
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <img src={url} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </motion.div>
+                          ))}
+                        </div>
                       )}
+                    </motion.div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 160, borderRadius: 'var(--r-lg)', border: '1px dashed var(--border)', color: 'var(--text-tertiary)', gap: 'var(--s2)' }}>
+                      <FileText size={24} style={{ opacity: 0.2 }}/>
+                      <span style={{ fontSize: '0.72rem' }}>No screenshot uploaded for this trade</span>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Notes */}
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s2)', fontWeight: 700 }}>Notes</div>
+                    <div style={{ fontSize: '0.78rem', lineHeight: 1.65, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                      {currentSelectedTrade.notes || 'No notes logged.'}
+                    </div>
+                  </motion.div>
                 </div>
 
-                {!user?.isGuest && (
-                  <div className="glass" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid rgba(167,139,250,0.15)', background: 'linear-gradient(135deg, rgba(167,139,250,0.02) 0%, var(--surface) 100%)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 'var(--s3)' }}>
-                      <Share2 size={13} style={{ color: 'var(--accent)' }}/>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>Share Trade</span>
+                {/* Right Column: Parameters, Emotions & Sharing */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s5)' }}>
+                  
+                  {/* Parameters */}
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s3)', fontWeight: 700 }}>Parameters</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+                      {[
+                        { label: 'Setup / Strategy', value: currentSelectedTrade.setup || '—' },
+                        { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
+                        { label: 'Risk/Reward Ratio (R/R)', value: currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—' },
+                        { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
+                        { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' },
+                        {
+                          label: 'Notion Playbook',
+                          value: currentSelectedTrade.notionLink ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <a href={currentSelectedTrade.notionLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                View <ExternalLink size={10} />
+                              </a>
+                              <button onClick={() => fetchPlaybook(currentSelectedTrade)} className="btn btn-sm btn-ghost" style={{ padding: '1px 4px', fontSize: '0.6rem', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                AI
+                              </button>
+                            </div>
+                          ) : '—'
+                        }
+                      ].map(item => (
+                        <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingBottom: 'var(--s1.5)', borderBottom: '1px solid var(--border)' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* Rules Compliance */}
+                  {currentSelectedTrade.accountId && (
+                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 'var(--s3)', fontWeight: 700 }}>Rules Compliance</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {detailsRules.length > 0 ? (
+                          detailsRules.map((rule, idx) => {
+                            const isFollowed = currentSelectedTrade.rulesChecklist && currentSelectedTrade.rulesChecklist[rule.id] !== false;
+                            return (
+                              <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}>
+                                <motion.span
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ type: 'spring', stiffness: 500, damping: 15, delay: 0.2 + idx * 0.04 }}
+                                  style={{ color: isFollowed ? 'var(--profit)' : 'var(--loss)', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}
+                                >
+                                  {isFollowed ? '✓' : '✗'}
+                                </motion.span>
+                                <span style={{ color: isFollowed ? 'var(--text-secondary)' : 'var(--text-muted)', textDecoration: isFollowed ? 'none' : 'line-through' }}>
+                                  {rule.ruleText}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>No active rules configured for this account.</span>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Psychology & Tags */}
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-deep" style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--s3.5)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Psychology & Tags</div>
+                    
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 4 }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>FOMO Level</span>
+                        <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'JetBrains Mono' }}>{currentSelectedTrade.fomoLevel}/10</span>
+                      </div>
+                      <div style={{ height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${currentSelectedTrade.fomoLevel * 10}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.25 }}
+                          style={{ height: '100%', background: 'var(--accent)', borderRadius: 3 }}
+                        />
+                      </div>
                     </div>
 
-                    {currentSelectedTrade.shareToken ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-                        <div style={{ display: 'flex', gap: 'var(--s2)' }}>
-                          <input
-                            readOnly
-                            className="input"
-                            style={{ fontSize: '0.72rem', height: 32, flex: 1, textOverflow: 'ellipsis', background: 'rgba(0,0,0,0.2)' }}
-                            value={`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`}
-                            onClick={e => e.target.select()}
-                          />
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            style={{ height: 32, width: 36, padding: 0 }}
-                            onClick={async () => {
-                              await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`);
-                              setCopySuccess(true);
-                              setTimeout(() => setCopySuccess(false), 2000);
-                            }}
-                            title="Copy to Clipboard"
-                          >
-                            {copySuccess ? <Check size={14} style={{ color: 'var(--profit)' }}/> : <Copy size={14}/>}
-                          </button>
-                        </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 4 }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Confidence Level</span>
+                        <span style={{ fontWeight: 700, color: 'var(--profit)', fontFamily: 'JetBrains Mono' }}>{currentSelectedTrade.confidenceLevel}/10</span>
+                      </div>
+                      <div style={{ height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${currentSelectedTrade.confidenceLevel * 10}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+                          style={{ height: '100%', background: 'var(--profit)', borderRadius: 3 }}
+                        />
+                      </div>
+                    </div>
 
-                        <div style={{ display: 'flex', gap: 'var(--s2)' }}>
-                          <a
-                            href={`#/shared/trade/${currentSelectedTrade.shareToken}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-ghost"
-                            style={{ fontSize: '0.72rem', flex: 1, gap: '4px', height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            View Public Page <ExternalLink size={11}/>
-                          </a>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            style={{ fontSize: '0.72rem', flex: 1, height: 30 }}
-                            onClick={handleUnshare}
-                          >
-                            Make Private
-                          </button>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }}>Emotions</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {currentSelectedTrade.emotionTags && currentSelectedTrade.emotionTags.length > 0 ? (
+                          currentSelectedTrade.emotionTags.map((tag, idx) => (
+                            <motion.span
+                              key={tag}
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.3 + idx * 0.05 }}
+                              className="badge badge-accent"
+                              style={{ fontSize: '0.62rem', padding: '2px 8px', fontWeight: 600 }}
+                            >
+                              {tag}
+                            </motion.span>
+                          ))
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>None</span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Share Trade */}
+                  {!user?.isGuest && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.24 }}
+                      className="glass"
+                      style={{ padding: 'var(--s4)', borderRadius: 'var(--r-lg)', border: '1px solid rgba(167,139,250,0.2)', background: 'linear-gradient(135deg, rgba(167,139,250,0.03) 0%, var(--surface) 100%)' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 'var(--s3)' }}>
+                        <Share2 size={14} style={{ color: 'var(--accent)' }}/>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>Share Trade</span>
+                      </div>
+
+                      {currentSelectedTrade.shareToken ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+                          <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+                            <input
+                              readOnly
+                              className="input"
+                              style={{ fontSize: '0.72rem', height: 32, flex: 1, textOverflow: 'ellipsis', background: 'rgba(0,0,0,0.2)' }}
+                              value={`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`}
+                              onClick={e => e.target.select()}
+                            />
+                            <motion.button
+                              whileHover={{ scale: 1.08 }}
+                              whileTap={{ scale: 0.92 }}
+                              className="btn btn-sm btn-ghost"
+                              style={{ height: 32, width: 36, padding: 0 }}
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/shared/trade/${currentSelectedTrade.shareToken}`);
+                                setCopySuccess(true);
+                                setTimeout(() => setCopySuccess(false), 2000);
+                              }}
+                              title="Copy to Clipboard"
+                            >
+                              {copySuccess ? <Check size={14} style={{ color: 'var(--profit)' }}/> : <Copy size={14}/>}
+                            </motion.button>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 'var(--s2)' }}>
+                            <a
+                              href={`#/shared/trade/${currentSelectedTrade.shareToken}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-ghost"
+                              style={{ fontSize: '0.72rem', flex: 1, gap: '4px', height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              View Public Page <ExternalLink size={11}/>
+                            </a>
+                            <motion.button
+                              whileHover={{ scale: 1.03 }}
+                              whileTap={{ scale: 0.97 }}
+                              className="btn btn-sm btn-danger"
+                              style={{ fontSize: '0.72rem', flex: 1, height: 30 }}
+                              onClick={handleUnshare}
+                            >
+                              Make Private
+                            </motion.button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 'var(--s3)' }}>
-                          Generate a secure public link to share this trade report with others. You can revoke it at any time.
-                        </p>
-                        <button className="btn btn-sm btn-primary" style={{ width: '100%', fontSize: '0.72rem', height: 32 }} onClick={handleShare}>
-                          Create Shareable Link
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 'var(--s3)' }}>
+                            Generate a secure public link to share this trade report with others. You can revoke it at any time.
+                          </p>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="btn btn-sm btn-primary"
+                            style={{ width: '100%', fontSize: '0.72rem', height: 34, fontWeight: 700 }}
+                            onClick={handleShare}
+                          >
+                            Create Shareable Link
+                          </motion.button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Lightbox / Zoom View */}
-      {zoomImage && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(5,6,8,0.95)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 10000, padding: 'var(--s8)'
-        }} onClick={() => setZoomImage(null)}>
-          <button style={{
-            position: 'absolute', top: 20, right: 20, background: 'var(--surface-glass)',
-            border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-          }} onClick={() => setZoomImage(null)}>
-            <X size={20}/>
-          </button>
-          <img
-            src={zoomImage}
-            alt="Zoomed chart screenshot"
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--r-lg)' }}
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <AnimatePresence>
+        {zoomImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(5,6,8,0.95)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', zIndex: 10000, padding: 'var(--s8)', cursor: 'zoom-out'
+            }}
+            onClick={() => setZoomImage(null)}
+          >
+            <motion.button
+              whileHover={{ scale: 1.15, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              style={{
+                position: 'absolute', top: 20, right: 20, background: 'var(--surface-glass)',
+                border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+              }}
+              onClick={() => setZoomImage(null)}
+            >
+              <X size={20}/>
+            </motion.button>
+            <motion.img
+              initial={{ scale: 0.84, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.84, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              src={zoomImage}
+              alt="Zoomed chart screenshot"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--r-lg)', boxShadow: '0 0 50px rgba(0,0,0,0.9)' }}
+              onClick={e => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Delete Confirm */}
-      {deleteConfirm && (
-        <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
-          <div className="glass-deep modal-panel" style={{ width: 380, padding: 'var(--s8)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-title" style={{ marginBottom: 'var(--s4)' }}>Delete Trade?</div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 'var(--s6)', lineHeight: 1.6 }}>
-              This trade will be safely moved to your <strong>Backup page (Recycle Bin)</strong>. You can restore it anytime if deleted by mistake.
-            </p>
-            <div style={{ display: 'flex', gap: 'var(--s3)', justifyContent: 'flex-end' }}>
-              <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => confirmDelete(deleteConfirm)}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <motion.div
+              className="glass-deep modal-panel"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              style={{ width: 380, padding: 'var(--s8)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-title" style={{ marginBottom: 'var(--s4)', color: 'var(--loss)' }}>Delete Trade?</div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 'var(--s6)', lineHeight: 1.6 }}>
+                This trade will be safely moved to your <strong>Backup page (Recycle Bin)</strong>. You can restore it anytime if deleted by mistake.
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--s3)', justifyContent: 'flex-end' }}>
+                <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-danger" onClick={() => confirmDelete(deleteConfirm)}>
+                  Delete
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Notion Playbook Modal */}
-      {activePlaybook && (
-        <div className="modal-overlay" onClick={() => setActivePlaybook(null)}>
-          <div className="glass-deep modal-panel" style={{ width: 500, maxWidth: '90vw', padding: 'var(--s6)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ marginBottom: 'var(--s4)' }}>
-              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Globe size={18} style={{ color: 'var(--accent)' }} />
-                <span>AI Playbook Audit</span>
+      <AnimatePresence>
+        {activePlaybook && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setActivePlaybook(null)}
+          >
+            <motion.div
+              className="glass-deep modal-panel"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              style={{ width: 500, maxWidth: '90vw', padding: 'var(--s6)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header" style={{ marginBottom: 'var(--s4)' }}>
+                <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Globe size={18} style={{ color: 'var(--accent)' }} />
+                  <span>AI Playbook Audit</span>
+                </div>
+                <button className="modal-close" onClick={() => setActivePlaybook(null)}><X size={18} /></button>
               </div>
-              <button className="modal-close" onClick={() => setActivePlaybook(null)}><X size={18} /></button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 2px 0', color: 'var(--text-primary)' }}>
-                  {activePlaybook.title}
-                </h4>
-                {activePlaybook.url && (
-                  <a href={activePlaybook.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                    {activePlaybook.url.length > 50 ? `${activePlaybook.url.substring(0, 50)}...` : activePlaybook.url} <ExternalLink size={10} />
-                  </a>
-                )}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 2px 0', color: 'var(--text-primary)' }}>
+                    {activePlaybook.title}
+                  </h4>
+                  {activePlaybook.url && (
+                    <a href={activePlaybook.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.7rem', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      {activePlaybook.url.length > 50 ? `${activePlaybook.url.substring(0, 50)}...` : activePlaybook.url} <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+
+                <div style={{
+                  minHeight: '160px',
+                  background: 'rgba(0,0,0,0.15)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-md)',
+                  padding: 'var(--s4)',
+                  fontSize: '0.78rem',
+                  lineHeight: 1.6,
+                  color: 'var(--text-secondary)',
+                  overflowY: 'auto',
+                  maxHeight: '350px'
+                }}>
+                  {loadingPlaybook ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '120px', gap: '10px' }}>
+                      <span className="spin-anim" style={{ display: 'inline-block', fontSize: '1.5rem' }}>⚡</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>AI Agent scraping & reading Notion page...</span>
+                    </div>
+                  ) : playbookError ? (
+                    <div style={{ color: 'var(--loss)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ fontWeight: 700 }}>Extraction Failed</div>
+                      <div>{playbookError}</div>
+                    </div>
+                  ) : (
+                    <div className="markdown-body" style={{ whiteSpace: 'pre-wrap' }}>
+                      {activePlaybook.summary}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div style={{
-                minHeight: '160px',
-                background: 'rgba(0,0,0,0.15)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--r-md)',
-                padding: 'var(--s4)',
-                fontSize: '0.78rem',
-                lineHeight: 1.6,
-                color: 'var(--text-secondary)',
-                overflowY: 'auto',
-                maxHeight: '350px'
-              }}>
-                {loadingPlaybook ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '120px', gap: '10px' }}>
-                    <span className="spin-anim" style={{ display: 'inline-block', fontSize: '1.5rem' }}>⚡</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>AI Agent scraping & reading Notion page...</span>
-                  </div>
-                ) : playbookError ? (
-                  <div style={{ color: 'var(--loss)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ fontWeight: 700 }}>Extraction Failed</div>
-                    <div>{playbookError}</div>
-                  </div>
-                ) : (
-                  <div className="markdown-body" style={{ whiteSpace: 'pre-wrap' }}>
-                    {activePlaybook.summary}
-                  </div>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--s5)' }}>
+                <button className="btn btn-ghost" onClick={() => setActivePlaybook(null)}>Close</button>
               </div>
-            </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--s5)' }}>
-              <button className="btn btn-ghost" onClick={() => setActivePlaybook(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
