@@ -6,6 +6,7 @@ import {
   Filter, ArrowRight, ChevronLeft, ChevronRight, Newspaper,
   Info, CornerDownRight, RefreshCw
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Bold text custom parser (matching AiCoach.jsx)
 const parseBoldText = (text) => {
@@ -327,69 +328,7 @@ const News = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Selected news item chat initializer
-  const handleAskZella = async (eventToAnalyze) => {
-    const ev = eventToAnalyze || selectedEvent;
-    if (!ev || aiLoading) return;
-
-    const userPromptText = `Please analyze the impact of the upcoming ${ev.country} ${ev.title} (${ev.impact} impact) economic event. Previous was ${ev.previous || 'N/A'}, forecast is ${ev.forecast || 'N/A'}. What are the primary scenarios, expected volatility, and key risk management strategies I should implement?`;
-
-    const userMsg = { role: 'user', content: userPromptText };
-    const newMessages = [userMsg];
-    setMessages(newMessages);
-    setAiLoading(true);
-
-    try {
-      const response = await newsApi.analyze(ev, newMessages);
-      setMessages(prev => [...prev, response]);
-    } catch (err) {
-      console.error(err);
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `❌ **Error Connecting to Nvidia AI Catalog**\n\nFailed to retrieve analysis. Please ensure the server is running and your \`NVIDIA_API_KEY\` is configured in your environmental variables.`
-        }
-      ]);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  // Chat follow up send handler
-  const handleSendMessage = async (e) => {
-    if (e) e.preventDefault();
-    if (!aiInput.trim() || aiLoading || !selectedEvent) return;
-
-    const userMsg = { role: 'user', content: aiInput };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setAiInput('');
-    setAiLoading(true);
-
-    try {
-      const response = await newsApi.analyze(selectedEvent, updatedMessages);
-      setMessages(prev => [...prev, response]);
-    } catch (err) {
-      console.error(err);
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Failed to retrieve follow-up analysis. Please verify your connection status and key parameters.'
-        }
-      ]);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  // Clear current analysis chat
-  const handleClearChat = () => {
-    setMessages([]);
-  };
-
-  // Helper for impact colored borders & badges (using exact requested colors)
+  // Helper for impact colored borders & badges
   const getImpactColor = (impact) => {
     switch ((impact || '').toLowerCase()) {
       case 'high':
@@ -420,8 +359,21 @@ const News = () => {
     }
   };
 
+  const gridVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.008 }
+    }
+  };
+
+  const cellVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 6 },
+    show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+  };
+
   return (
-    <div style={{
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{
       width: '100%',
       height: 'calc(100vh - 120px)',
       minHeight: '520px',
@@ -429,7 +381,7 @@ const News = () => {
       flexDirection: 'column'
     }}>
       {/* Clean full-width economic calendar */}
-      <div className="glass anim-fade-up delay-1" style={{
+      <div className="glass" style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -439,7 +391,7 @@ const News = () => {
         border: '1px solid var(--border)'
       }}>
         {/* Header and filters */}
-        <div style={{
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={{
           padding: 'var(--s4)',
           borderBottom: '1px solid var(--border)',
           display: 'flex',
@@ -517,7 +469,9 @@ const News = () => {
             </div>
 
             {/* Refresh Button */}
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => loadNews(true)}
               disabled={loading || refreshing}
               style={{
@@ -534,36 +488,36 @@ const News = () => {
               title="Refresh Calendar"
             >
               <RefreshCw size={12} className={refreshing ? 'spin-anim' : ''} />
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Calendar Content Area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
           {/* Economic Calendar Date Selector Month Grid */}
           {!loading && !error && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)', padding: 'var(--s3)', background: 'var(--bg-tertiary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)', padding: 'var(--s3)', background: 'var(--bg-tertiary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
               {/* Month Navigation */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={handlePrevMonth}
                   style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', borderRadius: '4px' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 >
                   <ChevronLeft size={16} />
-                </button>
+                </motion.button>
                 <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                   {monthNames[currentMonth]} {currentYear}
                 </strong>
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={handleNextMonth}
                   style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', borderRadius: '4px' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 >
                   <ChevronRight size={16} />
-                </button>
+                </motion.button>
               </div>
 
               {/* Weekday Headers */}
@@ -574,7 +528,13 @@ const News = () => {
               </div>
 
               {/* Calendar Days Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+              <motion.div
+                key={`${currentYear}-${currentMonth}`}
+                variants={gridVariants}
+                initial="hidden"
+                animate="show"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}
+              >
                 {calendarDays.map((cell, idx) => {
                   const isSelected = selectedCalendarDate === cell.dateKey;
                   const isTodayCell = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' }) === cell.dateKey;
@@ -591,8 +551,11 @@ const News = () => {
                   const hasHoliday = dayEvents.some(e => e.impact === 'Holiday');
 
                   return (
-                    <div
+                    <motion.div
                       key={idx}
+                      variants={cellVariants}
+                      whileHover={{ scale: 1.06, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => {
                         setSelectedCalendarDate(cell.dateKey);
                       }}
@@ -611,16 +574,6 @@ const News = () => {
                         transition: 'all var(--t-fast)',
                         position: 'relative'
                       }}
-                      onMouseEnter={e => {
-                        if (!isSelected) {
-                          e.currentTarget.style.background = 'var(--bg-hover)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (!isSelected) {
-                          e.currentTarget.style.background = isTodayCell ? 'var(--accent-soft)' : 'transparent';
-                        }
-                      }}
                     >
                       {/* Day Number */}
                       <span style={{ fontSize: '0.72rem', fontWeight: isTodayCell || isSelected ? 700 : 500 }}>
@@ -634,12 +587,13 @@ const News = () => {
                         {hasLow && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981' }} />}
                         {hasHoliday && <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#8a8a8a' }} />}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           )}
+
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
               {[...Array(6)].map((_, i) => (
@@ -690,8 +644,12 @@ const News = () => {
                       const colors = getImpactColor(ev.impact);
                       const isSelected = selectedEvent && selectedEvent.title === ev.title && selectedEvent.date === ev.date;
                       return (
-                        <div
+                        <motion.div
                           key={index}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.4) }}
+                          whileHover={{ x: 4, backgroundColor: isSelected ? 'var(--accent-soft)' : 'rgba(255,255,255,0.04)' }}
                           onClick={() => setSelectedEvent(ev === selectedEvent ? null : ev)}
                           style={{
                             display: 'grid',
@@ -761,7 +719,7 @@ const News = () => {
                               <ChevronRight size={14} />
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -771,7 +729,7 @@ const News = () => {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
