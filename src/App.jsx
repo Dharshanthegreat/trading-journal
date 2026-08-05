@@ -25,12 +25,10 @@ import CalendarPage from './pages/Calendar';
 import DailyJournal from './pages/DailyJournal';
 import SharedTrade from './pages/SharedTrade';
 import TradingViewPage from './pages/TradingView';
-import MT5Connect from './pages/MT5Connect';
 import LandingPage from './pages/LandingPage';
 import OrbisNft from './pages/OrbisNft';
 import News from './pages/News';
 import Stoic from './pages/Stoic';
-import TradovateConnect from './pages/TradovateConnect';
 import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
 import TradingRules from './pages/TradingRules';
@@ -1788,8 +1786,6 @@ const Sidebar = ({ mobileMenuOpen, onClose }) => {
     { path: '/psychology',    icon: <Brain size={16}/>,           label: 'Psychology' },
     { path: '/stoic',         icon: <Shield size={16}/>,          label: 'Stoic Mindset' },
     { path: '/tradingview',   icon: <TrendingUp size={16}/>,      label: 'TV Analysis' },
-    { path: '/mt5-connect',   icon: <Wifi size={16}/>,             label: 'MT5 Connect' },
-    { path: '/tradovate',     icon: <Zap size={16}/>,             label: 'Tradovate Sync' },
     { path: '/daily-journal', icon: <NotebookPen size={16}/>,     label: 'Daily Notes' },
     { path: '/charts',        icon: <ImageIcon size={16}/>,       label: 'Charts' },
   ];
@@ -1982,8 +1978,6 @@ const Header = ({ onMenuToggle }) => {
     '/analytics': 'Analytics', '/asset-allocation': 'Asset Allocation', '/psychology': 'Psychology',
     '/daily-journal': 'Daily Notes', '/charts': 'Charts', '/settings': 'Settings',
     '/tradingview': 'TradingView Analysis',
-    '/mt5-connect': 'MT5 Connect',
-    '/tradovate': 'Tradovate Connect',
     '/accounts': 'Trading Accounts',
     '/achievements': 'Achievements Wall',
     '/rules': 'Trading Rules Playbook',
@@ -2318,8 +2312,6 @@ function AppContent() {
                 <Route path="/asset-allocation" element={<AssetAllocation />} />
                 <Route path="/psychology" element={<Emotions />} />
                 <Route path="/tradingview" element={<TradingViewPage />} />
-                <Route path="/mt5-connect" element={<MT5Connect />} />
-                <Route path="/tradovate" element={<TradovateConnect />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/achievements" element={<Achievements />} />
                 <Route path="/rules" element={<TradingRules />} />
