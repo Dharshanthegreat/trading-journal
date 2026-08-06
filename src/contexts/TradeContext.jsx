@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { trades as tradesApi } from '../services/api';
 import { useAuth } from './AuthContext';
 
