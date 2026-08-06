@@ -38,6 +38,32 @@ const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 2, duratio
   );
 };
 
+// --- Motion Variants for Smooth Staggered Animations ---
+const gridVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.015,
+      delayChildren: 0.03,
+    }
+  }
+};
+
+const cellVariants = {
+  hidden: { opacity: 0, y: 12, scale: 0.96 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 380,
+      damping: 26,
+    }
+  }
+};
+
 const CalendarPage = () => {
   const { analytics, fetchAnalytics, trades, fetchTrades, loading } = useTrades();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -339,8 +365,8 @@ const CalendarPage = () => {
                 <motion.div
                   key={i}
                   variants={cellVariants}
-                  whileHover={inMonth ? { scale: 1.04, y: -2, zIndex: 5 } : {}}
-                  whileTap={inMonth ? { scale: 0.96 } : {}}
+                  whileHover={inMonth ? { scale: 1.03, y: -3, zIndex: 20, transition: { type: 'spring', stiffness: 450, damping: 25 } } : {}}
+                  whileTap={inMonth ? { scale: 0.96, transition: { type: 'spring', stiffness: 500, damping: 20 } } : {}}
                   className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''} ${isProfit ? 'profit-day' : ''} ${isLoss ? 'loss-day' : ''}`}
                   onClick={() => {
                     if (inMonth) {
