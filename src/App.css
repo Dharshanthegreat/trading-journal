@@ -186,7 +186,18 @@
   position: relative;
 }
 .calendar-cell:hover { border-color: var(--border-mid); background: var(--surface-glass-h); }
-.calendar-cell.today { border-color: var(--accent); background: var(--accent-soft); }
+.calendar-cell.today {
+  background: var(--surface-glass-h);
+}
+.calendar-cell.today .calendar-day {
+  color: var(--accent) !important;
+  font-weight: 800 !important;
+}
+.calendar-cell.selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-glow) !important;
+  z-index: 10 !important;
+}
 .calendar-cell.has-data { cursor: pointer; }
 .calendar-day { font-size: 0.8rem; font-weight: 600; color: var(--text-tertiary); line-height: 1; }
 .calendar-pnl {

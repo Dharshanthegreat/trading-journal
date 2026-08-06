@@ -77,12 +77,17 @@ const CalendarPage = () => {
   useEffect(() => {
     if (!selectedDate && filteredTrades.length > 0) {
       const datesWithTrades = filteredTrades
-        .filter(t => t.entryTime)
-        .map(t => new Date(t.entryTime))
-        .sort((a, b) => b - a);
+        .map(t => {
+          const entryTime = t.entryTime || t.entry_time || t.date || t.createdAt;
+          return entryTime ? toNewYorkDateString(entryTime) : '';
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.localeCompare(a));
 
       if (datesWithTrades.length > 0) {
-        const latestDate = datesWithTrades[0];
+        const latestDateStr = datesWithTrades[0];
+        const [year, month, day] = latestDateStr.split('-').map(Number);
+        const latestDate = new Date(year, month - 1, day);
         setSelectedDate(latestDate);
         setCurrentMonth(latestDate);
       } else {
@@ -169,7 +174,10 @@ const CalendarPage = () => {
   const selectedDateTrades = useMemo(() => {
     if (!selectedDate) return [];
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return filteredTrades.filter(t => t.entryTime && toNewYorkDateString(t.entryTime) === dateStr);
+    return filteredTrades.filter(t => {
+      const entryTime = t.entryTime || t.entry_time || t.date || t.createdAt;
+      return entryTime && toNewYorkDateString(entryTime) === dateStr;
+    });
   }, [selectedDate, filteredTrades]);
 
   // Monthly summary
@@ -333,11 +341,7 @@ const CalendarPage = () => {
                   variants={cellVariants}
                   whileHover={inMonth ? { scale: 1.04, y: -2, zIndex: 5 } : {}}
                   whileTap={inMonth ? { scale: 0.96 } : {}}
-                  className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''} ${isProfit ? 'profit-day' : ''} ${isLoss ? 'loss-day' : ''}`}
-                  style={{
-                    borderColor: isSelected ? 'var(--accent)' : undefined,
-                    boxShadow: isSelected ? '0 0 12px var(--accent-glow)' : undefined,
-                  }}
+                  className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''} ${isProfit ? 'profit-day' : ''} ${isLoss ? 'loss-day' : ''}`}
                   onClick={() => {
                     if (inMonth) {
                       setSelectedDate(isSelected ? null : day);
@@ -345,7 +349,7 @@ const CalendarPage = () => {
                     }
                   }}
                 >
-                  <div className="calendar-day" style={{ color: !inMonth ? 'var(--text-muted)' : today ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: today ? 700 : 500 }}>
+                  <div className="calendar-day" style={{ color: !inMonth ? 'var(--text-muted)' : today ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: today ? 800 : 500 }}>
                     {format(day, 'dd')}
                   </div>
                   
