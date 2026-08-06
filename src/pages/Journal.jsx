@@ -1412,20 +1412,7 @@ const Journal = () => {
                         { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
                         { label: 'Risk/Reward Ratio (R/R)', value: currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—' },
                         { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
-                        { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' },
-                        {
-                          label: 'Notion Playbook',
-                          value: currentSelectedTrade.notionLink ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <a href={currentSelectedTrade.notionLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                View <ExternalLink size={10} />
-                              </a>
-                              <button onClick={() => fetchPlaybook(currentSelectedTrade)} className="btn btn-sm btn-ghost" style={{ padding: '1px 4px', fontSize: '0.6rem', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                AI
-                              </button>
-                            </div>
-                          ) : '—'
-                        }
+                        { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' }
                       ].map(item => (
                         <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingBottom: 'var(--s1.5)', borderBottom: '1px solid var(--border)' }}>
                           <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>

@@ -1068,17 +1068,6 @@ const Accounts = () => {
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label">Notion Page Link (Optional)</label>
-                    <input
-                      className="input"
-                      type="url"
-                      placeholder="e.g. https://notion.so/my-playbook"
-                      value={formData.notionLink}
-                      onChange={e => setFormData({ ...formData, notionLink: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-field">
                     <label className="form-label">Notes (Optional)</label>
                     <textarea
                       className="input"
