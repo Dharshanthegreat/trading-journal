@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { journal as journalApi } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -76,11 +76,13 @@ export const JournalProvider = ({ children }) => {
     setCurrentEntry(null);
   };
 
+  const value = useMemo(() => ({
+    entries, currentEntry, loading,
+    fetchEntries, getEntry, saveEntry, deleteEntry,
+  }), [entries, currentEntry, loading, fetchEntries, getEntry]);
+
   return (
-    <JournalContext.Provider value={{
-      entries, currentEntry, loading,
-      fetchEntries, getEntry, saveEntry, deleteEntry,
-    }}>
+    <JournalContext.Provider value={value}>
       {children}
     </JournalContext.Provider>
   );

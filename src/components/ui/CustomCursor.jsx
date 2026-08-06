@@ -2,16 +2,16 @@
 import { useEffect, useRef } from 'react';
 
 function CustomCursor({
-  SIM_RESOLUTION = 128,
-  DYE_RESOLUTION = 1440,
-  CAPTURE_RESOLUTION = 512,
-  DENSITY_DISSIPATION = 7,
-  VELOCITY_DISSIPATION = 4.5,
+  SIM_RESOLUTION = 64,
+  DYE_RESOLUTION = 512,
+  CAPTURE_RESOLUTION = 256,
+  DENSITY_DISSIPATION = 8,
+  VELOCITY_DISSIPATION = 5,
   PRESSURE = 0.1,
-  PRESSURE_ITERATIONS = 20,
+  PRESSURE_ITERATIONS = 8,
   CURL = 3,
-  SPLAT_RADIUS = 0.07,
-  SPLAT_FORCE = 1500,
+  SPLAT_RADIUS = 0.05,
+  SPLAT_FORCE = 1200,
   SHADING = false,
   COLOR_UPDATE_SPEED = 10,
   BACK_COLOR = { r: 0.5, g: 0, b: 0 },
@@ -678,8 +678,30 @@ function CustomCursor({
     let lastUpdateTime = Date.now();
     let colorUpdateTimer = 0.0;
 
+    let lastInteractionTime = Date.now();
+    let isLooping = false;
+
+    function wakeUp() {
+      lastInteractionTime = Date.now();
+      if (!isLooping && isActive) {
+        isLooping = true;
+        updateFrame();
+      }
+    }
+
     function updateFrame() {
-      if (!isActive) return;
+      if (!isActive) {
+        isLooping = false;
+        return;
+      }
+
+      // Pause simulation when mouse has been idle for 1.5 seconds to eliminate GPU lag
+      if (Date.now() - lastInteractionTime > 1500) {
+        isLooping = false;
+        return;
+      }
+
+      isLooping = true;
       const dt = calcDeltaTime();
       if (resizeCanvas()) initFramebuffers();
       updateColors(dt);
@@ -955,6 +977,7 @@ function CustomCursor({
     }
 
     function handleMouseDown(e) {
+      wakeUp();
       let pointer = pointers[0];
       let posX = scaleByPixelRatio(e.clientX);
       let posY = scaleByPixelRatio(e.clientY);
@@ -964,6 +987,7 @@ function CustomCursor({
 
     let firstMouseMoveHandled = false;
     function handleMouseMove(e) {
+      wakeUp();
       let pointer = pointers[0];
       let posX = scaleByPixelRatio(e.clientX);
       let posY = scaleByPixelRatio(e.clientY);
@@ -977,6 +1001,7 @@ function CustomCursor({
     }
 
     function handleTouchStart(e) {
+      wakeUp();
       const touches = e.targetTouches;
       let pointer = pointers[0];
       for (let i = 0; i < touches.length; i++) {
@@ -987,6 +1012,7 @@ function CustomCursor({
     }
 
     function handleTouchMove(e) {
+      wakeUp();
       const touches = e.targetTouches;
       let pointer = pointers[0];
       for (let i = 0; i < touches.length; i++) {

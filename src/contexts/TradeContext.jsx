@@ -188,15 +188,20 @@ export const TradeProvider = ({ children }) => {
     await fetchTrades();
   };
 
+  const value = useMemo(() => ({
+    trades, loading, total, analytics,
+    fetchTrades, fetchAnalytics,
+    addTrade, updateTrade, deleteTrade,
+    shareTrade, unshareTrade,
+    importTrades, exportTrades,
+    restoreTrade, restoreAllTrades
+  }), [
+    trades, loading, total, analytics,
+    fetchTrades, fetchAnalytics
+  ]);
+
   return (
-    <TradeContext.Provider value={{
-      trades, loading, total, analytics,
-      fetchTrades, fetchAnalytics,
-      addTrade, updateTrade, deleteTrade,
-      shareTrade, unshareTrade,
-      importTrades, exportTrades,
-      restoreTrade, restoreAllTrades
-    }}>
+    <TradeContext.Provider value={value}>
       {children}
     </TradeContext.Provider>
   );

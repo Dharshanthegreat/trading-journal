@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const ThemeContext = createContext();
 
@@ -89,18 +89,20 @@ export const ThemeProvider = ({ children }) => {
     setFontStyleState(validStyles.includes(style) ? style : 'sans');
   };
 
+  const value = useMemo(() => ({
+    theme, 
+    setTheme: changeTheme, 
+    toggleTheme, 
+    cursorEffect, 
+    setCursorEffect: changeCursorEffect,
+    bgEffect,
+    setBgEffect: changeBgEffect,
+    fontStyle,
+    setFontStyle: changeFontStyle
+  }), [theme, cursorEffect, bgEffect, fontStyle]);
+
   return (
-    <ThemeContext.Provider value={{ 
-      theme, 
-      setTheme: changeTheme, 
-      toggleTheme, 
-      cursorEffect, 
-      setCursorEffect: changeCursorEffect,
-      bgEffect,
-      setBgEffect: changeBgEffect,
-      fontStyle,
-      setFontStyle: changeFontStyle
-    }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
