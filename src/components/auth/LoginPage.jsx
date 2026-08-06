@@ -83,13 +83,14 @@ const LoginPage = () => {
   return (
     <div className="login-bg" style={{
       position: 'relative',
-      width: '100vw',
+      width: '100%',
       minHeight: '100vh',
-      overflow: 'hidden',
+      overflowY: 'auto',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#000000',
+      background: '#0a0b0f',
+      color: '#ffffff',
       // Force dark mode styling variables regardless of active workspace theme
       '--bg-primary': '#0a0b0f',
       '--bg-secondary': '#0f1117',
@@ -123,18 +124,24 @@ const LoginPage = () => {
           height: '100%',
           objectFit: 'cover',
           zIndex: 0,
+          opacity: 0.6,
         }}
       >
         <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260403_050628_c4e32401-fab4-4a27-b7a8-6e9291cd5959.mp4" type="video/mp4" />
       </video>
 
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s6)', width: '100%', padding: 'var(--s8)' }}>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s6)', width: '100%', padding: 'var(--s8)', maxWidth: '440px' }}>
 
         {/* Card with higher backdrop blur and opacity for text clarity */}
         <div className="liquid-glass login-card anim-fade-up" style={{
-          background: 'rgba(5, 5, 7, 0.78)',
+          background: 'rgba(15, 17, 23, 0.92)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: 'var(--r-xl)',
+          padding: 'var(--s6)',
+          width: '100%',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
         }}>
           <div className="login-logo">
             <img 

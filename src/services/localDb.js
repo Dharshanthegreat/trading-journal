@@ -221,7 +221,27 @@ const runStorageMigrations = async (userId) => {
 
 // 1. Auth Handlers
 const getActiveUser = () => {
-  const session = getStorageItem('active_session', null);
+  let session = getStorageItem('active_session', null);
+  const isExplicitLoggedOut = localStorage.getItem(DB_PREFIX + 'logged_out') === 'true';
+
+  if (!session && !isExplicitLoggedOut) {
+    const users = getStorageItem('users', []);
+    if (users.length > 0) {
+      session = users[0];
+    } else {
+      session = {
+        id: 1,
+        email: 'dharshan@tradingjournal.app',
+        displayName: 'Dharshan',
+        accountSize: 100000,
+        currency: 'USD',
+        riskPercent: 1.0,
+      };
+      setStorageItem('users', [session]);
+    }
+    setStorageItem('active_session', session);
+  }
+
   if (!session) throw { status: 401, message: 'Unauthorized' };
   if (session.shareToken && !session.dashboardShareToken) {
     session.dashboardShareToken = session.shareToken;
@@ -255,6 +275,7 @@ const handleAuth = async (url, method, body) => {
     
     setStorageItem('users', [...users, newUser]);
     setStorageItem('active_session', newUser);
+    localStorage.removeItem(DB_PREFIX + 'logged_out');
     return { user: newUser, token: 'local-session-token' };
   }
   
@@ -267,6 +288,7 @@ const handleAuth = async (url, method, body) => {
       user.dashboardShareToken = user.shareToken;
     }
     setStorageItem('active_session', user);
+    localStorage.removeItem(DB_PREFIX + 'logged_out');
     return { user, token: 'local-session-token' };
   }
   
@@ -291,6 +313,7 @@ const handleAuth = async (url, method, body) => {
   
   if (url === '/auth/logout' && method === 'POST') {
     localStorage.removeItem(DB_PREFIX + 'active_session');
+    localStorage.setItem(DB_PREFIX + 'logged_out', 'true');
     return { message: 'Logged out' };
   }
 
