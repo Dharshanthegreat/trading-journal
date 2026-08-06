@@ -80,7 +80,16 @@
   --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 20px; --r-full: 9999px;
 
   /* Transitions */
-  --t-fast: 120ms ease; --t-mid: 200ms ease; --t-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --t-mid: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --t-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body.font-sans {

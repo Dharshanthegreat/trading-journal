@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, BookOpen, BarChart2, Brain,
   Image as ImageIcon, Settings as SettingsIcon,
@@ -41,7 +42,6 @@ import {
   LineChart, Line
 } from 'recharts';
 import { format } from 'date-fns';
-import { motion } from 'framer-motion';
 import './App.css';
 import useMagneticButtons from './hooks/useMagneticButtons';
 import CustomCursor from './components/ui/CustomCursor';
@@ -2402,39 +2402,50 @@ function AppContent() {
         )}
         <Header onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
         <div className="page-container">
-          <Routes>
-            {user?.isGuest ? (
-              <>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/shared/dashboard/:token" element={<Dashboard />} />
-                <Route path="/journal" element={<Journal />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/asset-allocation" element={<AssetAllocation />} />
-              </>
-            ) : (
-              <>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/shared/dashboard/:token" element={<Dashboard />} />
-                <Route path="/journal" element={<Journal />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/news" element={<News />} />
-                <Route path="/stoic" element={<Stoic />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/asset-allocation" element={<AssetAllocation />} />
-                <Route path="/psychology" element={<Emotions />} />
-                <Route path="/tradingview" element={<TradingViewPage />} />
-                <Route path="/accounts" element={<Accounts />} />
-                <Route path="/achievements" element={<Achievements />} />
-                <Route path="/rules" element={<TradingRules />} />
-                <Route path="/daily-journal" element={<DailyJournal />} />
-                <Route path="/charts" element={<Charts />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/backup" element={<Backup />} />
-              </>
-            )}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              style={{ width: '100%' }}
+            >
+              <Routes location={location}>
+                {user?.isGuest ? (
+                  <>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/shared/dashboard/:token" element={<Dashboard />} />
+                    <Route path="/journal" element={<Journal />} />
+                    <Route path="/calendar" element={<CalendarPage />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/asset-allocation" element={<AssetAllocation />} />
+                  </>
+                ) : (
+                  <>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/shared/dashboard/:token" element={<Dashboard />} />
+                    <Route path="/journal" element={<Journal />} />
+                    <Route path="/calendar" element={<CalendarPage />} />
+                    <Route path="/news" element={<News />} />
+                    <Route path="/stoic" element={<Stoic />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/asset-allocation" element={<AssetAllocation />} />
+                    <Route path="/psychology" element={<Emotions />} />
+                    <Route path="/tradingview" element={<TradingViewPage />} />
+                    <Route path="/accounts" element={<Accounts />} />
+                    <Route path="/achievements" element={<Achievements />} />
+                    <Route path="/rules" element={<TradingRules />} />
+                    <Route path="/daily-journal" element={<DailyJournal />} />
+                    <Route path="/charts" element={<Charts />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/backup" element={<Backup />} />
+                  </>
+                )}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>
