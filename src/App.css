@@ -204,7 +204,7 @@
   z-index: 10 !important;
 }
 .calendar-cell.has-data { cursor: pointer; }
-.calendar-day { font-size: 0.8rem; font-weight: 600; color: var(--text-tertiary); line-height: 1; }
+.calendar-day { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
 .calendar-pnl {
   font-size: 0.72rem; font-weight: 700; line-height: 1;
   font-family: 'JetBrains Mono', monospace;

@@ -367,7 +367,7 @@ const CalendarPage = () => {
                     }
                   }}
                 >
-                  <div className="calendar-day" style={{ color: !inMonth ? 'var(--text-muted)' : today ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: today ? 800 : 500 }}>
+                  <div className="calendar-day" style={{ color: !inMonth ? 'var(--text-muted)' : today ? 'var(--accent)' : 'var(--text-primary)', fontWeight: !inMonth ? 500 : 700 }}>
                     {format(day, 'dd')}
                   </div>
                   
