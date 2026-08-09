@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, ZoomIn, ZoomOut, RotateCcw, Maximize2, ExternalLink,
-  Download, ChevronLeft, ChevronRight, Image as ImageIcon, Eye
+  X, ZoomIn, ZoomOut, RotateCcw, Maximize2,
+  Download, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 export const ChartViewerModal = ({
@@ -47,9 +47,13 @@ export const ChartViewerModal = ({
           setCurrentIndex((prev) => (prev < imageList.length - 1 ? prev + 1 : 0));
         }
       } else if (e.key === '+' || e.key === '=') {
-        setZoomLevel((prev) => Math.min(prev + 0.25, 4));
+        setZoomLevel((prev) => Math.min(+(prev + 0.25).toFixed(2), 4));
       } else if (e.key === '-') {
-        setZoomLevel((prev) => Math.max(prev - 0.25, 0.75));
+        setZoomLevel((prev) => {
+          const next = Math.max(+(prev - 0.25).toFixed(2), 0.75);
+          if (next <= 1) setPan({ x: 0, y: 0 });
+          return next;
+        });
       } else if (e.key === 'r' || e.key === 'R' || e.key === '0') {
         resetView();
       }
@@ -59,38 +63,46 @@ export const ChartViewerModal = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [imageList.length, onClose, resetView]);
 
-  // Zoom controls
-  const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.35, 4));
+  // Non-passive Wheel zoom event listener
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.2 : -0.2;
+      setZoomLevel((prev) => {
+        const next = Math.min(Math.max(+(prev + delta).toFixed(2), 0.75), 4);
+        if (next <= 1) setPan({ x: 0, y: 0 });
+        return next;
+      });
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Zoom control handlers
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(+(prev + 0.25).toFixed(2), 4));
   const handleZoomOut = () => {
     setZoomLevel((prev) => {
-      const next = Math.max(prev - 0.35, 0.75);
+      const next = Math.max(+(prev - 0.25).toFixed(2), 0.75);
       if (next <= 1) setPan({ x: 0, y: 0 });
       return next;
     });
   };
 
   const toggle1to1 = () => {
-    if (zoomLevel === 1.8) {
+    if (zoomLevel === 2) {
       resetView();
     } else {
-      setZoomLevel(1.8);
+      setZoomLevel(2);
     }
-  };
-
-  // Mouse wheel zoom
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.2 : -0.2;
-    setZoomLevel((prev) => {
-      const next = Math.min(Math.max(prev + delta, 0.75), 4);
-      if (next <= 1) setPan({ x: 0, y: 0 });
-      return next;
-    });
   };
 
   // Drag / Pan handling
   const handleMouseDown = (e) => {
-    if (zoomLevel <= 1 && e.button !== 0) return;
+    if (e.button !== 0 || zoomLevel <= 1) return;
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     panStartRef.current = { ...pan };
@@ -119,12 +131,6 @@ export const ChartViewerModal = ({
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  };
-
-  // Open in new tab
-  const handleOpenNewTab = () => {
-    if (!currentUrl) return;
-    window.open(currentUrl, '_blank');
   };
 
   if (!currentUrl) return null;
@@ -231,7 +237,7 @@ export const ChartViewerModal = ({
 
             <span
               onClick={resetView}
-              title="Click to reset zoom"
+              title="Click to reset zoom (100%)"
               style={{
                 fontSize: '0.78rem',
                 fontWeight: 700,
@@ -284,11 +290,11 @@ export const ChartViewerModal = ({
 
             <button
               onClick={toggle1to1}
-              title={zoomLevel === 1.8 ? "Fit to Screen" : "100% Original Resolution"}
+              title={zoomLevel === 2 ? "Fit to Screen" : "200% Original Resolution"}
               style={{
-                background: zoomLevel === 1.8 ? 'rgba(96, 165, 250, 0.2)' : 'transparent',
+                background: zoomLevel === 2 ? 'rgba(96, 165, 250, 0.2)' : 'transparent',
                 border: 'none',
-                color: zoomLevel === 1.8 ? '#60a5fa' : '#d1d5db',
+                color: zoomLevel === 2 ? '#60a5fa' : '#d1d5db',
                 padding: '6px',
                 borderRadius: '50%',
                 cursor: 'pointer',
@@ -302,7 +308,6 @@ export const ChartViewerModal = ({
 
           {/* Right Action buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-
             <button
               onClick={handleDownload}
               title="Download image"
@@ -367,7 +372,6 @@ export const ChartViewerModal = ({
             backgroundColor: '#07090e'
           }}
           onClick={(e) => e.stopPropagation()}
-          onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -431,26 +435,25 @@ export const ChartViewerModal = ({
             </>
           )}
 
-          {/* High Definition Rendered Image */}
-          <motion.div
+          {/* High Definition Rendered Image Container */}
+          <div
             key={currentIndex}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
             style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
+              transform: `translate3d(${pan.x}px, ${pan.y}px, 0px) scale(${zoomLevel})`,
               transformOrigin: 'center center',
-              transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+              transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               maxWidth: '92vw',
-              maxHeight: '82vh'
+              maxHeight: '82vh',
+              willChange: 'transform'
             }}
           >
             <img
               src={currentUrl}
               alt="Trading Chart Screenshot"
+              draggable={false}
               style={{
                 maxWidth: '92vw',
                 maxHeight: '82vh',
@@ -459,10 +462,11 @@ export const ChartViewerModal = ({
                 boxShadow: '0 12px 48px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1)',
                 imageRendering: 'high-quality',
                 WebkitFontSmoothing: 'antialiased',
+                userSelect: 'none',
                 pointerEvents: 'none'
               }}
             />
-          </motion.div>
+          </div>
 
           {/* Hint Overlay at bottom when zoom = 1 */}
           {zoomLevel === 1 && (
@@ -485,51 +489,12 @@ export const ChartViewerModal = ({
                 gap: '8px'
               }}
             >
-              <span>Scroll wheel or double click to zoom</span>
-              <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-              <span>Drag to pan when zoomed</span>
+              <span>Scroll / Click + to zoom</span>
+              <span>•</span>
+              <span>Double-click for 200%</span>
             </div>
           )}
         </div>
-
-        {/* Thumbnail Selector (if multiple images) */}
-        {imageList.length > 1 && (
-          <div
-            style={{
-              height: 70,
-              background: 'rgba(12, 15, 22, 0.95)',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              padding: '0 20px',
-              zIndex: 10
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {imageList.map((url, idx) => (
-              <div
-                key={idx}
-                onClick={() => setCurrentIndex(idx)}
-                style={{
-                  width: 64,
-                  height: 44,
-                  borderRadius: '6px',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  border: currentIndex === idx ? '2px solid #60a5fa' : '1px solid rgba(255,255,255,0.15)',
-                  opacity: currentIndex === idx ? 1 : 0.5,
-                  transform: currentIndex === idx ? 'scale(1.05)' : 'scale(1)',
-                  transition: 'all 0.15s ease',
-                  background: '#0e1017'
-                }}
-              >
-                <img src={url} alt={`Thumb ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            ))}
-          </div>
-        )}
       </motion.div>
     </AnimatePresence>
   );
