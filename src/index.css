@@ -1701,7 +1701,113 @@ body.theme-skin-tone div[style*="linear-gradient(90deg, var(--accent), #a78bfa)"
   border-color: var(--accent) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(96, 165, 250, 0.15) !important;
 }
-.chart-preview-hover-group:hover .chart-preview-overlay {
-  opacity: 1 !important;
+
+/* ═══ PITCH BLACK (OLED PURE BLACK) THEME OVERRIDES ═══ */
+body.theme-pitch-black {
+  --bg-primary: #000000 !important;
+  --bg-secondary: #050505 !important;
+  --bg-tertiary: #0a0a0a !important;
+  --bg-elevated: #121212 !important;
+  --bg-hover: #171717 !important;
+  --bg-active: #222222 !important;
+
+  --surface: #050505 !important;
+  --surface-glass: rgba(10, 10, 10, 0.9) !important;
+  --surface-glass-h: rgba(24, 24, 24, 0.95) !important;
+  --surface-card: #080808 !important;
+
+  --border: rgba(255, 255, 255, 0.1) !important;
+  --border-mid: rgba(255, 255, 255, 0.18) !important;
+  --border-strong: rgba(255, 255, 255, 0.28) !important;
+  --border-accent: rgba(56, 189, 248, 0.35) !important;
+
+  --text-primary: #ffffff !important;
+  --text-secondary: #e2e8f0 !important;
+  --text-tertiary: #a1a1aa !important;
+  --text-muted: #71717a !important;
+
+  --accent: #38bdf8 !important;
+  --accent-hover: #0ea5e9 !important;
+  --accent-soft: rgba(56, 189, 248, 0.14) !important;
+  --accent-glow: rgba(56, 189, 248, 0.25) !important;
+
+  --profit: #34d399 !important;
+  --profit-soft: rgba(52, 211, 153, 0.12) !important;
+  --profit-border: rgba(52, 211, 153, 0.28) !important;
+
+  --loss: #f87171 !important;
+  --loss-soft: rgba(248, 113, 113, 0.12) !important;
+  --loss-border: rgba(248, 113, 113, 0.28) !important;
+
+  --warn: #fbbf24 !important;
+  --warn-soft: rgba(251, 191, 36, 0.12) !important;
+  --info: #38bdf8 !important;
+
+  background-color: #000000 !important;
+  color: #ffffff !important;
 }
+
+body.theme-pitch-black .glass,
+body.theme-pitch-black .glass-deep,
+body.theme-pitch-black .tz-card,
+body.theme-pitch-black .modal-panel,
+body.theme-pitch-black .card {
+  background: #060606 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+}
+
+body.theme-pitch-black .sidebar,
+body.theme-pitch-black .header,
+body.theme-pitch-black .app-header {
+  background: #000000 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.theme-pitch-black .input,
+body.theme-pitch-black select,
+body.theme-pitch-black textarea {
+  background: #080808 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+body.theme-pitch-black .calendar-cell {
+  background: #050505 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.theme-pitch-black .calendar-cell.profit-day {
+  background: #062612 !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+body.theme-pitch-black .calendar-cell.loss-day {
+  background: #2a0808 !important;
+  border-color: rgba(248, 113, 113, 0.3) !important;
+}
+
+body.theme-pitch-black .calendar-cell.selected {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 2px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.4) !important;
+}
+
+body.theme-pitch-black .btn-primary {
+  background: #38bdf8 !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+
+body.theme-pitch-black .btn-primary:hover {
+  background: #0ea5e9 !important;
+}
+
+body.theme-pitch-black .logo-icon,
+body.theme-pitch-black .sidebar-avatar,
+body.theme-pitch-black .header-avatar,
+body.theme-pitch-black .progress-fill {
+  background: linear-gradient(135deg, #38bdf8, #818cf8) !important;
+}
+
 

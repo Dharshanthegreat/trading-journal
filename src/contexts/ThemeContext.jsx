@@ -7,7 +7,7 @@ export const useTheme = () => useContext(ThemeContext);
 export const ThemeProvider = ({ children }) => {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem('theme');
-    const validThemes = ['dark', 'minimal', 'claymorphism', 'emerald-dark', 'chill-white'];
+    const validThemes = ['dark', 'pitch-black', 'minimal', 'claymorphism', 'emerald-dark', 'chill-white'];
     return validThemes.includes(saved) ? saved : 'dark';
   });
 
@@ -29,7 +29,7 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     // List of all theme classes to clean up
     const themeClasses = [
-      'light-theme', 'theme-light', 'theme-nord', 'theme-forest', 'theme-sunset', 'theme-minimal',
+      'light-theme', 'theme-light', 'theme-nord', 'theme-forest', 'theme-sunset', 'theme-minimal', 'theme-pitch-black',
       'theme-spiderman', 'theme-cyberpunk', 'theme-glass',
       'theme-claymorphism', 'theme-neomorphism', 'theme-glassmorphism', 'theme-skeuomorphism',
       'theme-maximalism', 'theme-brutalism', 'theme-liquidglass', 'theme-bentogrid', 'theme-spatial',
@@ -64,12 +64,12 @@ export const ThemeProvider = ({ children }) => {
   }, [fontStyle]);
 
   const changeTheme = (newTheme) => {
-    const validThemes = ['dark', 'minimal', 'claymorphism', 'emerald-dark', 'chill-white'];
+    const validThemes = ['dark', 'pitch-black', 'minimal', 'claymorphism', 'emerald-dark', 'chill-white'];
     setThemeState(validThemes.includes(newTheme) ? newTheme : 'dark');
   };
 
   const toggleTheme = () => {
-    const cycle = ['dark', 'minimal', 'claymorphism', 'emerald-dark', 'chill-white'];
+    const cycle = ['dark', 'pitch-black', 'minimal', 'claymorphism', 'emerald-dark', 'chill-white'];
     const idx = cycle.indexOf(theme);
     const nextTheme = cycle[(idx + 1) % cycle.length];
     setThemeState(nextTheme);

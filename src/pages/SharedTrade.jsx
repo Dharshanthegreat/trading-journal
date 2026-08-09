@@ -191,6 +191,7 @@ const SharedTrade = () => {
                 >
                   {[
                     { id: 'dark', name: 'Dark Theme', icon: <Moon size={11} />, accent: '#818cf8' },
+                    { id: 'pitch-black', name: 'Pitch Black', icon: <Moon size={11} />, accent: '#38bdf8' },
                     { id: 'minimal', name: 'Minimalist', icon: <Palette size={11} />, accent: '#000000' },
                     { id: 'claymorphism', name: 'Claymorphism', icon: <Paintbrush size={11} />, accent: '#6366f1' },
                     { id: 'refero', name: 'Refero (Linear)', icon: <Zap size={11} />, accent: '#e4f222' },

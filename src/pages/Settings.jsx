@@ -340,6 +340,7 @@ const Settings = () => {
             <div className="theme-card-grid">
               {[
                 { id: 'dark', name: 'Dark Slate', desc: 'Obsidian & Indigo', icon: <Moon size={14} />, bg: '#0a0b0f', accent: '#818cf8' },
+                { id: 'pitch-black', name: 'Pitch Black', desc: 'OLED Pure Black', icon: <Moon size={14} />, bg: '#000000', accent: '#38bdf8' },
                 { id: 'minimal', name: 'Minimalist', desc: 'Black & White', icon: <Palette size={14} />, bg: '#ffffff', accent: '#000000' },
                 { id: 'claymorphism', name: 'Claymorphism', desc: 'Soft Clay UI', icon: <Paintbrush size={14} />, bg: '#edf2f7', accent: '#6366f1' },
                 { id: 'emerald-dark', name: 'Emerald Dark', desc: 'Charcoal & Emerald', icon: <Moon size={14} />, bg: '#0c0d10', accent: '#10B981' },
