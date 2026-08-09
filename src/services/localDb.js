@@ -1182,16 +1182,15 @@ Provide a concise, encouraging weekly review with actionable advice on risk mana
     }
 
     // Fallback if no key or API call failed
-    const content = `🤖 **[AI Weekly Analysis Fallback]**
-
-This week you took **${metrics.tradeCount} trades** with a win rate of **${metrics.winRate}%**, resulting in a net P&L of **$${metrics.totalPnL.toFixed(2)}**.
+    const pnlPrefix = metrics.totalPnL >= 0 ? '+' : '';
+    const content = `This week you took **${metrics.tradeCount} trade${metrics.tradeCount !== 1 ? 's' : ''}** with a win rate of **${metrics.winRate}%**, resulting in a net P&L of **${pnlPrefix}$${metrics.totalPnL.toFixed(2)}**.
 
 **Key Metrics**:
-- Profit Factor: ${metrics.profitFactor}
-- Avg Win / Loss: $${metrics.avgWin} / -$${metrics.avgLoss}
-- Best Setup: "${metrics.bestSetup}"
+- Profit Factor: **${metrics.profitFactor}**
+- Avg Win / Loss: **$${metrics.avgWin} / -$${metrics.avgLoss}**
+- Best Setup: **"${metrics.bestSetup}"**
 
-**Coach's Note**: Keep monitoring your edge. Please set your Gemini API key in Settings for full analysis.`;
+**Coach's Note**: Keep monitoring your edge! Set your Gemini API Key in Settings to unlock deep trade diagnostics.`;
     return { content };
   }
 

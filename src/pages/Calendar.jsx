@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { toNewYorkDateString, formatInNewYork } from '../utils/timezone';
 import { accounts as accountsApi, ai } from '../services/api';
+import FormattedAiText from '../components/ui/FormattedAiText';
 
 // --- Animated Count-Up Number Helper ---
 const AnimatedNumber = ({ value, prefix = '', suffix = '', decimals = 2, duration = 800 }) => {
@@ -575,15 +576,13 @@ const CalendarPage = () => {
                        </div>
                        
                        {weeklyAnalysis && (
-                          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ padding: 'var(--s4)', marginBottom: 'var(--s4)', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--s3)', color: '#6366f1', fontWeight: 600 }}>
-                              <Sparkles size={16} /> AI Coach Analysis
-                            </div>
-                            <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                              {weeklyAnalysis}
-                            </div>
-                          </motion.div>
-                       )}
+                           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ padding: '16px 20px', marginBottom: 'var(--s4)', background: 'var(--surface-glass)', border: '1px solid var(--border-accent)', borderRadius: 'var(--r-md)' }}>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '12px', color: 'var(--accent)', fontWeight: 700, fontSize: '0.85rem' }}>
+                               <Sparkles size={16} /> AI Weekly Coach Analysis
+                             </div>
+                             <FormattedAiText text={weeklyAnalysis} />
+                           </motion.div>
+                        )}
 
                        {dayData && dayData.count > 0 && (
                          <>
