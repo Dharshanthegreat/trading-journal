@@ -936,9 +936,54 @@ const Journal = () => {
                   <textarea className="input" placeholder="What happened? What did you do well? What to improve?" rows={3} value={formData.notes} onChange={e => handleFieldChange('notes', e.target.value)}/>
                 </div>
 
-                <div className="form-field">
+                <div className="form-field full">
                   <label className="form-label">Tags (comma separated)</label>
-                  <input className="input" placeholder="london session, breakout" value={formData.tags} onChange={e => handleFieldChange('tags', e.target.value)}/>
+                  <input className="input" placeholder="e.g. New York Session, breakout" value={formData.tags} onChange={e => handleFieldChange('tags', e.target.value)}/>
+                  
+                  {/* Preset Session & Strategy Tag Pills */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                    {['New York Session', 'London Session', 'Asian Session', 'Breakout', 'Reversal', 'Trend'].map(tag => {
+                      const currentTags = (formData.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+                      const isSelected = currentTags.some(t => t.toLowerCase() === tag.toLowerCase());
+                      
+                      const toggleTag = () => {
+                        let newTags;
+                        if (isSelected) {
+                          newTags = currentTags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+                        } else {
+                          newTags = [...currentTags, tag];
+                        }
+                        handleFieldChange('tags', newTags.join(', '));
+                      };
+
+                      return (
+                        <motion.button
+                          key={tag}
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={toggleTag}
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: isSelected ? 700 : 600,
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
+                            background: isSelected ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                            color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {isSelected && <Check size={11} />}
+                          {tag}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="form-field full">
