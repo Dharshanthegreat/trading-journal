@@ -7,9 +7,10 @@ import {
   TrendingUp, TrendingDown, Clock, Activity, Zap,
   AlertCircle, DollarSign, Calendar, ExternalLink, ZoomIn, X,
   Sun, Moon, Leaf, Compass, SunDim, Check, Palette, Shield, Sparkles,
-  Paintbrush, Layers, Cpu, Grid, Droplet, Square
+  Paintbrush, Layers, Cpu, Grid, Droplet, Square, Image as ImageIcon
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import ChartViewerModal from '../components/ui/ChartViewerModal';
 
 const SharedTrade = () => {
   const { token } = useParams();
@@ -20,6 +21,7 @@ const SharedTrade = () => {
   const [zoomImage, setZoomImage] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [previewFitMode, setPreviewFitMode] = useState('contain');
 
   useEffect(() => {
     setActiveImageIdx(0);
@@ -293,20 +295,104 @@ const SharedTrade = () => {
             
             {/* Screenshot Panel */}
             {trade.imageUrls && trade.imageUrls.length > 0 ? (
-              <div className="glass" style={{ padding: 'var(--s4)', border: '1px solid var(--border)' }}>
+              <div className="glass" style={{ padding: 'var(--s4)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Chart Screenshot</span>
-                  <button onClick={() => setZoomImage(trade.imageUrls[activeImageIdx])} className="btn btn-sm btn-ghost" style={{ padding: '3px 8px', gap: '4px', fontSize: '0.68rem', borderRadius: 'var(--r-sm)' }}>
-                    <ZoomIn size={11}/> Zoom
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ImageIcon size={13} style={{ color: 'var(--accent)' }} />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Chart Screenshot</span>
+                    {trade.imageUrls.length > 1 && (
+                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '10px', background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {activeImageIdx + 1} / {trade.imageUrls.length}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFitMode(prev => prev === 'contain' ? 'cover' : 'contain')}
+                      style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {previewFitMode === 'contain' ? 'Fit Full Chart' : 'Fill Container'}
+                    </button>
+                    <button onClick={() => setZoomImage(trade.imageUrls[activeImageIdx])} className="btn btn-sm btn-ghost" style={{ padding: '3px 8px', gap: '4px', fontSize: '0.68rem', borderRadius: 'var(--r-sm)', color: 'var(--accent)', fontWeight: 700 }}>
+                      <ZoomIn size={12}/> View Chart
+                    </button>
+                  </div>
                 </div>
-                <div style={{ overflow: 'hidden', borderRadius: 'var(--r-sm)', cursor: 'pointer', aspectRatio: '16/10', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setZoomImage(trade.imageUrls[activeImageIdx])}>
+
+                <div
+                  className="chart-preview-hover-group"
+                  style={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: 'var(--r-md)',
+                    cursor: 'zoom-in',
+                    aspectRatio: '16/10',
+                    background: '#090b10',
+                    border: '1px solid var(--border)',
+                    backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px)',
+                    backgroundSize: '16px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onClick={() => setZoomImage(trade.imageUrls[activeImageIdx])}
+                >
                   <img
                     src={trade.imageUrls[activeImageIdx]}
                     alt={`${trade.symbol} trade chart`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: previewFitMode,
+                      imageRendering: 'high-quality',
+                      WebkitFontSmoothing: 'antialiased'
+                    }}
                   />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(5, 7, 12, 0.45)',
+                      backdropFilter: 'blur(2px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                      pointerEvents: 'none'
+                    }}
+                    className="chart-preview-overlay"
+                  >
+                    <div
+                      style={{
+                        background: 'rgba(15, 23, 42, 0.9)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        color: '#fff',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                      }}
+                    >
+                      <ZoomIn size={15}/> Click to View Full High-Res Chart
+                    </div>
+                  </div>
                 </div>
+
                 {trade.imageUrls.length > 1 && (
                   <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '8px 0 4px 0' }}>
                     {trade.imageUrls.map((url, idx) => (
@@ -317,7 +403,7 @@ const SharedTrade = () => {
                           width: 60, height: 40, borderRadius: 'var(--r-sm)', overflow: 'hidden',
                           border: activeImageIdx === idx ? '2px solid var(--accent)' : '1px solid var(--border-mid)',
                           cursor: 'pointer', opacity: activeImageIdx === idx ? 1 : 0.6,
-                          transition: 'all 0.15s ease'
+                          transition: 'all 0.15s ease', background: '#090b10'
                         }}
                       >
                         <img src={url} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -449,27 +535,15 @@ const SharedTrade = () => {
         </div>
       </div>
 
-      {/* Lightbox / Zoom View */}
+      {/* Lightbox / High-Res Chart Viewer */}
       {zoomImage && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(5,6,8,0.95)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 10000, padding: 'var(--s8)'
-        }} onClick={() => setZoomImage(null)}>
-          <button style={{
-            position: 'absolute', top: 20, right: 20, background: 'var(--surface-glass)',
-            border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-          }} onClick={() => setZoomImage(null)}>
-            <X size={20}/>
-          </button>
-          <img
-            src={zoomImage}
-            alt="Zoomed chart screenshot"
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--r-lg)' }}
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
+        <ChartViewerModal
+          images={trade?.imageUrls?.length > 0 ? trade.imageUrls : [zoomImage]}
+          initialIndex={activeImageIdx || 0}
+          symbol={trade?.symbol || ''}
+          tradeType={trade?.type || ''}
+          onClose={() => setZoomImage(null)}
+        />
       )}
     </div>
   );
