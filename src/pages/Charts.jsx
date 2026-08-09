@@ -4,6 +4,7 @@ import { Image as ImageIcon, X, ZoomIn, Calendar, TrendingUp, Plus, Upload } fro
 import { format } from 'date-fns';
 import { formatInNewYork, toNewYorkDatetimeString, parseNewYorkDatetimeToDate } from '../utils/timezone';
 import { motion, AnimatePresence } from 'framer-motion';
+import CustomSetupInput from '../components/ui/CustomSetupInput';
 
 const SETUPS = ['FVG', 'SMT', 'OB', 'BB', 'IRL-ERL', 'ERL-IRL'];
 
@@ -506,20 +507,10 @@ const Charts = () => {
                         </div>
                       </div>
 
-                      <div className="form-field">
-                        <label className="form-label">Setup</label>
-                        <input
-                          type="text"
-                          className="input"
-                          list="charts-setup-list"
-                          placeholder="e.g. OB, FVG, or type custom..."
-                          value={newTradeData.setup}
-                          onChange={e => setNewTradeData(prev => ({ ...prev, setup: e.target.value }))}
-                        />
-                        <datalist id="charts-setup-list">
-                          {SETUPS.map(s => <option key={s} value={s} />)}
-                        </datalist>
-                      </div>
+                      <CustomSetupInput
+                        value={newTradeData.setup}
+                        onChange={val => setNewTradeData(prev => ({ ...prev, setup: val }))}
+                      />
 
                       <div className="form-field">
                         <label className="form-label">Notes</label>

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChartViewerModal from '../components/ui/ChartViewerModal';
+import CustomSetupInput from '../components/ui/CustomSetupInput';
 
 // --- Animated Count-Up PnL Component ---
 const AnimatedPnL = ({ value, duration = 800 }) => {
@@ -886,20 +887,10 @@ const Journal = () => {
                   </div>
                   <input className="input" type="datetime-local" value={formData.exitTime} onChange={e => handleFieldChange('exitTime', e.target.value)}/>
                 </div>
-                <div className="form-field">
-                  <label className="form-label">Setup</label>
-                  <input
-                    type="text"
-                    className="input"
-                    list="journal-setup-list"
-                    placeholder="e.g. OB, FVG, or type custom..."
-                    value={formData.setup}
-                    onChange={e => handleFieldChange('setup', e.target.value)}
-                  />
-                  <datalist id="journal-setup-list">
-                    {SETUPS.map(s => <option key={s} value={s} />)}
-                  </datalist>
-                </div>
+                <CustomSetupInput
+                  value={formData.setup}
+                  onChange={val => handleFieldChange('setup', val)}
+                />
                 <div className="form-field">
                   <label className="form-label">Trade Grade</label>
                   <select className="input" value={formData.grade} onChange={e => handleFieldChange('grade', e.target.value)}>
