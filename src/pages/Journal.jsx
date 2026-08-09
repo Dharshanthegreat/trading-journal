@@ -938,48 +938,59 @@ const Journal = () => {
 
                 <div className="form-field full">
                   <label className="form-label">Tags (comma separated)</label>
-                  <input className="input" placeholder="e.g. New York Session, breakout" value={formData.tags} onChange={e => handleFieldChange('tags', e.target.value)}/>
+                  <input 
+                    className="input" 
+                    placeholder="e.g. New York Session, London Session" 
+                    value={formData.tags} 
+                    onChange={e => handleFieldChange('tags', e.target.value)}
+                  />
                   
-                  {/* Preset Session & Strategy Tag Pills */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                    {['New York Session', 'London Session', 'Asian Session', 'Breakout', 'Reversal', 'Trend'].map(tag => {
+                  {/* Preset Session Tag Pills */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginTop: '8px' }}>
+                    {[
+                      { name: 'New York Session', label: 'New York Session', icon: '🗽' },
+                      { name: 'London Session', label: 'London Session', icon: '🇬🇧' },
+                      { name: 'Asian Session', label: 'Asian Session', icon: '🌏' }
+                    ].map(session => {
                       const currentTags = (formData.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-                      const isSelected = currentTags.some(t => t.toLowerCase() === tag.toLowerCase());
+                      const isSelected = currentTags.some(t => t.toLowerCase() === session.name.toLowerCase());
                       
                       const toggleTag = () => {
                         let newTags;
                         if (isSelected) {
-                          newTags = currentTags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+                          newTags = currentTags.filter(t => t.toLowerCase() !== session.name.toLowerCase());
                         } else {
-                          newTags = [...currentTags, tag];
+                          newTags = [...currentTags, session.name];
                         }
                         handleFieldChange('tags', newTags.join(', '));
                       };
 
                       return (
                         <motion.button
-                          key={tag}
+                          key={session.name}
                           type="button"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={toggleTag}
                           style={{
-                            fontSize: '0.68rem',
+                            fontSize: '0.72rem',
                             fontWeight: isSelected ? 700 : 600,
-                            padding: '4px 10px',
+                            padding: '6px 10px',
                             borderRadius: '6px',
-                            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-mid)',
-                            background: isSelected ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            background: isSelected ? 'var(--accent-soft)' : 'var(--surface-glass)',
                             color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
                             cursor: 'pointer',
-                            display: 'inline-flex',
+                            display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.15s ease'
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s ease',
+                            boxShadow: isSelected ? '0 0 10px var(--accent-soft)' : 'none'
                           }}
                         >
-                          {isSelected && <Check size={11} />}
-                          {tag}
+                          {isSelected ? <Check size={12} style={{ color: 'var(--accent)' }} /> : <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{session.icon}</span>}
+                          <span>{session.label}</span>
                         </motion.button>
                       );
                     })}
