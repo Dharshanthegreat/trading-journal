@@ -297,15 +297,15 @@ const CalendarPage = () => {
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s4)', paddingBottom: 'var(--s3)', marginBottom: 'var(--s4)', borderBottom: '1px solid var(--border)', fontSize: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Net P&L:</span>
-              <span style={{ fontWeight: 700, color: monthlySummary.pnl >= 0 ? 'var(--profit)' : 'var(--loss)' }}>
-                {monthlySummary.pnl >= 0 ? '+' : ''}$<AnimatedNumber value={monthlySummary.pnl} decimals={2} />
+              <span style={{ fontWeight: 700, color: monthlySummary.pnl >= 0 ? 'var(--profit)' : 'var(--loss)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {monthlySummary.pnl >= 0 ? '+' : ''}${Math.abs(monthlySummary.pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <span style={{ color: 'var(--border)', userSelect: 'none' }}>|</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Trades:</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                <AnimatedNumber value={monthlySummary.tradeCount} decimals={0} />
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {monthlySummary.tradeCount}
               </span>
             </div>
             <span style={{ color: 'var(--border)', userSelect: 'none' }}>|</span>
@@ -313,8 +313,8 @@ const CalendarPage = () => {
               <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <TrendingUp size={11} style={{ color: 'var(--profit)' }}/> Green:
               </span>
-              <span style={{ fontWeight: 600, color: 'var(--profit)' }}>
-                <AnimatedNumber value={monthlySummary.winDays} decimals={0} />d
+              <span style={{ fontWeight: 600, color: 'var(--profit)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {monthlySummary.winDays}d
               </span>
             </div>
             <span style={{ color: 'var(--border)', userSelect: 'none' }}>|</span>
@@ -322,20 +322,15 @@ const CalendarPage = () => {
               <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <TrendingDown size={11} style={{ color: 'var(--loss)' }}/> Red:
               </span>
-              <span style={{ fontWeight: 600, color: 'var(--loss)' }}>
-                <AnimatedNumber value={monthlySummary.lossDays} decimals={0} />d
+              <span style={{ fontWeight: 600, color: 'var(--loss)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {monthlySummary.lossDays}d
               </span>
             </div>
           </div>
 
           {/* Weekday Headers */}
-          <motion.div
-            key={format(currentMonth, 'yyyy-MM')}
-            variants={gridVariants}
-            initial="hidden"
-            animate="show"
-            className="calendar-grid"
-          >
+          {/* Weekday Headers */}
+          <div className="calendar-grid">
             {weekDays.map(d => (
               <div key={d} className="calendar-header-cell">{d}</div>
             ))}
@@ -362,11 +357,8 @@ const CalendarPage = () => {
               const isLoss = hasData && pnlValue < 0;
 
               return (
-                <motion.div
+                <div
                   key={i}
-                  variants={cellVariants}
-                  whileHover={inMonth ? { scale: 1.03, y: -3, zIndex: 20, transition: { type: 'spring', stiffness: 450, damping: 25 } } : {}}
-                  whileTap={inMonth ? { scale: 0.96, transition: { type: 'spring', stiffness: 500, damping: 20 } } : {}}
                   className={`calendar-cell ${!inMonth ? 'empty' : ''} ${today ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isSaturday ? 'week-total-cell' : ''} ${hasData ? 'has-data' : ''} ${isProfit ? 'profit-day' : ''} ${isLoss ? 'loss-day' : ''}`}
                   onClick={() => {
                     if (inMonth) {
@@ -400,21 +392,21 @@ const CalendarPage = () => {
                       <div className="calendar-trades">0 trades</div>
                     </div>
                   )}
-                </motion.div>
+                </div>
               );
             })}
-          </motion.div>
+          </div>
         </motion.div>
 
         {/* Day Detail Panel */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {selectedDate && (
             <motion.div
               key={format(selectedDate, 'yyyy-MM-dd')}
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 15, scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="glass"
               style={{ padding: 'var(--s5)' }}
             >
@@ -453,12 +445,8 @@ const CalendarPage = () => {
                   const tagsList = Array.isArray(rawTags) ? rawTags : (typeof rawTags === 'string' && rawTags ? rawTags.split(',').map(s => s.trim()).filter(Boolean) : []);
 
                   return (
-                    <motion.div 
+                    <div 
                       key={t.id || i}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.05 }}
-                      whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -555,7 +543,7 @@ const CalendarPage = () => {
                           )}
                         </div>
                       )}
-                    </motion.div>
+                    </div>
                   );
                 };
                 
