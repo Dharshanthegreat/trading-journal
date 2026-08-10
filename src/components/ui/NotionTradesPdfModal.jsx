@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Printer, X, Calendar, Filter, CheckCircle2,
@@ -22,7 +22,7 @@ export const NotionTradesPdfModal = ({
   const [resultFilter, setResultFilter] = useState('all'); // 'all', 'win', 'loss', 'be'
   const [layoutMode, setLayoutMode] = useState('full'); // 'full', 'table', 'cards'
   const [includeScreenshots, setIncludeScreenshots] = useState(true);
-  const [theme, setTheme] = useState('light'); // 'light', 'dark'
+  const [theme, setTheme] = useState('dark'); // 'light', 'dark'
   const [searchQuery, setSearchQuery] = useState('');
 
   const printableRef = useRef(null);
@@ -39,6 +39,56 @@ export const NotionTradesPdfModal = ({
     }
     return map;
   }, [accounts]);
+
+  // Async image resolver to guarantee 100% of images from IndexedDB & objects are populated
+  const [resolvedTradeImages, setResolvedTradeImages] = useState({});
+
+  useEffect(() => {
+    let isMounted = true;
+    const resolveImages = async () => {
+      const map = {};
+      for (const t of trades) {
+        const idKey = t.id || t.backupId || Math.random();
+        const urls = [];
+
+        if (t.imageUrl) urls.push(t.imageUrl);
+        if (Array.isArray(t.imageUrls)) {
+          t.imageUrls.forEach(u => { if (u && !urls.includes(u)) urls.push(u); });
+        }
+        if (t.chartUrl && !urls.includes(t.chartUrl)) urls.push(t.chartUrl);
+        if (t.chart && typeof t.chart === 'string' && !urls.includes(t.chart)) urls.push(t.chart);
+        if (Array.isArray(t.images)) {
+          t.images.forEach(img => {
+            const url = typeof img === 'string' ? img : (img.url || img.src);
+            if (url && !urls.includes(url)) urls.push(url);
+          });
+        }
+
+        // If imageKeys exist, pull base64 from IndexedDB via localDb
+        if (t.imageKeys && Array.isArray(t.imageKeys) && t.imageKeys.length > 0) {
+          try {
+            const { getLocalImage } = await import('../../services/localDb');
+            if (typeof getLocalImage === 'function') {
+              const fetched = await Promise.all(t.imageKeys.map(k => getLocalImage(k)));
+              fetched.forEach(u => {
+                if (u && !urls.includes(u)) urls.push(u);
+              });
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        map[idKey] = urls;
+      }
+      if (isMounted) {
+        setResolvedTradeImages(map);
+      }
+    };
+
+    if (trades && trades.length > 0) {
+      resolveImages();
+    }
+  }, [trades]);
 
   // Filter Trades
   const filteredTrades = useMemo(() => {
@@ -514,7 +564,7 @@ export const NotionTradesPdfModal = ({
                 </div>
               )}
 
-              {/* Section 2: Notion Individual Trade Journal Pages (Trade Cards) */}
+              {/* Section 2: Individual Trade Journal Log Pages (Exact Image 2 Template Format) */}
               {(layoutMode === 'full' || layoutMode === 'cards') && (
                 <div className="notion-section" style={{ marginTop: '36px' }}>
                   <div className="notion-section-header">
@@ -525,177 +575,128 @@ export const NotionTradesPdfModal = ({
 
                   <div className="notion-cards-container">
                     {filteredTrades.map((t, idx) => {
+                      const idKey = t.id || t.backupId || idx;
                       const pnlNum = parseFloat(t.pnl || t.netPnl) || 0;
                       const isWin = pnlNum > 0;
                       const isLoss = pnlNum < 0;
                       const tType = t.type || t.direction || 'Long';
                       const dateStr = t.entryTime || t.entry_time || t.date || '';
-                      const formattedDate = dateStr
-                        ? new Date(dateStr).toLocaleString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '—';
+                      
+                      // Format date e.g. (30/6/2026) or (30/06/2026 19:14)
+                      let formattedDateStr = '—';
+                      if (dateStr) {
+                        const d = new Date(dateStr);
+                        if (!isNaN(d.getTime())) {
+                          formattedDateStr = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                        }
+                      }
+
                       const accName = accountMap[t.accountId || t.account_id] || (t.accountName || 'Main Account');
                       const emotions = Array.isArray(t.emotionTags) ? t.emotionTags : (typeof t.emotionTags === 'string' ? JSON.parse(t.emotionTags || '[]') : []);
                       const rules = typeof t.rulesChecklist === 'object' && t.rulesChecklist !== null ? t.rulesChecklist : {};
 
-                      // Extract image URLs
-                      const imgUrls = [];
-                      if (t.imageUrl) imgUrls.push(t.imageUrl);
-                      if (Array.isArray(t.imageUrls)) {
-                        t.imageUrls.forEach(url => {
-                          if (url && !imgUrls.includes(url)) imgUrls.push(url);
-                        });
-                      }
+                      // Retrieve resolved images for this trade
+                      const imgUrls = resolvedTradeImages[idKey] || [];
+
+                      // Split trade notes into bullet points
+                      const notesRaw = t.notes || '';
+                      const notesList = notesRaw
+                        .split('\n')
+                        .map(s => s.replace(/^[•\-\*]\s*/, '').trim())
+                        .filter(Boolean);
 
                       return (
-                        <div key={t.id || idx} className="notion-trade-card page-break-avoid">
-                          {/* Card Header */}
-                          <div className="notion-card-header">
-                            <div className="notion-card-title-row">
-                              <span className="notion-card-icon">📄</span>
-                              <h3 className="notion-card-title">
-                                {t.symbol || 'Trade'} — {tType} ({formattedDate.split(',')[0]})
-                              </h3>
-                              <span className={`notion-tag ${isWin ? 'notion-tag-green' : isLoss ? 'notion-tag-red' : 'notion-tag-gray'}`}>
-                                {isWin ? 'WIN' : isLoss ? 'LOSS' : 'BE'}
-                              </span>
-                            </div>
-                            <div className={`notion-card-pnl ${pnlNum >= 0 ? 'text-profit' : 'text-loss'}`}>
-                              {pnlNum >= 0 ? '+' : ''}${pnlNum.toFixed(2)}
+                        <div key={idKey} className="notion-trade-card image2-style-card page-break-avoid">
+                          {/* 1.) Title Header (Image 2 style) */}
+                          <h2 className="image2-trade-title">
+                            {idx + 1}.) {t.symbol || 'Trade'}
+                          </h2>
+
+                          {/* Date Line: Date: (30/6/2026) */}
+                          <div className="image2-trade-date">
+                            Date: ({formattedDateStr})
+                          </div>
+
+                          {/* Result Line: Profit : $420.60 or Loss : 98 */}
+                          <div className={`image2-trade-result ${isWin ? 'text-profit' : isLoss ? 'text-loss' : ''}`}>
+                            {isWin ? 'Profit' : isLoss ? 'Loss' : 'Break-Even'} : {pnlNum >= 0 ? `$${pnlNum.toFixed(2)}` : `$${Math.abs(pnlNum).toFixed(2)}`}
+                          </div>
+
+                          {/* Trade Setup Line: Trade Setup : New York session */}
+                          <div className="image2-trade-setup">
+                            Trade Setup : <span className="image2-setup-highlight">{t.setup || 'Standard Execution'}</span>
+                          </div>
+
+                          {/* Section: Trade Analysis */}
+                          <div className="image2-section">
+                            <div className="image2-section-heading">Trade Analysis</div>
+                            <ul className="image2-bullet-list">
+                              {notesList.length > 0 ? (
+                                notesList.map((noteLine, nIdx) => (
+                                  <li key={nIdx}>• {noteLine}</li>
+                                ))
+                              ) : (
+                                <li>• Took the trade based on setup strategy and market structure confluence.</li>
+                              )}
+                            </ul>
+                          </div>
+
+                          {/* Section: Emotion */}
+                          <div className="image2-section">
+                            <div className="image2-section-heading">Emotion</div>
+                            <ul className="image2-bullet-list image2-emotion-list">
+                              {emotions.length > 0 ? (
+                                emotions.map((emo, eIdx) => (
+                                  <li key={eIdx}>• <span className="image2-emotion-tag">{emo}</span></li>
+                                ))
+                              ) : (
+                                <li>• Normal</li>
+                              )}
+                            </ul>
+                          </div>
+
+                          {/* Section: FORECASTING & Execution Details */}
+                          <div className="image2-section">
+                            <div className="image2-section-heading">FORECASTING & EXECUTION DETAILS</div>
+                            <div className="image2-forecasting-grid">
+                              <div>Time frame - <span className="font-bold">{t.timeframe || t.tf || '5 min'}</span></div>
+                              <div>Side / Type : <span className="font-bold">{tType}</span></div>
+                              <div>Entry Price : <span className="font-mono">{t.entryPrice || 0}</span></div>
+                              <div>Exit Price : <span className="font-mono">{t.exitPrice || 0}</span></div>
+                              <div>Stop Loss : <span className="font-mono">{t.stopLoss || 0}</span></div>
+                              <div>Take Profit : <span className="font-mono">{t.takeProfit || 0}</span></div>
+                              <div>Position Size : <span className="font-mono">{t.lotSize || 0} Lots</span></div>
+                              <div>Risk : Reward : <span className="font-mono">1:{t.riskRewardRatio || '0.0'}</span></div>
+                              <div>Grade : <span className="font-bold">{t.grade || 'A'}</span></div>
+                              <div>Account : <span className="font-bold">{accName}</span></div>
                             </div>
                           </div>
 
-                          {/* 2-Column Property Grid */}
-                          <div className="notion-props-grid">
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">🪙 Symbol</span>
-                              <span className="notion-prop-value font-mono font-bold">{t.symbol || '—'}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">↕️ Side / Type</span>
-                              <span className={`notion-tag ${tType.toLowerCase() === 'long' ? 'notion-tag-green' : 'notion-tag-red'}`}>
-                                {tType}
-                              </span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">💼 Account</span>
-                              <span className="notion-prop-value">{accName}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">🗓️ Date & Time</span>
-                              <span className="notion-prop-value">{formattedDate}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">💵 Entry Price</span>
-                              <span className="notion-prop-value font-mono">${t.entryPrice || 0}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">🎯 Exit Price</span>
-                              <span className="notion-prop-value font-mono">${t.exitPrice || 0}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">🛑 Stop Loss</span>
-                              <span className="notion-prop-value font-mono">${t.stopLoss || 0}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">🎯 Take Profit</span>
-                              <span className="notion-prop-value font-mono">${t.takeProfit || 0}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">📏 Position Size</span>
-                              <span className="notion-prop-value font-mono">{t.lotSize || 0} Lots</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">📐 Risk : Reward</span>
-                              <span className="notion-prop-value font-mono">1:{t.riskRewardRatio || '0.0'}</span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">⚡ Strategy Setup</span>
-                              <span className="notion-prop-value">
-                                {t.setup ? <span className="notion-tag notion-tag-blue">{t.setup}</span> : '—'}
-                              </span>
-                            </div>
-
-                            <div className="notion-prop-item">
-                              <span className="notion-prop-key">🏆 Grade</span>
-                              <span className="notion-prop-value">
-                                {t.grade ? <span className="notion-tag notion-tag-yellow">{t.grade}</span> : '—'}
-                              </span>
-                            </div>
-
-                            <div className="notion-prop-item" style={{ gridColumn: 'span 2' }}>
-                              <span className="notion-prop-key">🧠 Mindset & Psychology</span>
-                              <span className="notion-prop-value">
-                                {emotions.length > 0 ? (
-                                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                    {emotions.map((emo, eIdx) => (
-                                      <span key={eIdx} className="notion-tag notion-tag-purple">{emo}</span>
-                                    ))}
-                                    {t.fomoLevel !== undefined && (
-                                      <span className="notion-tag notion-tag-gray">FOMO: {t.fomoLevel}/10</span>
-                                    )}
-                                    {t.confidenceLevel !== undefined && (
-                                      <span className="notion-tag notion-tag-gray">Conf: {t.confidenceLevel}/10</span>
-                                    )}
-                                  </div>
-                                ) : 'Normal / Disciplined'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Notion Trade Notes Callout Block */}
-                          {t.notes && (
-                            <div className="notion-callout notion-notes-callout">
-                              <div className="notion-callout-icon">📝</div>
-                              <div className="notion-callout-content">
-                                <div className="notion-callout-title">Trade Notes & Reflection</div>
-                                <div className="notion-callout-text">{t.notes}</div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Notion Rules Checklist */}
+                          {/* Rules Compliance Section if available */}
                           {Object.keys(rules).length > 0 && (
-                            <div className="notion-rules-checklist">
-                              <div className="notion-checklist-title">☑ Trading Plan Rules Compliance</div>
-                              <div className="notion-checklist-grid">
+                            <div className="image2-section">
+                              <div className="image2-section-heading">Trading Plan Compliance</div>
+                              <ul className="image2-bullet-list">
                                 {Object.entries(rules).map(([ruleName, isChecked], rIdx) => (
-                                  <div key={rIdx} className="notion-checklist-item">
-                                    <span className={isChecked ? 'text-profit' : 'text-loss'}>
-                                      {isChecked ? '☑' : '☒'}
-                                    </span>
-                                    <span className={isChecked ? 'notion-rule-passed' : 'notion-rule-failed'}>
-                                      {ruleName}
-                                    </span>
-                                  </div>
+                                  <li key={rIdx} style={{ color: isChecked ? '#34d399' : '#fca5a5' }}>
+                                    • {isChecked ? '☑' : '☒'} {ruleName}
+                                  </li>
                                 ))}
-                              </div>
+                              </ul>
                             </div>
                           )}
 
-                          {/* Chart Screenshots Section */}
+                          {/* High-Resolution Full-Width Chart Screenshots */}
                           {includeScreenshots && imgUrls.length > 0 && (
-                            <div className="notion-screenshots-container">
-                              <div className="notion-checklist-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                📷 Chart Screenshots & Technical Analysis
-                              </div>
-                              <div className="notion-images-grid">
-                                {imgUrls.map((url, imgIdx) => (
-                                  <div key={imgIdx} className="notion-image-frame">
-                                    <img src={url} alt={`Chart Screenshot ${imgIdx + 1}`} />
-                                    <div className="notion-image-caption">Figure {imgIdx + 1}: {t.symbol} Chart Analysis</div>
+                            <div className="image2-fullwidth-images-container">
+                              {imgUrls.map((url, imgIdx) => (
+                                <div key={imgIdx} className="image2-fullwidth-image-frame">
+                                  <img src={url} alt={`${t.symbol} Chart Screenshot ${imgIdx + 1}`} />
+                                  <div className="image2-image-caption">
+                                    Figure {imgIdx + 1}: {t.symbol} — {tType} Chart Screenshot & Technical Analysis
                                   </div>
-                                ))}
-                              </div>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>

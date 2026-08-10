@@ -2481,5 +2481,174 @@ body.theme-pitch-black .progress-fill {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   IMAGE 2 STYLED TRADE CARDS (REFERENCE TEMPLATE FORMAT)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.image2-style-card {
+  padding: 28px !important;
+  border-radius: 10px !important;
+  margin-bottom: 32px !important;
+}
+
+.notion-light-theme .image2-style-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+.notion-dark-theme .image2-style-card {
+  background: #14161f !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.image2-trade-title {
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  margin: 0 0 6px 0 !important;
+  font-family: 'Playfair Display', Lora, Georgia, serif !important;
+}
+
+.notion-light-theme .image2-trade-title {
+  color: #b45309 !important;
+}
+
+.notion-dark-theme .image2-trade-title {
+  color: #f59e0b !important;
+}
+
+.image2-trade-date {
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  margin-bottom: 6px !important;
+}
+
+.notion-light-theme .image2-trade-date {
+  color: #475569 !important;
+}
+
+.notion-dark-theme .image2-trade-date {
+  color: #94a3b8 !important;
+}
+
+.image2-trade-result {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  margin-bottom: 6px !important;
+}
+
+.image2-trade-setup {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 18px !important;
+}
+
+.notion-light-theme .image2-trade-setup { color: #334155; }
+.notion-dark-theme .image2-trade-setup { color: #cbd5e1; }
+
+.image2-setup-highlight {
+  font-weight: 700 !important;
+}
+
+.image2-section {
+  margin-bottom: 18px !important;
+}
+
+.image2-section-heading {
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em !important;
+  margin-bottom: 8px !important;
+  font-family: 'Playfair Display', Lora, Georgia, serif !important;
+}
+
+.notion-light-theme .image2-section-heading { color: #b45309 !important; }
+.notion-dark-theme .image2-section-heading { color: #f59e0b !important; }
+
+.image2-bullet-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.image2-bullet-list li {
+  font-size: 0.82rem !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+}
+
+.notion-light-theme .image2-bullet-list li { color: #1e293b !important; }
+.notion-dark-theme .image2-bullet-list li { color: #e2e8f0 !important; }
+
+.image2-emotion-tag {
+  color: #10b981 !important;
+  font-weight: 600 !important;
+}
+
+.image2-forecasting-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px 24px !important;
+  font-size: 0.8rem !important;
+  padding: 14px 18px !important;
+  border-radius: 8px !important;
+}
+
+.notion-light-theme .image2-forecasting-grid {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.notion-dark-theme .image2-forecasting-grid {
+  background: #1e202e !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+}
+
+.image2-fullwidth-images-container {
+  margin-top: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+
+.image2-fullwidth-image-frame {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: #000000 !important;
+}
+
+.notion-light-theme .image2-fullwidth-image-frame {
+  border: 1px solid #cbd5e1 !important;
+}
+
+.notion-dark-theme .image2-fullwidth-image-frame {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.image2-fullwidth-image-frame img {
+  width: 100% !important;
+  max-height: 600px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+.image2-image-caption {
+  padding: 8px 12px !important;
+  font-size: 0.68rem !important;
+  text-align: center !important;
+  font-weight: 500 !important;
+}
+
+.notion-light-theme .image2-image-caption { background: #f1f5f9; color: #64748b; }
+.notion-dark-theme .image2-image-caption { background: #0f1117; color: #94a3b8; }
+
+
 
 
