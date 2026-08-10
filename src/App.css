@@ -1851,27 +1851,45 @@ body.theme-minimal .chart-card-setup {
   color: var(--text-muted);
 }
 
-/* Top Dashboard Columns Grid */
-.tz-dashboard-grid-top {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr 1.35fr;
+/* Redesigned Zero-Empty-Space Master Grid Layout */
+.tz-dashboard-master-grid {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   margin-bottom: 20px;
 }
 
-@media (max-width: 1024px) {
-  .tz-dashboard-grid-top {
+.tz-dashboard-row-1 {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 0.8fr 1.1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.tz-dashboard-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .tz-dashboard-row-1 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tz-dashboard-row-2 {
     grid-template-columns: 1fr;
   }
 }
 
-.tz-grid-column-flex {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+@media (max-width: 768px) {
+  .tz-dashboard-row-1 {
+    grid-template-columns: 1fr;
+  }
 }
 
-.tz-balance-card {
+/* Compact Card Rules - No Artificial Height Stretching */
+.tz-balance-card-compact {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
@@ -1879,11 +1897,135 @@ body.theme-minimal .chart-card-setup {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 100%;
   position: relative;
   overflow: hidden;
-  min-height: 180px;
 }
+
+.tz-card-compact {
+  padding: 14px 16px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.tz-card-mid {
+  padding: 14px 16px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.tz-card-subtitle {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tz-balance-amount {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+.tz-balance-subtext {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.tz-balance-chart-wrap {
+  width: 100%;
+  height: 65px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.tz-metric-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+.tz-card-subrow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 8px;
+}
+
+.tz-outcomes-compact {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.tz-outcome-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.64rem;
+}
+
+.tz-outcome-chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tz-outcome-chip .profit-dot { background: var(--profit); }
+.tz-outcome-chip .be-dot { background: var(--text-muted); }
+.tz-outcome-chip .loss-dot { background: var(--loss); }
+
+.tz-avg-winloss-boxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.tz-avg-box {
+  border-radius: var(--r-lg);
+  padding: 8px 10px;
+}
+
+.win-box {
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.loss-box {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.tz-avg-box-title {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tz-avg-box-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 2px;
+}
+
+.profit-val { color: var(--profit); }
+.loss-val { color: var(--loss); }
 
 .tz-balance-header {
   display: flex;
