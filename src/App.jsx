@@ -34,6 +34,7 @@ import Accounts from './pages/Accounts';
 import Achievements from './pages/Achievements';
 import TradingRules from './pages/TradingRules';
 import AssetAllocation from './pages/AssetAllocation';
+import { CompassScoreCard } from './components/ui/CompassScoreCard';
 import { ai as aiApi, publicApi, accounts as accountsApi, rules as rulesApi, news as newsApi } from './services/api';
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
@@ -1259,15 +1260,15 @@ const Dashboard = () => {
         transition={{ duration: 0.45, delay: 0.1 }}
         className="tz-dashboard-grid-top"
       >
-        {/* Column 1: Account Balance */}
-        <motion.div whileHover={{ translateY: -3 }} className="tz-balance-card">
+        {/* Column 1: Account Balance (Compact) */}
+        <motion.div whileHover={{ translateY: -3 }} className="tz-balance-card" style={{ minHeight: '180px', padding: '14px 16px' }}>
           <div className="tz-balance-header">
             <div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Account Balance</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>Account Balance</div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)', marginTop: '2px' }}>
                 <AnimatedDashNumber value={startBalance + stats.totalPnL} prefix="$" decimals={2} />
               </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Last 90 Days</div>
+              <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '1px' }}>Last 90 Days</div>
             </div>
             <div className={`tz-balance-badge ${stats.totalPnL > 0 ? 'profit' : stats.totalPnL < 0 ? 'loss' : 'neutral'}`}>
               {startBalance > 0 ? (stats.totalPnL >= 0 ? '+' : '') : ''}
@@ -1275,7 +1276,7 @@ const Dashboard = () => {
             </div>
           </div>
           
-          <div style={{ width: '100%', height: '170px', overflow: 'hidden', marginTop: '16px' }}>
+          <div style={{ width: '100%', height: '85px', overflow: 'hidden', marginTop: '8px' }}>
             {balanceData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={balanceData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
@@ -1413,57 +1414,16 @@ const Dashboard = () => {
           </motion.div>
         </div>
 
-        {/* Column 3: SCORE & Total Trades */}
+        {/* Column 3: Compass Score & Total Trades */}
         <div className="tz-grid-column-flex">
-          {/* SCORE Card */}
-          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1.4 }}>
-            <div className="tz-card-header" style={{ marginBottom: '6px' }}>
-              <div className="tz-card-title">
-                <Brain size={14} /> SCORE
-              </div>
-            </div>
-            <div className="tz-radar-container">
-              {filteredTrades.length > 0 ? (
-                <ResponsiveContainer width="100%" height={140}>
-                  <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
-                    <PolarGrid stroke="var(--border-mid)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 7.5 }} />
-                    <Radar name="Score" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.25} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                  Log trades to view score
-                </div>
-              )}
-              
-              <div className="tz-score-display" style={{ marginTop: '2px' }}>
-                <div className="tz-score-label">YOUR SCORE</div>
-                <div className="tz-score-value" style={{ fontSize: '1.4rem' }}>
-                  <AnimatedDashNumber value={scoreValue} decimals={1} />
-                </div>
-                
-                <div className="tz-score-bar-wrapper" style={{ marginTop: '4px' }}>
-                  <div className="tz-score-bar-gradient" />
-                  <motion.div
-                    initial={{ left: '0%' }}
-                    animate={{ left: `${scoreValue}%` }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
-                    className="tz-score-bar-pin"
-                  />
-                </div>
-                
-                <div className="tz-score-bar-ticks">
-                  <span>0</span>
-                  <span>20</span>
-                  <span>40</span>
-                  <span>60</span>
-                  <span>80</span>
-                  <span>100</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          {/* Compass Score Card */}
+          <CompassScoreCard
+            scoreValue={scoreValue}
+            radarData={radarData}
+            stats={stats}
+            consistencyScore={consistencyScore}
+            hasTrades={filteredTrades.length > 0}
+          />
 
           {/* Total Trades */}
           <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1, minHeight: '125px', justifyContent: 'space-between' }}>
