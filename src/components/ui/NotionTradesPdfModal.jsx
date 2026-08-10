@@ -205,7 +205,14 @@ export const NotionTradesPdfModal = ({
 
   // Print PDF Trigger
   const handlePrint = () => {
-    window.print();
+    // Add print active helper class
+    document.body.classList.add('is-printing-notion-pdf');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('is-printing-notion-pdf');
+      }, 500);
+    }, 100);
   };
 
   if (!isOpen) return null;

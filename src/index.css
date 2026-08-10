@@ -2418,66 +2418,99 @@ body.theme-pitch-black .progress-fill {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PRINT MEDIA QUERY ENGINE FOR HIGH-RES VECTOR PDF EXPORT
+   FAIL-SAFE VECTOR PDF EXPORT PRINT ENGINE
    ═══════════════════════════════════════════════════════════════════ */
 
 @media print {
-  body * {
-    visibility: hidden !important;
+  /* Hide main app UI completely during PDF print */
+  #root > *:not(.notion-modal-overlay) {
+    display: none !important;
   }
 
-  #notion-pdf-printable-area,
-  #notion-pdf-printable-area * {
-    visibility: visible !important;
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset modal overlay container for unclipped full-page printing */
+  .notion-modal-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+    display: block !important;
+  }
+
+  .notion-modal-container {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide modal header, toolbar buttons, close button */
+  .notion-modal-header,
+  .notion-modal-toolbar,
+  button,
+  .btn {
+    display: none !important;
+  }
+
+  .notion-modal-body {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
   }
 
   #notion-pdf-printable-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: relative !important;
+    display: block !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .notion-modal-overlay {
-    position: static !important;
-    background: transparent !important;
-    padding: 0 !important;
+  /* Force background colors, borders, and gradient highlights to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .notion-modal-container {
-    height: auto !important;
-    max-width: 100% !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-  }
-
-  .notion-modal-header,
-  .notion-modal-toolbar {
-    display: none !important;
-  }
-
-  .notion-modal-body {
-    padding: 0 !important;
-    background: transparent !important;
-    overflow: visible !important;
-  }
-
-  .page-break-avoid {
+  /* Avoid breaking trade cards and tables across pages */
+  .page-break-avoid,
+  .image2-style-card,
+  .notion-trade-card,
+  .notion-table-wrapper,
+  .notion-callout,
+  .image2-fullwidth-image-frame {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-  }
-
-  .notion-trade-card {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    margin-bottom: 24px !important;
   }
 }
 
