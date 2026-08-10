@@ -5,8 +5,10 @@ import { useJournal } from '../contexts/JournalContext';
 import { backup as backupApi, accounts as accountsApi, trades as tradesApi } from '../services/api';
 import {
   Database as DatabaseIcon, Download, RefreshCw, AlertTriangle, Loader,
-  FileJson, Check, History, Trash2, Shield, RotateCcw, Wallet
+  FileJson, Check, History, Trash2, Shield, RotateCcw, Wallet,
+  FileText, Printer, Sparkles
 } from 'lucide-react';
+import { NotionTradesPdfModal } from '../components/ui/NotionTradesPdfModal';
 
 const Backup = () => {
   const { fetchTrades, fetchAnalytics } = useTrades();
@@ -25,6 +27,33 @@ const Backup = () => {
   const [importSuccess, setImportSuccess] = useState(false);
   const [savingLocal, setSavingLocal] = useState(false);
   const [localSaveResult, setLocalSaveResult] = useState(null);
+
+  // Notion Trades PDF Export State
+  const { trades } = useTrades();
+  const [notionPdfModalOpen, setNotionPdfModalOpen] = useState(false);
+  const [pdfTradesList, setPdfTradesList] = useState([]);
+  const [pdfAccountsList, setPdfAccountsList] = useState([]);
+  const [loadingPdfData, setLoadingPdfData] = useState(false);
+
+  const handleOpenNotionPdf = async () => {
+    setNotionPdfModalOpen(true);
+    setLoadingPdfData(true);
+    try {
+      const [tradesRes, accountsRes] = await Promise.all([
+        tradesApi.list({ limit: 2000 }).catch(() => ({ trades: trades || [] })),
+        accountsApi.list().catch(() => [])
+      ]);
+      const fetchedTrades = tradesRes.trades || trades || [];
+      const fetchedAccounts = Array.isArray(accountsRes) ? accountsRes : (accountsRes.accounts || []);
+      setPdfTradesList(fetchedTrades);
+      setPdfAccountsList(fetchedAccounts);
+    } catch (err) {
+      console.error('Failed to load full trade list for PDF export:', err);
+      setPdfTradesList(trades || []);
+    } finally {
+      setLoadingPdfData(false);
+    }
+  };
 
   // Deleted Accounts State
   const [deletedAccounts, setDeletedAccounts] = useState([]);
@@ -374,6 +403,35 @@ const Backup = () => {
                     <Download size={13} /> Export Backup
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+
+          {/* Card: Notion Template Trades PDF Exporter */}
+          <div className="glass-deep" style={{
+            padding: 'var(--s4)',
+            borderRadius: 'var(--r-md)',
+            border: '1px solid rgba(129, 140, 248, 0.3)',
+            background: 'linear-gradient(135deg, rgba(129, 140, 248, 0.08) 0%, rgba(15, 17, 23, 0.6) 100%)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s3)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 2 }}>
+                  <span style={{ fontSize: '1rem' }}>📓</span>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Export Trades as Notion Template PDF</h4>
+                  <span className="badge" style={{ fontSize: '0.6rem', background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--border-accent)' }}>
+                    NOTION PDF
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Generate a publication-ready Notion template PDF document for all your trades with performance callout stats, database table, trade journal cards, and chart screenshots.
+                </p>
+              </div>
+              <button className="btn btn-primary" onClick={handleOpenNotionPdf} style={{
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)'
+              }}>
+                <FileText size={14} /> Export Notion PDF
               </button>
             </div>
           </div>
@@ -833,6 +891,15 @@ const Backup = () => {
 
         </div>
       </div>
+
+      {/* Notion Trades PDF Export Modal */}
+      <NotionTradesPdfModal
+        isOpen={notionPdfModalOpen}
+        onClose={() => setNotionPdfModalOpen(false)}
+        trades={pdfTradesList.length > 0 ? pdfTradesList : trades}
+        accounts={pdfAccountsList}
+        user={user}
+      />
     </div>
   );
 };
