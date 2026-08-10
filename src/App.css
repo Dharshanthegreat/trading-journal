@@ -1854,7 +1854,7 @@ body.theme-minimal .chart-card-setup {
 /* Top Dashboard Columns Grid */
 .tz-dashboard-grid-top {
   display: grid;
-  grid-template-columns: 1.15fr 1.35fr 1.5fr;
+  grid-template-columns: 1fr 1.25fr 1.35fr;
   gap: 16px;
   margin-bottom: 20px;
 }
