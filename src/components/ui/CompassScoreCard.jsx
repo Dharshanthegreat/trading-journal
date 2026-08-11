@@ -10,11 +10,11 @@ const AnimatedNumber = ({ value = 0, decimals = 1 }) => {
 
 // 3D Isometric Compass Box Component
 const Compass3DBox = ({ metrics = [] }) => {
-  // SVG isometric projection math
+  // SVG isometric projection math (fitted inside 300x140 boundary)
   const project = (x, y, z) => {
     // x: 0..100, y: 0..100, z: 0..100
-    const isoX = 145 + (x - y) * 1.05;
-    const isoY = 90 + (x + y) * 0.48 - z * 0.65;
+    const isoX = 150 + (x - y) * 0.95;
+    const isoY = 52 + (x + y) * 0.36 - z * 0.42;
     return { x: isoX, y: isoY };
   };
 
@@ -28,8 +28,8 @@ const Compass3DBox = ({ metrics = [] }) => {
     { x: 60, y: 85, key: 'recoveryFactor', label: 'Recovery Factor' }
   ];
 
-  const w = 12; // pillar width
-  const d = 12; // pillar depth
+  const w = 11; // pillar width
+  const d = 11; // pillar depth
 
   // 3D Floor grid boundary points
   const p000 = project(0, 0, 0);
@@ -43,8 +43,8 @@ const Compass3DBox = ({ metrics = [] }) => {
   const p011 = project(0, 100, 100);
 
   return (
-    <div className="compass-3d-wrapper" style={{ width: '100%', height: '155px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width="100%" height="100%" viewBox="0 0 300 155" style={{ overflow: 'visible' }}>
+    <div className="compass-3d-wrapper" style={{ width: '100%', height: '140px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <svg width="100%" height="100%" viewBox="0 0 300 135" style={{ overflow: 'hidden' }}>
         <defs>
           <linearGradient id="compassFloorGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="rgba(56, 189, 248, 0.12)" />
@@ -107,7 +107,7 @@ const Compass3DBox = ({ metrics = [] }) => {
         {positions.map((posInfo, idx) => {
           const metric = metrics.find(m => m.id === posInfo.key) || { score: 50 };
           const score = Math.max(15, Math.min(100, metric.score || 50));
-          const h = (score / 100) * 75; // pillar height
+          const h = (score / 100) * 52; // pillar height scaled to fit
 
           const px = posInfo.x;
           const py = posInfo.y;
@@ -152,14 +152,14 @@ const Compass3DBox = ({ metrics = [] }) => {
               <circle
                 cx={centerTop.x}
                 cy={centerTop.y}
-                r="4"
+                r="3.5"
                 fill="#bae6fd"
                 filter="url(#cyanCapGlow)"
               />
               <circle
                 cx={centerTop.x}
                 cy={centerTop.y}
-                r="1.8"
+                r="1.5"
                 fill="#ffffff"
               />
             </g>
@@ -197,33 +197,33 @@ export const CompassScoreCard = ({
       style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '14px 16px', position: 'relative' }}
     >
       {/* Top Header */}
-      <div className="tz-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="tz-card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Compass size={15} style={{ color: '#38bdf8' }} />
-          <span style={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.04em', fontSize: '0.78rem' }}>COMPASS SCORE</span>
+      <div className="tz-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', marginBottom: '4px' }}>
+        <div className="tz-card-title" style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flexShrink: 1 }}>
+          <Compass size={14} style={{ color: '#38bdf8', flexShrink: 0 }} />
+          <span style={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.04em', fontSize: '0.74rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>COMPASS SCORE</span>
           <button
             onClick={() => setShowTooltip(prev => !prev)}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
             title="What is Compass Score?"
           >
-            <Info size={13} />
+            <Info size={12} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {/* View Switcher */}
           <div style={{ display: 'flex', background: 'var(--surface-glass)', padding: '2px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
             <button
               onClick={() => setViewMode('3d')}
               className={`btn btn-xs ${viewMode === '3d' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.6rem', padding: '2px 6px', height: 'auto' }}
+              style={{ fontSize: '0.58rem', padding: '2px 5px', height: 'auto', lineHeight: 1 }}
             >
               3D Box
             </button>
             <button
               onClick={() => setViewMode('radar')}
               className={`btn btn-xs ${viewMode === 'radar' ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.6rem', padding: '2px 6px', height: 'auto' }}
+              style={{ fontSize: '0.58rem', padding: '2px 5px', height: 'auto', lineHeight: 1 }}
             >
               Radar
             </button>
@@ -231,11 +231,11 @@ export const CompassScoreCard = ({
 
           {/* Score Badge */}
           <div style={{
-            fontSize: '1.5rem',
+            fontSize: '1.35rem',
             fontWeight: 800,
             fontFamily: 'JetBrains Mono, monospace',
             color: '#38bdf8',
-            textShadow: '0 0 12px rgba(56, 189, 248, 0.45)',
+            textShadow: '0 0 10px rgba(56, 189, 248, 0.45)',
             lineHeight: 1
           }}>
             <AnimatedNumber value={scoreValue} decimals={1} />
@@ -260,16 +260,16 @@ export const CompassScoreCard = ({
       )}
 
       {/* Main Visual Content */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', my: '2px' }}>
         {!hasTrades ? (
-          <div style={{ height: 150, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem', gap: '6px' }}>
+          <div style={{ height: 140, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem', gap: '6px' }}>
             <Compass size={24} style={{ opacity: 0.3 }} />
             Log trades to calculate your Compass Score
           </div>
         ) : viewMode === '3d' ? (
           <Compass3DBox metrics={metrics} />
         ) : (
-          <div style={{ height: 155, width: '100%' }}>
+          <div style={{ height: 140, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="68%" data={radarData}>
                 <PolarGrid stroke="var(--border-mid)" />
@@ -288,6 +288,7 @@ export const CompassScoreCard = ({
         gap: '6px 10px',
         borderTop: '1px solid var(--border)',
         paddingTop: '8px',
+        marginTop: '4px',
         fontSize: '0.65rem'
       }}>
         {metrics.map(m => (
