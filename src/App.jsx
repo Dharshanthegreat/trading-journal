@@ -1260,55 +1260,50 @@ const Dashboard = () => {
         transition={{ duration: 0.45, delay: 0.1 }}
         className="tz-dashboard-grid-top"
       >
-        {/* Redesigned Dashboard Top Section: Zero Empty Space Layout */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.1 }}
-          className="tz-dashboard-master-grid"
-        >
-          {/* Top Row: Financials & Core Performance */}
-          <div className="tz-dashboard-row-1">
-            {/* Account Balance Card */}
-            <motion.div whileHover={{ translateY: -2 }} className="tz-balance-card-compact">
-              <div className="tz-balance-header">
-                <div>
-                  <div className="tz-card-subtitle">Account Balance</div>
-                  <div className="tz-balance-amount">
-                    <AnimatedDashNumber value={startBalance + stats.totalPnL} prefix="$" decimals={2} />
-                  </div>
-                  <div className="tz-balance-subtext">Last 90 Days</div>
-                </div>
-                <div className={`tz-balance-badge ${stats.totalPnL > 0 ? 'profit' : stats.totalPnL < 0 ? 'loss' : 'neutral'}`}>
-                  {startBalance > 0 ? (stats.totalPnL >= 0 ? '+' : '') : ''}
-                  {(startBalance > 0 ? (stats.totalPnL / startBalance) * 100 : 0).toFixed(2)}%
-                </div>
+        {/* Column 1: Account Balance */}
+        <motion.div whileHover={{ translateY: -3 }} className="tz-balance-card">
+          <div className="tz-balance-header">
+            <div>
+              <div className="tz-card-subtitle">Account Balance</div>
+              <div className="tz-balance-amount">
+                <AnimatedDashNumber value={startBalance + stats.totalPnL} prefix="$" decimals={2} />
               </div>
-              
-              <div className="tz-balance-chart-wrap">
-                {balanceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={balanceData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                      <defs>
-                        <linearGradient id="tzBalanceRedesignGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.15}/>
-                          <stop offset="95%" stopColor="var(--profit)" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="balance" stroke="var(--profit)" strokeWidth={2} fill="url(#tzBalanceRedesignGrad)" />
-                      <Tooltip content={<BalanceTooltip />} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                    No balance log history
-                  </div>
-                )}
+              <div className="tz-balance-subtext">Last 90 Days</div>
+            </div>
+            <div className={`tz-balance-badge ${stats.totalPnL > 0 ? 'profit' : stats.totalPnL < 0 ? 'loss' : 'neutral'}`}>
+              {startBalance > 0 ? (stats.totalPnL >= 0 ? '+' : '') : ''}
+              {(startBalance > 0 ? (stats.totalPnL / startBalance) * 100 : 0).toFixed(2)}%
+            </div>
+          </div>
+          
+          <div className="tz-balance-chart-wrap">
+            {balanceData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={balanceData} margin={{ top: 10, right: 0, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="tzBalanceRedesignGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--profit)" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="var(--profit)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <Area type="monotone" dataKey="balance" stroke="var(--profit)" strokeWidth={2.5} fill="url(#tzBalanceRedesignGrad)" />
+                  <Tooltip content={<BalanceTooltip />} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                No balance log history
               </div>
-            </motion.div>
+            )}
+          </div>
+        </motion.div>
 
+        {/* Column 2: Performance Metrics (Winrate, Consistency, Avg Win/Loss, Profit Factor) */}
+        <div className="tz-grid-column-flex">
+          {/* Top Subrow: Winrate & Consistency */}
+          <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: '115px' }}>
             {/* Trade Winrate */}
-            <motion.div whileHover={{ translateY: -2 }} className="tz-card tz-card-compact">
+            <motion.div whileHover={{ translateY: -3 }} className="tz-card tz-hoverable" style={{ flex: 1.4, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div className="tz-card-subtitle">TRADE WINRATE</div>
@@ -1316,7 +1311,7 @@ const Dashboard = () => {
                     <AnimatedDashNumber value={stats.winRate} suffix="%" decimals={0} />
                   </div>
                 </div>
-                <svg width="36" height="36" viewBox="0 0 32 32">
+                <svg width="40" height="40" viewBox="0 0 32 32">
                   <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-strong)" strokeWidth="3" />
                   <motion.circle
                     cx="16" cy="16" r="12" fill="none"
@@ -1329,15 +1324,15 @@ const Dashboard = () => {
                   />
                 </svg>
               </div>
-              <div className="tz-card-subrow">
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '4px', marginTop: '6px' }}>
                 <div>Losses <strong style={{ color: 'var(--text-secondary)' }}>{stats.losses}</strong></div>
                 <div>Wins <strong style={{ color: 'var(--profit)' }}>{stats.wins}</strong></div>
               </div>
             </motion.div>
 
             {/* Consistency */}
-            <motion.div whileHover={{ translateY: -2 }} className="tz-card tz-card-compact">
-              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <motion.div whileHover={{ translateY: -3 }} className="tz-card tz-hoverable" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '14px 16px' }}>
+              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <span className="tz-card-subtitle">CONSISTENCY</span>
                 <Shield size={13} style={{ opacity: 0.6 }} />
               </div>
@@ -1345,107 +1340,154 @@ const Dashboard = () => {
                 <AnimatedDashNumber value={consistencyScore} suffix="%" decimals={0} />
               </div>
             </motion.div>
+          </div>
 
-            {/* Total Trades */}
-            <motion.div whileHover={{ translateY: -2 }} className="tz-card tz-card-compact">
+          {/* AVG WIN / LOSS Card */}
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1.1, minHeight: '125px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '14px 16px' }}>
+            <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="tz-card-subtitle">AVG WIN / LOSS</span>
+              <BarChart2 size={14} style={{ opacity: 0.6 }} />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', margin: '4px 0' }}>
+              <div style={{ background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', borderRadius: 'var(--r-lg)', padding: '6px 10px' }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG WIN</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
+                  <AnimatedDashNumber value={stats.avgWin} prefix="+$" decimals={2} />
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(248, 113, 113, 0.08)', border: '1px solid rgba(248, 113, 113, 0.2)', borderRadius: 'var(--r-lg)', padding: '6px 10px' }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG LOSS</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--loss)', marginTop: '2px' }}>
+                  <AnimatedDashNumber value={stats.avgLoss} prefix="-$" decimals={2} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '4px', marginTop: '4px' }}>
+              <span>Payoff Ratio (Avg Win / Avg Loss)</span>
+              <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
+                {stats.avgLoss > 0 ? (stats.avgWin / stats.avgLoss).toFixed(2) + 'x' : '—'}
+              </strong>
+            </div>
+          </motion.div>
+
+          {/* Profit Factor Card */}
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1, minHeight: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '14px 16px' }}>
+            <div>
+              <div className="tz-card-subtitle">PROFIT FACTOR</div>
+              <div className="tz-metric-val">
+                {stats.profitFactor === 'Infinity' ? '—' : <AnimatedDashNumber value={stats.profitFactor} decimals={2} />}
+              </div>
+            </div>
+            
+            <div className="tz-pf-bars-container" style={{ margin: '4px 0' }}>
+              {[...Array(28)].map((_, idx) => {
+                const isWin = idx < pfBars.green;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="tz-pf-stats" style={{ paddingTop: '4px', marginTop: '4px' }}>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total profit</span>
+                <span style={{ color: 'var(--profit)', fontWeight: 700 }}>
+                  +{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+              <div className="tz-pf-stat-row">
+                <span style={{ color: 'var(--text-muted)' }}>Total loss</span>
+                <span style={{ color: 'var(--loss)', fontWeight: 700 }}>
+                  -{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(2) : '0.00'}%
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Column 3: SCORE / Compass & Total Trades */}
+        <div className="tz-grid-column-flex">
+          {/* Compass Score Card */}
+          <CompassScoreCard
+            scoreValue={scoreValue}
+            radarData={radarData}
+            stats={stats}
+            consistencyScore={consistencyScore}
+            hasTrades={filteredTrades.length > 0}
+          />
+
+          {/* Total Trades Card */}
+          <motion.div whileHover={{ translateY: -3 }} className="tz-card" style={{ flex: 1, minHeight: '125px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '14px 16px' }}>
+            <div>
               <div className="tz-card-subtitle">TOTAL TRADES</div>
               <div className="tz-metric-val">
                 <AnimatedDashNumber value={stats.totalTrades} decimals={0} />
               </div>
-              <div className="tz-outcomes-compact">
-                <div className="tz-outcome-chip">
-                  <span className="dot profit-dot" /> {stats.wins} Wins
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
+              {/* Winning Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--profit)', marginRight: '6px' }} />
+                  Winning
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stats.totalTrades > 0 ? (stats.wins / stats.totalTrades) * 100 : 0}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="tz-outcome-bar-fill"
+                    style={{ background: 'var(--profit)' }}
+                  />
                 </div>
-                <div className="tz-outcome-chip">
-                  <span className="dot be-dot" /> {breakevenTradesCount} BE
-                </div>
-                <div className="tz-outcome-chip">
-                  <span className="dot loss-dot" /> {stats.losses} Loss
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Bottom Row: Detailed Metrics & Compass Mastery */}
-          <div className="tz-dashboard-row-2">
-            {/* AVG WIN / LOSS Card */}
-            <motion.div whileHover={{ translateY: -2 }} className="tz-card tz-card-mid">
-              <div className="tz-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="tz-card-subtitle">AVG WIN / LOSS</span>
-                <BarChart2 size={14} style={{ opacity: 0.6 }} />
+                <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right', fontFamily: 'JetBrains Mono' }}>{stats.wins}</span>
               </div>
               
-              <div className="tz-avg-winloss-boxes">
-                <div className="tz-avg-box win-box">
-                  <div className="tz-avg-box-title">AVG WIN</div>
-                  <div className="tz-avg-box-val profit-val">
-                    <AnimatedDashNumber value={stats.avgWin} prefix="+$" decimals={2} />
-                  </div>
+              {/* Breakeven Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', marginRight: '6px' }} />
+                  Breakeven
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stats.totalTrades > 0 ? (breakevenTradesCount / stats.totalTrades) * 100 : 0}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="tz-outcome-bar-fill"
+                    style={{ background: 'var(--text-muted)' }}
+                  />
                 </div>
-
-                <div className="tz-avg-box loss-box">
-                  <div className="tz-avg-box-title">AVG LOSS</div>
-                  <div className="tz-avg-box-val loss-val">
-                    <AnimatedDashNumber value={stats.avgLoss} prefix="-$" decimals={2} />
-                  </div>
-                </div>
+                <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right', fontFamily: 'JetBrains Mono' }}>{breakevenTradesCount}</span>
               </div>
 
-              <div className="tz-card-subrow">
-                <span>Payoff Ratio (Avg Win / Avg Loss)</span>
-                <strong style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
-                  {stats.avgLoss > 0 ? (stats.avgWin / stats.avgLoss).toFixed(2) + 'x' : '—'}
-                </strong>
-              </div>
-            </motion.div>
-
-            {/* Profit Factor Card */}
-            <motion.div whileHover={{ translateY: -2 }} className="tz-card tz-card-mid">
-              <div>
-                <div className="tz-card-subtitle">PROFIT FACTOR</div>
-                <div className="tz-metric-val">
-                  {stats.profitFactor === 'Infinity' ? '—' : <AnimatedDashNumber value={stats.profitFactor} decimals={2} />}
+              {/* Losing Row */}
+              <div className="tz-outcome-row">
+                <span className="tz-outcome-label">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--loss)', marginRight: '6px' }} />
+                  Losing
+                </span>
+                <div className="tz-outcome-bar-bg">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stats.totalTrades > 0 ? (stats.losses / stats.totalTrades) * 100 : 0}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="tz-outcome-bar-fill"
+                    style={{ background: 'var(--loss)' }}
+                  />
                 </div>
+                <span style={{ color: 'var(--text-primary)', minWidth: '24px', textAlign: 'right', fontFamily: 'JetBrains Mono' }}>{stats.losses}</span>
               </div>
-              
-              <div className="tz-pf-bars-container" style={{ margin: '4px 0' }}>
-                {[...Array(28)].map((_, idx) => {
-                  const isWin = idx < pfBars.green;
-                  return (
-                    <div 
-                      key={idx} 
-                      className={`tz-pf-bar ${isWin ? 'win' : 'loss'}`} 
-                    />
-                  );
-                })}
-              </div>
-              
-              <div className="tz-pf-stats">
-                <div className="tz-pf-stat-row">
-                  <span style={{ color: 'var(--text-muted)' }}>Total profit</span>
-                  <span className="profit-val" style={{ fontWeight: 700 }}>
-                    +{startBalance > 0 ? ((pfBars.totalWinVal / startBalance) * 100).toFixed(2) : '0.00'}%
-                  </span>
-                </div>
-                <div className="tz-pf-stat-row">
-                  <span style={{ color: 'var(--text-muted)' }}>Total loss</span>
-                  <span className="loss-val" style={{ fontWeight: 700 }}>
-                    -{startBalance > 0 ? ((pfBars.totalLossVal / startBalance) * 100).toFixed(2) : '0.00'}%
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Compass Score Card */}
-            <CompassScoreCard
-              scoreValue={scoreValue}
-              radarData={radarData}
-              stats={stats}
-              consistencyScore={consistencyScore}
-              hasTrades={filteredTrades.length > 0}
-            />
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </motion.div>
 
       {/* Bottom Grid: Recent Trades & High Impact News */}

@@ -1859,56 +1859,93 @@ body.theme-minimal .chart-card-setup {
   margin-bottom: 20px;
 }
 
-.tz-dashboard-row-1 {
+/* Top Dashboard Columns Grid - Restored 3-Column Layout */
+.tz-dashboard-grid-top {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 0.8fr 1.1fr;
-  gap: 16px;
-  align-items: stretch;
-}
-
-.tz-dashboard-row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.25fr;
-  gap: 16px;
-  align-items: stretch;
+  grid-template-columns: 2.2fr 1.4fr 1.4fr;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 1200px) {
-  .tz-dashboard-row-1 {
-    grid-template-columns: 1fr 1fr;
-  }
-  .tz-dashboard-row-2 {
+  .tz-dashboard-grid-top {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 768px) {
-  .tz-dashboard-row-1 {
-    grid-template-columns: 1fr;
-  }
+.tz-grid-column-flex {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-/* Compact Card Rules - No Artificial Height Stretching */
-.tz-balance-card-compact {
+.tz-balance-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  padding: 14px 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: 100%;
   position: relative;
   overflow: hidden;
+  min-height: 320px;
 }
 
-.tz-card-compact {
-  padding: 14px 16px !important;
+.tz-balance-header {
   display: flex;
-  flex-direction: column;
   justify-content: space-between;
+  align-items: flex-start;
 }
 
-.tz-card-mid {
+.tz-balance-badge {
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.tz-balance-badge.profit {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--profit);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.tz-balance-badge.loss {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--loss);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.tz-balance-badge.neutral {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.tz-balance-amount {
+  font-size: 2.2rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+
+.tz-balance-subtext {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.tz-balance-chart-wrap {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.tz-card-compact, .tz-card-mid {
   padding: 14px 16px !important;
   display: flex;
   flex-direction: column;
@@ -1923,29 +1960,8 @@ body.theme-minimal .chart-card-setup {
   letter-spacing: 0.5px;
 }
 
-.tz-balance-amount {
-  font-size: 1.45rem;
-  font-weight: 800;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text-primary);
-  margin-top: 2px;
-}
-
-.tz-balance-subtext {
-  font-size: 0.6rem;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-.tz-balance-chart-wrap {
-  width: 100%;
-  height: 65px;
-  overflow: hidden;
-  margin-top: 6px;
-}
-
 .tz-metric-val {
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   font-weight: 800;
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-primary);
