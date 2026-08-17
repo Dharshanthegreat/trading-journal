@@ -162,6 +162,7 @@ export async function writeLocalBackup(userId) {
         notes: a.notes || '',
         profitTarget: a.profit_target || 0,
         maxLossLimit: a.max_loss_limit || 0,
+        dailyLossLimit: a.daily_loss_limit || 0,
         consistencyRule: a.consistency_rule || 0,
         useTrailingDrawdown: a.use_trailing_drawdown || false,
         createdAt: a.created_at

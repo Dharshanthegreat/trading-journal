@@ -1454,6 +1454,7 @@ const handleAccounts = async (url, method, body) => {
       // Prop challenge fields
       const profitTarget = acc.profitTarget || 0;
       const maxLossLimit = acc.maxLossLimit || 0;
+      const dailyLossLimit = acc.dailyLossLimit || 0;
       const consistencyRule = acc.consistencyRule || 0;
       const useTrailingDrawdown = acc.useTrailingDrawdown || false;
 
@@ -1521,6 +1522,7 @@ const handleAccounts = async (url, method, body) => {
         tradingDays,
         profitTarget,
         maxLossLimit,
+        dailyLossLimit,
         consistencyRule,
         useTrailingDrawdown,
         mllValue,
@@ -1540,7 +1542,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const startBal = parseFloat(balance) || 0;
@@ -1559,6 +1561,7 @@ const handleAccounts = async (url, method, body) => {
       notes: notes || '',
       profitTarget: parseFloat(profitTarget) || 0,
       maxLossLimit: parseFloat(maxLossLimit) || 0,
+      dailyLossLimit: parseFloat(dailyLossLimit) || 0,
       consistencyRule: parseFloat(consistencyRule) || 0,
       useTrailingDrawdown: useTrailingDrawdown === true,
       mllValue: startBal - (parseFloat(maxLossLimit) || 0),
@@ -1574,7 +1577,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, consistencyRule, useTrailingDrawdown } = body;
+    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1589,6 +1592,7 @@ const handleAccounts = async (url, method, body) => {
       notes: notes !== undefined ? notes : accountsList[idx].notes,
       profitTarget: profitTarget !== undefined ? parseFloat(profitTarget) : accountsList[idx].profitTarget,
       maxLossLimit: maxLossLimit !== undefined ? parseFloat(maxLossLimit) : accountsList[idx].maxLossLimit,
+      dailyLossLimit: dailyLossLimit !== undefined ? parseFloat(dailyLossLimit) : accountsList[idx].dailyLossLimit,
       consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule,
       useTrailingDrawdown: useTrailingDrawdown !== undefined ? useTrailingDrawdown : accountsList[idx].useTrailingDrawdown
     };

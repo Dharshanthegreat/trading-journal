@@ -319,6 +319,14 @@ const AccountCard = ({
                     {acc.useTrailingDrawdown ? 'MLL (Trailing)' : 'MLL (Static)'}
                   </div>
                 </div>
+                {acc.dailyLossLimit > 0 && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--warn)' }}>
+                      ${Math.round(acc.dailyLossLimit).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, marginTop: '1px' }}>DAILY LOSS</div>
+                  </div>
+                )}
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--profit)' }}>
                     ${Math.round(target).toLocaleString()}
@@ -484,6 +492,7 @@ const Accounts = () => {
     notes: '',
     profitTarget: '',
     maxLossLimit: '',
+    dailyLossLimit: '',
     consistencyRule: '',
     useTrailingDrawdown: false
   });
@@ -534,6 +543,7 @@ const Accounts = () => {
       notes: '',
       profitTarget: '',
       maxLossLimit: '',
+      dailyLossLimit: '',
       consistencyRule: '',
       useTrailingDrawdown: false
     });
@@ -552,6 +562,7 @@ const Accounts = () => {
       notes: acc.notes || '',
       profitTarget: acc.profitTarget ? String(acc.profitTarget) : '',
       maxLossLimit: acc.maxLossLimit ? String(acc.maxLossLimit) : '',
+      dailyLossLimit: acc.dailyLossLimit ? String(acc.dailyLossLimit) : '',
       consistencyRule: acc.consistencyRule ? String(acc.consistencyRule) : '',
       useTrailingDrawdown: acc.useTrailingDrawdown === true
     });
@@ -579,6 +590,7 @@ const Accounts = () => {
           notes: formData.notes,
           profitTarget: parseFloat(formData.profitTarget) || 0,
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
+          dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
           useTrailingDrawdown: formData.useTrailingDrawdown === true
         });
@@ -593,6 +605,7 @@ const Accounts = () => {
           notes: formData.notes,
           profitTarget: parseFloat(formData.profitTarget) || 0,
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
+          dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
           useTrailingDrawdown: formData.useTrailingDrawdown === true
         });
@@ -718,6 +731,7 @@ const Accounts = () => {
               notes: '',
               profitTarget: '',
               maxLossLimit: '',
+              dailyLossLimit: '',
               consistencyRule: '',
               useTrailingDrawdown: false
             });
@@ -1085,7 +1099,7 @@ const Accounts = () => {
                         <Target size={13} style={{ color: 'var(--accent)' }} />
                         Challenge / Prop Firm Rules
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--s3)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
                         <div className="form-field">
                           <label className="form-label">Profit Target ($)</label>
                           <input
@@ -1101,9 +1115,19 @@ const Accounts = () => {
                           <input
                             className="input"
                             type="number"
-                            placeholder="e.g. 1500"
+                            placeholder="e.g. 1000"
                             value={formData.maxLossLimit}
                             onChange={e => setFormData({ ...formData, maxLossLimit: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label className="form-label">Daily Loss Limit ($)</label>
+                          <input
+                            className="input"
+                            type="number"
+                            placeholder="e.g. 500"
+                            value={formData.dailyLossLimit}
+                            onChange={e => setFormData({ ...formData, dailyLossLimit: e.target.value })}
                           />
                         </div>
                         <div className="form-field">
@@ -1111,7 +1135,7 @@ const Accounts = () => {
                           <input
                             className="input"
                             type="number"
-                            placeholder="e.g. 30"
+                            placeholder="e.g. 40"
                             value={formData.consistencyRule}
                             onChange={e => setFormData({ ...formData, consistencyRule: e.target.value })}
                           />
