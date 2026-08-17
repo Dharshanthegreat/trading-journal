@@ -321,7 +321,7 @@ const AccountCard = ({
                 </div>
                 {acc.dailyLossLimit > 0 && (
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--warn)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: '#3b82f6' }}>
                       ${Math.round(acc.dailyLossLimit).toLocaleString()}
                     </div>
                     <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, marginTop: '1px' }}>DAILY LOSS</div>
