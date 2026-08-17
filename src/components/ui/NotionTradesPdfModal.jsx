@@ -125,14 +125,16 @@ export const NotionTradesPdfModal = ({
       if (selectedAccount !== 'all') {
         const accId = t.accountId || t.account_id;
         const selectedAccObj = accountObjMap[selectedAccount];
-        const selectedAccName = selectedAccObj ? (selectedAccObj.accountName || selectedAccObj.account_name || '') : '';
+        const selectedAccName = selectedAccObj ? (selectedAccObj.accountName || selectedAccObj.account_name || '') : String(selectedAccount);
         const tradeAccName = t.accountName || t.account_name || (accId ? accountMap[accId] : '') || '';
 
         const isMatchId = accId !== undefined && accId !== null && String(accId) === String(selectedAccount);
         const isMatchName = selectedAccName && tradeAccName && selectedAccName.trim().toLowerCase() === tradeAccName.trim().toLowerCase();
-        const isDefaultFallback = (!accId || String(accId) === '1' || String(accId) === '0') && (String(selectedAccount) === '1' || (accounts.length > 0 && accounts[0] && String(accounts[0].id) === String(selectedAccount)));
+        
+        const isUnassigned = !accId || String(accId) === '1' || String(accId) === '0' || String(accId) === 'null' || String(accId) === 'undefined';
+        const isFirstAccount = accounts.length > 0 && accounts[0] && String(accounts[0].id) === String(selectedAccount);
 
-        if (!isMatchId && !isMatchName && !isDefaultFallback) {
+        if (!isMatchId && !isMatchName && !(isUnassigned && (isFirstAccount || String(selectedAccount) === '1'))) {
           return false;
         }
       }

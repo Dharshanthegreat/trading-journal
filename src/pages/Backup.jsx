@@ -104,6 +104,7 @@ const Backup = () => {
   };
 
   useEffect(() => {
+    fetchTrades({ limit: 2000 });
     fetchDeletedAccounts();
     fetchDeletedTrades();
   }, []);
