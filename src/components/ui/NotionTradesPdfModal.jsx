@@ -14,7 +14,8 @@ export const NotionTradesPdfModal = ({
   onClose,
   trades = [],
   accounts = [],
-  user = null
+  user = null,
+  isLoading = false
 }) => {
   const { trades: contextTrades } = useTrades();
 
@@ -180,6 +181,7 @@ export const NotionTradesPdfModal = ({
         }
       }
 
+      return true;
     });
   }, [effectiveTrades, selectedAccount, tradeTypeFilter, resultFilter, dateRange, searchQuery, accountObjMap, accountMap]);
 
@@ -411,7 +413,25 @@ export const NotionTradesPdfModal = ({
           </div>
 
           {/* Printable Notion PDF Document Area */}
-          <div className="notion-modal-body scrollbar-thin">
+          <div className="notion-modal-body scrollbar-thin" style={{ position: 'relative' }}>
+            {/* Loading Overlay */}
+            {isLoading && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 10,
+                background: 'rgba(10,12,20,0.75)', backdropFilter: 'blur(4px)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '14px', borderRadius: '8px'
+              }}>
+                <div style={{
+                  width: 44, height: 44, border: '3px solid rgba(139,92,246,0.25)',
+                  borderTop: '3px solid #8b5cf6', borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite'
+                }} />
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>
+                  Loading all trades for PDF export…
+                </div>
+              </div>
+            )}
             <div
               id="notion-pdf-printable-area"
               ref={printableRef}

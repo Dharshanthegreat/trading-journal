@@ -39,17 +39,43 @@ const Backup = () => {
     setNotionPdfModalOpen(true);
     setLoadingPdfData(true);
     try {
+      // Fetch first page with large limit to get all in one shot
       const [tradesRes, accountsRes] = await Promise.all([
-        tradesApi.list({ limit: 2000 }).catch(() => null),
+        tradesApi.list({ limit: 5000, page: 1 }).catch(() => null),
         accountsApi.list().catch(() => null)
       ]);
-      
+
       let fetchedTrades = [];
-      if (Array.isArray(tradesRes)) {
-        fetchedTrades = tradesRes;
-      } else if (tradesRes && Array.isArray(tradesRes.trades)) {
+      let totalCount = 0;
+      let pageSize = 5000;
+
+      if (tradesRes && Array.isArray(tradesRes.trades)) {
         fetchedTrades = tradesRes.trades;
+        totalCount = tradesRes.total || fetchedTrades.length;
+        pageSize = tradesRes.pageSize || 5000;
+      } else if (Array.isArray(tradesRes)) {
+        fetchedTrades = tradesRes;
+        totalCount = fetchedTrades.length;
       }
+
+      // If server paginated and there are more pages, fetch remaining pages
+      if (totalCount > pageSize && fetchedTrades.length < totalCount) {
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const remainingRequests = [];
+        for (let p = 2; p <= totalPages; p++) {
+          remainingRequests.push(tradesApi.list({ limit: pageSize, page: p }).catch(() => null));
+        }
+        const remainingResults = await Promise.all(remainingRequests);
+        remainingResults.forEach(res => {
+          if (res && Array.isArray(res.trades)) {
+            fetchedTrades = [...fetchedTrades, ...res.trades];
+          } else if (Array.isArray(res)) {
+            fetchedTrades = [...fetchedTrades, ...res];
+          }
+        });
+      }
+
+      // Final fallback to context trades
       if (!fetchedTrades || fetchedTrades.length === 0) {
         fetchedTrades = trades && trades.length > 0 ? trades : [];
       }
@@ -70,6 +96,7 @@ const Backup = () => {
       setLoadingPdfData(false);
     }
   };
+
 
   // Deleted Accounts State
   const [deletedAccounts, setDeletedAccounts] = useState([]);
@@ -912,10 +939,11 @@ const Backup = () => {
       {/* Notion Trades PDF Export Modal */}
       <NotionTradesPdfModal
         isOpen={notionPdfModalOpen}
-        onClose={() => setNotionPdfModalOpen(false)}
+        onClose={() => { setNotionPdfModalOpen(false); setPdfTradesList([]); setPdfAccountsList([]); }}
         trades={pdfTradesList.length > 0 ? pdfTradesList : trades}
         accounts={pdfAccountsList}
         user={user}
+        isLoading={loadingPdfData}
       />
     </div>
   );

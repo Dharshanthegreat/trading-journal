@@ -85,7 +85,7 @@ router.get('/', async (req, res) => {
     }
 
     const pageNum = parseInt(page) || 1;
-    const pageSize = Math.min(parseInt(limit) || 50, 200);
+    const pageSize = Math.min(parseInt(limit) || 50, 5000);
     sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(pageSize, (pageNum - 1) * pageSize);
 
