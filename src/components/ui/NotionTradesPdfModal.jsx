@@ -238,16 +238,102 @@ export const NotionTradesPdfModal = ({
     };
   }, [filteredTrades]);
 
-  // Print PDF Trigger
+  // Print PDF Trigger — uses a dedicated popup window so the full
+  // content and colors render correctly (window.print() on the main
+  // window produces a blank page because modal CSS vars are lost).
   const handlePrint = () => {
-    // Add print active helper class
-    document.body.classList.add('is-printing-notion-pdf');
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        document.body.classList.remove('is-printing-notion-pdf');
-      }, 500);
-    }, 100);
+    const printable = printableRef.current;
+    if (!printable) return;
+
+    // Collect ALL stylesheet text from the current document
+    let stylesHtml = '';
+    try {
+      Array.from(document.styleSheets).forEach(sheet => {
+        try {
+          const rules = Array.from(sheet.cssRules || []);
+          stylesHtml += '<style>' + rules.map(r => r.cssText).join('\n') + '</style>\n';
+        } catch {
+          // Cross-origin sheets — link them instead
+          if (sheet.href) {
+            stylesHtml += `<link rel="stylesheet" href="${sheet.href}">\n`;
+          }
+        }
+      });
+    } catch { /* ignore */ }
+
+    // Clone the printable node and resolve computed styles on key elements
+    const clone = printable.cloneNode(true);
+
+    // Force light background on clone root so nothing is transparent
+    clone.style.background = theme === 'dark' ? '#0f1117' : '#ffffff';
+    clone.style.color = theme === 'dark' ? '#e2e8f0' : '#0f172a';
+    clone.style.padding = '16px';
+    clone.style.minHeight = '100%';
+
+    const popup = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    if (!popup) {
+      alert('Please allow pop-ups for this site to enable PDF export.');
+      return;
+    }
+
+    popup.document.open();
+    popup.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trading Journal — PDF Export</title>
+  ${stylesHtml}
+  <style>
+    @page { margin: 12mm; size: A4 portrait; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body {
+      background: ${theme === 'dark' ? '#0f1117' : '#ffffff'} !important;
+      color: ${theme === 'dark' ? '#e2e8f0' : '#0f172a'} !important;
+      margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+    /* Resolve dark-theme CSS vars for print */
+    .notion-dark-theme { background: #0f1117 !important; color: #e2e8f0 !important; }
+    .notion-dark-theme .notion-page-title { color: #f8fafc !important; }
+    .notion-dark-theme .notion-section-title { color: #f1f5f9 !important; }
+    .notion-dark-theme .notion-prop-label { color: #94a3b8 !important; }
+    .notion-dark-theme .notion-prop-val { color: #e2e8f0 !important; }
+    .notion-dark-theme .notion-callout { background: #1e2030 !important; border-color: #334155 !important; }
+    .notion-dark-theme .notion-callout-title { color: #f1f5f9 !important; }
+    .notion-dark-theme .notion-stat-card { background: #1a1d2e !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+    .notion-dark-theme .notion-stat-label { color: #94a3b8 !important; }
+    .notion-dark-theme .notion-stat-val { color: #f1f5f9 !important; }
+    .notion-dark-theme .notion-table th { background: #1e2030 !important; color: #94a3b8 !important; }
+    .notion-dark-theme .notion-table td { color: #e2e8f0 !important; border-bottom-color: #334155 !important; }
+    .notion-dark-theme .notion-table-wrapper { background: #0f1117 !important; border-color: #334155 !important; }
+    .notion-dark-theme .image2-style-card { background: #13151f !important; border-color: #334155 !important; }
+    .notion-dark-theme .image2-trade-title { color: #f8fafc !important; }
+    .notion-dark-theme .image2-trade-date { color: #94a3b8 !important; }
+    .notion-dark-theme .image2-section-heading { color: #cbd5e1 !important; border-bottom-color: #334155 !important; }
+    .notion-dark-theme .image2-bullet-list { color: #e2e8f0 !important; }
+    .notion-dark-theme .image2-forecasting-grid { background: #1a1d2e !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+    .notion-dark-theme .notion-footer { color: #64748b !important; border-top-color: #334155 !important; }
+    /* Light theme overrides */
+    .notion-light-theme { background: #ffffff !important; color: #0f172a !important; }
+    .notion-light-theme .notion-page-title { color: #0f172a !important; }
+    /* Common */
+    .text-profit { color: #34d399 !important; }
+    .text-loss { color: #f87171 !important; }
+    .page-break-avoid, .notion-trade-card, .image2-style-card { break-inside: avoid; page-break-inside: avoid; }
+    .image2-fullwidth-image-frame img { max-height: 480px; page-break-inside: avoid; }
+    img { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+${clone.outerHTML}
+<script>
+  window.onload = function() {
+    setTimeout(function() { window.print(); }, 600);
+  };
+<\/script>
+</body>
+</html>`);
+    popup.document.close();
   };
 
   if (!isOpen) return null;
