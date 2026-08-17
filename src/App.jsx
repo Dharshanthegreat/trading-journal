@@ -47,6 +47,7 @@ import './App.css';
 import useMagneticButtons from './hooks/useMagneticButtons';
 import CustomCursor from './components/ui/CustomCursor';
 import ThreeBackground from './components/ui/ThreeBackground';
+import CyberHudHeader from './components/ui/CyberHudHeader';
 import { formatInNewYork } from './utils/timezone';
 
 // Internal parser helper to turn **bold** text into HTML strong tags
@@ -2319,6 +2320,7 @@ function AppContent() {
       {cursorEffect && <CustomCursor />}
       <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <main className="main-content">
+        <CyberHudHeader />
         {user?.isGuest && (
           <div className="anim-fade-in" style={{
             background: 'linear-gradient(90deg, #1e1b4b, #312e81, #1e1b4b)',
