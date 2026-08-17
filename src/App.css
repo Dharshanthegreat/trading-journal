@@ -1,6 +1,37 @@
 /* ═══ APP LAYOUT ═══ */
 .app-container { display: flex; min-height: 100vh; background: transparent; position: relative; z-index: 1; }
 
+body.theme-minimal .app-container,
+body.theme-chill-white .app-container {
+  background: var(--bg-primary) !important;
+}
+
+body.theme-minimal .sidebar,
+body.theme-chill-white .sidebar {
+  background: var(--bg-secondary) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+body.theme-minimal .header,
+body.theme-chill-white .header {
+  background: var(--bg-secondary) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.theme-minimal .glass,
+body.theme-minimal .glass-deep,
+body.theme-minimal .card,
+body.theme-minimal .account-card-premium {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  backdrop-filter: none !important;
+}
+
 /* ═══ SIDEBAR ═══ */
 .sidebar {
   width: 240px; min-height: 100vh; display: flex; flex-direction: column;

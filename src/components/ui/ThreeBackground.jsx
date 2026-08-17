@@ -1,10 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const ThreeBackground = () => {
   const containerRef = useRef(null);
+  const { theme } = useTheme();
+
+  const isLight = theme === 'minimal' || theme === 'chill-white';
 
   useEffect(() => {
+    if (isLight) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -144,7 +149,9 @@ const ThreeBackground = () => {
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [isLight]);
+
+  if (isLight) return null;
 
   return (
     <div

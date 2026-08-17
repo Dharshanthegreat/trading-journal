@@ -2,10 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Command, ChevronDown, Bell, Zap, Shield, Cpu, Activity } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const CyberHudHeader = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [ping, setPing] = useState(14);
+
+  const isLight = theme === 'minimal' || theme === 'chill-white';
+
+  if (isLight) return null;
   const [symbol, setSymbol] = useState('EUR/USD');
   const [aiCore, setAiCore] = useState('Claude 3.7 Sonnet');
   const [showSymbolMenu, setShowSymbolMenu] = useState(false);
