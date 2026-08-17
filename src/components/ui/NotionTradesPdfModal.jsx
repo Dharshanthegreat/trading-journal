@@ -50,6 +50,18 @@ export const NotionTradesPdfModal = ({
     return map;
   }, [accounts]);
 
+  const accountObjMap = useMemo(() => {
+    const map = {};
+    if (Array.isArray(accounts)) {
+      accounts.forEach(acc => {
+        if (acc && acc.id) {
+          map[acc.id] = acc;
+        }
+      });
+    }
+    return map;
+  }, [accounts]);
+
   // Async image resolver to guarantee 100% of images from IndexedDB & objects are populated
   const [resolvedTradeImages, setResolvedTradeImages] = useState({});
 
@@ -112,7 +124,17 @@ export const NotionTradesPdfModal = ({
       // 1. Account Filter
       if (selectedAccount !== 'all') {
         const accId = t.accountId || t.account_id;
-        if (String(accId) !== String(selectedAccount)) return false;
+        const selectedAccObj = accountObjMap[selectedAccount];
+        const selectedAccName = selectedAccObj ? (selectedAccObj.accountName || selectedAccObj.account_name || '') : '';
+        const tradeAccName = t.accountName || t.account_name || (accId ? accountMap[accId] : '') || '';
+
+        const isMatchId = accId !== undefined && accId !== null && String(accId) === String(selectedAccount);
+        const isMatchName = selectedAccName && tradeAccName && selectedAccName.trim().toLowerCase() === tradeAccName.trim().toLowerCase();
+        const isDefaultFallback = (!accId || String(accId) === '1' || String(accId) === '0') && (String(selectedAccount) === '1' || (accounts.length > 0 && accounts[0] && String(accounts[0].id) === String(selectedAccount)));
+
+        if (!isMatchId && !isMatchName && !isDefaultFallback) {
+          return false;
+        }
       }
 
       // 2. Type Filter
@@ -157,7 +179,7 @@ export const NotionTradesPdfModal = ({
       }
 
     });
-  }, [effectiveTrades, selectedAccount, tradeTypeFilter, resultFilter, dateRange, searchQuery]);
+  }, [effectiveTrades, selectedAccount, tradeTypeFilter, resultFilter, dateRange, searchQuery, accountObjMap, accountMap]);
 
   // Executive Summary Statistics
   const stats = useMemo(() => {
