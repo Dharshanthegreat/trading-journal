@@ -8,21 +8,22 @@ const CyberHudHeader = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [ping, setPing] = useState(14);
-
-  const isLight = theme === 'minimal' || theme === 'chill-white';
-
-  if (isLight) return null;
   const [symbol, setSymbol] = useState('EUR/USD');
   const [aiCore, setAiCore] = useState('Claude 3.7 Sonnet');
   const [showSymbolMenu, setShowSymbolMenu] = useState(false);
   const [showAiMenu, setShowAiMenu] = useState(false);
 
+  const isLight = theme === 'minimal' || theme === 'chill-white';
+
   useEffect(() => {
+    if (isLight) return;
     const interval = setInterval(() => {
       setPing(Math.floor(12 + Math.random() * 5));
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isLight]);
+
+  if (isLight) return null;
 
   return (
     <div className="cyber-hud-bar">
