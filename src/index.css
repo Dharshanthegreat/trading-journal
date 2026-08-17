@@ -2682,6 +2682,137 @@ body.theme-pitch-black .progress-fill {
 .notion-light-theme .image2-image-caption { background: #f1f5f9; color: #64748b; }
 .notion-dark-theme .image2-image-caption { background: #0f1117; color: #94a3b8; }
 
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLES FOR HIGH-RES NOTION TRADES PDF EXPORT
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app layout elements during print */
+  .sidebar,
+  .header,
+  .cyber-hud-bar,
+  .page-container,
+  .notion-modal-header,
+  .notion-modal-toolbar,
+  .notion-icon-badge,
+  .custom-cursor,
+  canvas {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Expand modal overlay across print canvas */
+  .notion-modal-overlay {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+    display: block !important;
+  }
+
+  .notion-modal-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .notion-modal-body {
+    padding: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Target the Printable Paper Area */
+  #notion-pdf-printable-area {
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+  }
+
+  .notion-dark-theme {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .notion-dark-theme .notion-page-title,
+  .notion-dark-theme .notion-section-title,
+  .notion-dark-theme .image2-trade-title {
+    color: #0f172a !important;
+  }
+
+  .notion-dark-theme .notion-stat-card,
+  .notion-dark-theme .image2-forecasting-grid {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  .notion-dark-theme .notion-table-wrapper {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .notion-dark-theme .notion-table th {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+  }
+
+  .notion-dark-theme .notion-table td {
+    color: #0f172a !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  /* Page break rules */
+  .page-break-avoid,
+  .notion-trade-card,
+  .image2-style-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 20px !important;
+  }
+
+  .image2-fullwidth-image-frame img {
+    max-height: 450px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
 
 
 
