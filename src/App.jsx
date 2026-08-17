@@ -46,6 +46,7 @@ import { format } from 'date-fns';
 import './App.css';
 import useMagneticButtons from './hooks/useMagneticButtons';
 import CustomCursor from './components/ui/CustomCursor';
+import ThreeBackground from './components/ui/ThreeBackground';
 import { formatInNewYork } from './utils/timezone';
 
 // Internal parser helper to turn **bold** text into HTML strong tags
@@ -2314,6 +2315,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      <ThreeBackground />
       {cursorEffect && <CustomCursor />}
       <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <main className="main-content">
