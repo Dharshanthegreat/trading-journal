@@ -40,11 +40,27 @@ const Backup = () => {
     setLoadingPdfData(true);
     try {
       const [tradesRes, accountsRes] = await Promise.all([
-        tradesApi.list({ limit: 2000 }).catch(() => ({ trades: trades || [] })),
-        accountsApi.list().catch(() => [])
+        tradesApi.list({ limit: 2000 }).catch(() => null),
+        accountsApi.list().catch(() => null)
       ]);
-      const fetchedTrades = tradesRes.trades || trades || [];
-      const fetchedAccounts = Array.isArray(accountsRes) ? accountsRes : (accountsRes.accounts || []);
+      
+      let fetchedTrades = [];
+      if (Array.isArray(tradesRes)) {
+        fetchedTrades = tradesRes;
+      } else if (tradesRes && Array.isArray(tradesRes.trades)) {
+        fetchedTrades = tradesRes.trades;
+      }
+      if (!fetchedTrades || fetchedTrades.length === 0) {
+        fetchedTrades = trades && trades.length > 0 ? trades : [];
+      }
+
+      let fetchedAccounts = [];
+      if (Array.isArray(accountsRes)) {
+        fetchedAccounts = accountsRes;
+      } else if (accountsRes && Array.isArray(accountsRes.accounts)) {
+        fetchedAccounts = accountsRes.accounts;
+      }
+
       setPdfTradesList(fetchedTrades);
       setPdfAccountsList(fetchedAccounts);
     } catch (err) {

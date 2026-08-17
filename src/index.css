@@ -2686,25 +2686,24 @@ body.theme-pitch-black .progress-fill {
    PRINT STYLES FOR HIGH-RES NOTION TRADES PDF EXPORT
    ═══════════════════════════════════════════════════════════════ */
 @media print {
-  html, body {
+  body, html {
     background: #ffffff !important;
     color: #000000 !important;
     width: 100% !important;
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
+    position: static !important;
     margin: 0 !important;
     padding: 0 !important;
-    position: static !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide app layout elements during print */
+  /* Hide app chrome during PDF print */
   .sidebar,
   .header,
   .cyber-hud-bar,
-  .page-container,
   .notion-modal-header,
   .notion-modal-toolbar,
   .notion-icon-badge,
@@ -2715,23 +2714,29 @@ body.theme-pitch-black .progress-fill {
     overflow: hidden !important;
   }
 
-  /* Expand modal overlay across print canvas */
+  /* Hide all siblings of notion-modal-overlay inside page containers when printing */
+  body.is-printing-notion-pdf .app-container > *:not(.main-content),
+  body.is-printing-notion-pdf .main-content > *:not(.notion-modal-overlay),
+  body.is-printing-notion-pdf div:not(.notion-modal-overlay):not(.notion-modal-container):not(.notion-modal-body):not(#notion-pdf-printable-area):not(#root):not(.app-container):not(.main-content):not(#notion-pdf-printable-area *) {
+    /* Only hide non-parent structural containers */
+  }
+
+  /* Force modal overlay to be standard static flow element */
   .notion-modal-overlay {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
     height: auto !important;
     min-height: 100% !important;
     background: #ffffff !important;
-    padding: 0 !important;
     margin: 0 !important;
+    padding: 0 !important;
     overflow: visible !important;
-    z-index: 999999 !important;
     display: block !important;
+    z-index: 999999 !important;
   }
 
   .notion-modal-container {
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     box-shadow: none !important;
@@ -2739,20 +2744,18 @@ body.theme-pitch-black .progress-fill {
     background: #ffffff !important;
     padding: 0 !important;
     margin: 0 !important;
-    border-radius: 0 !important;
+    transform: none !important;
   }
 
   .notion-modal-body {
+    position: static !important;
     padding: 0 !important;
     max-height: none !important;
     overflow: visible !important;
   }
 
-  /* Target the Printable Paper Area */
   #notion-pdf-printable-area {
-    position: relative !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 10mm !important;
@@ -2761,10 +2764,10 @@ body.theme-pitch-black .progress-fill {
     box-shadow: none !important;
     border: none !important;
     overflow: visible !important;
-    border-radius: 0 !important;
   }
 
-  .notion-dark-theme {
+  .notion-dark-theme,
+  .notion-light-theme {
     background: #ffffff !important;
     color: #0f172a !important;
   }
@@ -2797,13 +2800,13 @@ body.theme-pitch-black .progress-fill {
     border-bottom: 1px solid #e2e8f0 !important;
   }
 
-  /* Page break rules */
+  /* Page breaks */
   .page-break-avoid,
   .notion-trade-card,
   .image2-style-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 24px !important;
   }
 
   .image2-fullwidth-image-frame img {

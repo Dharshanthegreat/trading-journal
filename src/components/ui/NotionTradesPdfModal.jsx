@@ -7,6 +7,7 @@ import {
   Database, Tag, Award, CheckSquare, Square, DollarSign,
   Scale, PieChart, ShieldCheck
 } from 'lucide-react';
+import { useTrades } from '../../contexts/TradeContext';
 
 export const NotionTradesPdfModal = ({
   isOpen,
@@ -15,6 +16,15 @@ export const NotionTradesPdfModal = ({
   accounts = [],
   user = null
 }) => {
+  const { trades: contextTrades } = useTrades();
+
+  // Combine props trades with context trades as robust fallback
+  const effectiveTrades = useMemo(() => {
+    if (Array.isArray(trades) && trades.length > 0) return trades;
+    if (Array.isArray(contextTrades) && contextTrades.length > 0) return contextTrades;
+    return [];
+  }, [trades, contextTrades]);
+
   // Filter States
   const [dateRange, setDateRange] = useState('all'); // 'all', '30days', 'month', 'year'
   const [selectedAccount, setSelectedAccount] = useState('all');
@@ -47,7 +57,7 @@ export const NotionTradesPdfModal = ({
     let isMounted = true;
     const resolveImages = async () => {
       const map = {};
-      for (const t of trades) {
+      for (const t of effectiveTrades) {
         const idKey = t.id || t.backupId || Math.random();
         const urls = [];
 
@@ -85,20 +95,20 @@ export const NotionTradesPdfModal = ({
       }
     };
 
-    if (trades && trades.length > 0) {
+    if (effectiveTrades && effectiveTrades.length > 0) {
       resolveImages();
     }
-  }, [trades]);
+  }, [effectiveTrades]);
 
   // Filter Trades
   const filteredTrades = useMemo(() => {
-    if (!Array.isArray(trades)) return [];
+    if (!Array.isArray(effectiveTrades)) return [];
 
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    return trades.filter(t => {
+    return effectiveTrades.filter(t => {
       // 1. Account Filter
       if (selectedAccount !== 'all') {
         const accId = t.accountId || t.account_id;
@@ -146,9 +156,8 @@ export const NotionTradesPdfModal = ({
         }
       }
 
-      return true;
     });
-  }, [trades, selectedAccount, tradeTypeFilter, resultFilter, dateRange, searchQuery]);
+  }, [effectiveTrades, selectedAccount, tradeTypeFilter, resultFilter, dateRange, searchQuery]);
 
   // Executive Summary Statistics
   const stats = useMemo(() => {
