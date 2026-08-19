@@ -100,6 +100,36 @@ const Journal = () => {
   const [loadingPlaybook, setLoadingPlaybook] = useState(false);
   const [playbookError, setPlaybookError] = useState('');
 
+  // Symbol picker
+  const [showSymbolPicker, setShowSymbolPicker] = useState(false);
+  const [symbolPickerTab, setSymbolPickerTab] = useState('futures');
+
+  const SYMBOL_GROUPS = {
+    futures: {
+      label: '📈 Futures',
+      color: '#6366f1',
+      categories: [
+        { name: 'Index E-minis', symbols: ['ES', 'NQ', 'YM', 'RTY', 'MES', 'MNQ', 'MYM', 'M2K'] },
+        { name: 'Metals', symbols: ['GC', 'SI', 'MGC', 'SIL'] },
+        { name: 'Energy', symbols: ['CL', 'NG', 'RB', 'HO'] },
+        { name: 'FX Futures', symbols: ['6E', '6B', '6J', '6A', '6C', '6S', '6N'] },
+        { name: 'Crypto Futures', symbols: ['BTC', 'MBT', 'ETH', 'MET'] },
+        { name: 'Agriculture', symbols: ['ZC', 'ZS', 'ZW', 'ZL'] },
+      ],
+    },
+    forex: {
+      label: '💱 Forex',
+      color: '#10b981',
+      categories: [
+        { name: 'Majors', symbols: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD'] },
+        { name: 'Crosses', symbols: ['EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY', 'CADJPY', 'CHFJPY', 'EURCHF', 'EURAUD', 'GBPAUD', 'GBPCAD'] },
+        { name: 'Exotics', symbols: ['USDZAR', 'USDMXN', 'USDTRY', 'USDSEK', 'USDNOK', 'USDSGD', 'USDHKD'] },
+        { name: 'Metals / CFD', symbols: ['XAUUSD', 'XAGUSD', 'XPTUSD'] },
+        { name: 'Indices CFD', symbols: ['US30', 'US500', 'NAS100', 'GER40', 'UK100', 'JP225', 'AUS200'] },
+      ],
+    },
+  };
+
   const setNYMarketOpenTime = (field) => {
     const currentVal = formData[field];
     let datePart = '';
@@ -773,9 +803,124 @@ const Journal = () => {
             <form onSubmit={handleSubmit}>
               {modalTab === 'metrics' ? (
                 <div className="form-grid">
-                <div className="form-field">
-                  <label className="form-label">Symbol *</label>
-                  <input required className="input" placeholder="EURUSD" value={formData.symbol} onChange={e => handleFieldChange('symbol', e.target.value.toUpperCase())}/>
+                <div className="form-field" style={{ position: 'relative' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Symbol *</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSymbolPicker(p => !p)}
+                      style={{
+                        background: showSymbolPicker ? 'var(--accent)' : 'rgba(99,102,241,0.15)',
+                        border: '1px solid rgba(99,102,241,0.4)',
+                        borderRadius: '6px',
+                        color: showSymbolPicker ? '#fff' : 'var(--accent)',
+                        cursor: 'pointer',
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        letterSpacing: '0.05em',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {showSymbolPicker ? '✕ CLOSE' : '⚡ QUICK SELECT'}
+                    </button>
+                  </label>
+                  <input
+                    required
+                    className="input"
+                    placeholder="e.g. NQ, EURUSD, XAUUSD"
+                    value={formData.symbol}
+                    onChange={e => handleFieldChange('symbol', e.target.value.toUpperCase())}
+                    onFocus={() => setShowSymbolPicker(true)}
+                  />
+                  {showSymbolPicker && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 999,
+                      background: 'var(--card, #1a1a2e)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '12px',
+                      boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+                      padding: '12px',
+                      marginTop: '4px',
+                      maxHeight: '360px',
+                      overflowY: 'auto',
+                    }}>
+                      {/* Tab bar */}
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                        {Object.entries(SYMBOL_GROUPS).map(([key, grp]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setSymbolPickerTab(key)}
+                            style={{
+                              flex: 1,
+                              padding: '5px 0',
+                              borderRadius: '8px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              background: symbolPickerTab === key ? grp.color : 'rgba(255,255,255,0.07)',
+                              color: symbolPickerTab === key ? '#fff' : 'var(--text-muted)',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {grp.label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Symbol categories */}
+                      {SYMBOL_GROUPS[symbolPickerTab].categories.map(cat => (
+                        <div key={cat.name} style={{ marginBottom: '10px' }}>
+                          <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px' }}>
+                            {cat.name}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                            {cat.symbols.map(sym => (
+                              <button
+                                key={sym}
+                                type="button"
+                                onClick={() => {
+                                  handleFieldChange('symbol', sym);
+                                  setShowSymbolPicker(false);
+                                }}
+                                style={{
+                                  padding: '3px 10px',
+                                  borderRadius: '20px',
+                                  border: `1px solid ${formData.symbol === sym ? SYMBOL_GROUPS[symbolPickerTab].color : 'rgba(255,255,255,0.12)'}`,
+                                  background: formData.symbol === sym ? `${SYMBOL_GROUPS[symbolPickerTab].color}33` : 'rgba(255,255,255,0.05)',
+                                  color: formData.symbol === sym ? SYMBOL_GROUPS[symbolPickerTab].color : 'var(--text)',
+                                  cursor: 'pointer',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  fontFamily: 'monospace',
+                                  transition: 'all 0.12s',
+                                }}
+                                onMouseEnter={e => {
+                                  if (formData.symbol !== sym) {
+                                    e.currentTarget.style.background = `${SYMBOL_GROUPS[symbolPickerTab].color}22`;
+                                    e.currentTarget.style.borderColor = SYMBOL_GROUPS[symbolPickerTab].color;
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (formData.symbol !== sym) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                                  }
+                                }}
+                              >
+                                {sym}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="form-field">
                   <label className="form-label">Direction *</label>
