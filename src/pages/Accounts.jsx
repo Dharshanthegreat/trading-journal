@@ -1067,6 +1067,8 @@ const Accounts = () => {
                       <option value="Live">Live Brokerage</option>
                       <option value="Prop Challenge">Prop Firm Evaluation</option>
                       <option value="Prop Funded">Prop Firm Funded Account</option>
+                      <option value="Forex">Forex</option>
+                      <option value="Futures">Futures</option>
                     </select>
                   </div>
 
@@ -1093,7 +1095,7 @@ const Accounts = () => {
                   </div>
 
                   {/* Challenge / Prop Firm Settings */}
-                  {formData.accountType !== 'Live' && (
+                  {formData.accountType !== 'Live' && formData.accountType !== 'Forex' && formData.accountType !== 'Futures' && (
                     <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s2)' }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--s3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Target size={13} style={{ color: 'var(--accent)' }} />
