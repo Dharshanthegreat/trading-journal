@@ -1514,6 +1514,7 @@ const handleAccounts = async (url, method, body) => {
 
       return {
         ...acc,
+        marketType: acc.marketType || 'Forex',
         status: calculatedStatus,
         notes: acc.notes || '',
         currentBalance,
@@ -1534,6 +1535,7 @@ const handleAccounts = async (url, method, body) => {
     if (statusUpdated) {
       setStorageItem(`accounts_${activeUser.id}`, accountsList);
     }
+
     return accountsWithStats;
   }
 
@@ -1542,7 +1544,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const startBal = parseFloat(balance) || 0;
@@ -1550,6 +1552,7 @@ const handleAccounts = async (url, method, body) => {
       id: Date.now(),
       accountName,
       accountType: accountType || 'Simulated',
+      marketType: marketType || 'Forex',
       startingBalance: startBal,
       currentBalance: startBal,
       totalPnL: 0,
@@ -1577,7 +1580,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1585,6 +1588,7 @@ const handleAccounts = async (url, method, body) => {
       ...accountsList[idx],
       accountName: accountName !== undefined ? accountName : accountsList[idx].accountName,
       accountType: accountType !== undefined ? accountType : accountsList[idx].accountType,
+      marketType: marketType !== undefined ? marketType : (accountsList[idx].marketType || 'Forex'),
       startingBalance: balance !== undefined ? parseFloat(balance) : accountsList[idx].startingBalance,
       currency: currency !== undefined ? currency : accountsList[idx].currency,
       status: status !== undefined ? status : accountsList[idx].status,

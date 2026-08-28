@@ -146,6 +146,21 @@ const AccountCard = ({
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
             {acc.accountName}
           </h3>
+          {(acc.marketType || acc.market_type) && (
+            <span
+              style={{
+                fontSize: '0.62rem',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontWeight: 700,
+                background: 'rgba(99, 102, 241, 0.15)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(99, 102, 241, 0.3)'
+              }}
+            >
+              {acc.marketType || acc.market_type}
+            </span>
+          )}
           <motion.span
             whileHover={{ scale: 1.1 }}
             className={`badge ${
@@ -158,6 +173,9 @@ const AccountCard = ({
         </div>
         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
           Type: <strong style={{ color: 'var(--text-secondary)' }}>{acc.accountType}</strong>
+          {(acc.marketType || acc.market_type) && (
+            <> • Market: <strong style={{ color: 'var(--text-secondary)' }}>{acc.marketType || acc.market_type}</strong></>
+          )}
           {acc.deletedAt && (
             <span style={{ marginLeft: 8, color: 'var(--warn)' }}>• Deleted {formatDate(acc.deletedAt)}</span>
           )}
@@ -485,6 +503,7 @@ const Accounts = () => {
   const [formData, setFormData] = useState({
     accountName: '',
     accountType: 'Simulated',
+    marketType: 'Forex',
     balance: '10000',
     currency: 'USD',
     status: 'Active',
@@ -536,6 +555,7 @@ const Accounts = () => {
     setFormData({
       accountName: '',
       accountType: 'Simulated',
+      marketType: 'Forex',
       balance: '10000',
       currency: 'USD',
       status: 'Active',
@@ -555,6 +575,7 @@ const Accounts = () => {
     setFormData({
       accountName: acc.accountName,
       accountType: acc.accountType,
+      marketType: acc.marketType || acc.market_type || 'Forex',
       balance: String(acc.startingBalance),
       currency: acc.currency,
       status: acc.status,
@@ -583,6 +604,7 @@ const Accounts = () => {
         await accountsApi.update(editingAccount.id, {
           accountName: formData.accountName,
           accountType: formData.accountType,
+          marketType: formData.marketType || 'Forex',
           balance: parseFloat(formData.balance) || 0,
           currency: formData.currency,
           status: formData.status,
@@ -598,6 +620,7 @@ const Accounts = () => {
         await accountsApi.create({
           accountName: formData.accountName,
           accountType: formData.accountType,
+          marketType: formData.marketType || 'Forex',
           balance: parseFloat(formData.balance) || 0,
           currency: formData.currency,
           status: formData.status,
@@ -724,6 +747,7 @@ const Accounts = () => {
             setFormData({
               accountName: '',
               accountType: 'Simulated',
+              marketType: 'Forex',
               balance: '10000',
               currency: 'USD',
               status: 'Active',
@@ -1056,20 +1080,37 @@ const Accounts = () => {
                     />
                   </div>
 
-                  <div className="form-field">
-                    <label className="form-label">Account Type</label>
-                    <select
-                      className="input"
-                      value={formData.accountType}
-                      onChange={e => setFormData({ ...formData, accountType: e.target.value })}
-                    >
-                      <option value="Simulated">Simulation Challenge</option>
-                      <option value="Live">Live Brokerage</option>
-                      <option value="Prop Challenge">Prop Firm Evaluation</option>
-                      <option value="Prop Funded">Prop Firm Funded Account</option>
-                      <option value="Forex">Forex</option>
-                      <option value="Futures">Futures</option>
-                    </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
+                    <div className="form-field">
+                      <label className="form-label">Account Type</label>
+                      <select
+                        className="input"
+                        value={formData.accountType}
+                        onChange={e => setFormData({ ...formData, accountType: e.target.value })}
+                      >
+                        <option value="Simulated">Simulation Challenge</option>
+                        <option value="Live">Live Brokerage</option>
+                        <option value="Prop Challenge">Prop Firm Evaluation</option>
+                        <option value="Prop Funded">Prop Firm Funded Account</option>
+                      </select>
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Market Type</label>
+                      <select
+                        className="input"
+                        value={formData.marketType}
+                        onChange={e => setFormData({ ...formData, marketType: e.target.value })}
+                      >
+                        <option value="Forex">Forex</option>
+                        <option value="Futures">Futures</option>
+                        <option value="Crypto">Crypto</option>
+                        <option value="Stocks">Stocks</option>
+                        <option value="Indices">Indices</option>
+                        <option value="Commodities">Commodities</option>
+                        <option value="Multi-Asset">Multi-Asset</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="form-field">
@@ -1095,7 +1136,7 @@ const Accounts = () => {
                   </div>
 
                   {/* Challenge / Prop Firm Settings */}
-                  {formData.accountType !== 'Live' && formData.accountType !== 'Forex' && formData.accountType !== 'Futures' && (
+                  {formData.accountType !== 'Live' && (
                     <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s2)' }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--s3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Target size={13} style={{ color: 'var(--accent)' }} />

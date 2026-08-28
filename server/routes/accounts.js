@@ -83,6 +83,7 @@ router.get('/', async (req, res) => {
         id: acc.id,
         accountName: acc.account_name,
         accountType: acc.account_type,
+        marketType: acc.market_type || 'Forex',
         startingBalance: acc.balance,
         currentBalance,
         totalPnL,
@@ -143,6 +144,7 @@ router.get('/deleted', async (req, res) => {
         id: acc.id,
         accountName: acc.account_name,
         accountType: acc.account_type,
+        marketType: acc.market_type || 'Forex',
         startingBalance: acc.balance,
         currentBalance,
         totalPnL,
@@ -172,7 +174,7 @@ router.get('/deleted', async (req, res) => {
 // ─── Create Account ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = req.body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = req.body;
     const userId = req.user.id;
 
     if (!accountName) {
@@ -181,6 +183,7 @@ router.post('/', async (req, res) => {
 
     const startBalance = parseFloat(balance) || 0;
     const accType = accountType || 'Simulated';
+    const accMarketType = marketType || 'Forex';
     const accCurrency = currency || 'USD';
     const accStatus = status || 'Active';
     const accProfitTarget = parseFloat(profitTarget) || 0;
@@ -190,16 +193,17 @@ router.post('/', async (req, res) => {
     const accUseTrailing = useTrailingDrawdown === true;
 
     const result = await db.query(`
-      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, daily_loss_limit, consistency_rule, use_trailing_drawdown)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, daily_loss_limit, consistency_rule, use_trailing_drawdown, market_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
-    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accDailyLossLimit, accConsistencyRule, accUseTrailing]);
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accDailyLossLimit, accConsistencyRule, accUseTrailing, accMarketType]);
 
     const newAccount = result.rows[0];
     res.status(201).json({
       id: newAccount.id,
       accountName: newAccount.account_name,
       accountType: newAccount.account_type,
+      marketType: newAccount.market_type || 'Forex',
       startingBalance: newAccount.balance,
       currentBalance: newAccount.balance,
       totalPnL: 0,
@@ -228,7 +232,7 @@ router.post('/', async (req, res) => {
 // ─── Update Account ────────────────────────────────────
 router.put('/:id', async (req, res) => {
   try {
-    const { accountName, accountType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = req.body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = req.body;
     const accountId = req.params.id;
     const userId = req.user.id;
 
@@ -250,8 +254,9 @@ router.put('/:id', async (req, res) => {
           max_loss_limit = COALESCE($9, max_loss_limit),
           daily_loss_limit = COALESCE($10, daily_loss_limit),
           consistency_rule = COALESCE($11, consistency_rule),
-          use_trailing_drawdown = COALESCE($12, use_trailing_drawdown)
-      WHERE id = $13 AND user_id = $14
+          use_trailing_drawdown = COALESCE($12, use_trailing_drawdown),
+          market_type = COALESCE($13, market_type)
+      WHERE id = $14 AND user_id = $15
       RETURNING *
     `, [
       accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, notes,
@@ -260,6 +265,7 @@ router.put('/:id', async (req, res) => {
       dailyLossLimit !== undefined ? parseFloat(dailyLossLimit) : null,
       consistencyRule !== undefined ? parseFloat(consistencyRule) : null,
       useTrailingDrawdown !== undefined ? useTrailingDrawdown : null,
+      marketType,
       accountId, userId
     ]);
 
@@ -268,6 +274,7 @@ router.put('/:id', async (req, res) => {
       id: updatedAccount.id,
       accountName: updatedAccount.account_name,
       accountType: updatedAccount.account_type,
+      marketType: updatedAccount.market_type || 'Forex',
       startingBalance: updatedAccount.balance,
       currency: updatedAccount.currency,
       status: updatedAccount.status,
