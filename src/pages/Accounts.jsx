@@ -39,7 +39,31 @@ const AnimatedBalance = ({ value, prefix = '$', decimals = 2, duration = 900 }) 
   );
 };
 
-// --- Interactive 3D Tilt Account Card Component ---
+// --- Animated Integer / Decimal Count-Up Helper ---
+const AnimatedCountUp = ({ target = 0, decimals = 0, prefix = '', suffix = '', duration = 750 }) => {
+  const [displayVal, setDisplayVal] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const endVal = parseFloat(target) || 0;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayVal(eased * endVal);
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration]);
+
+  return (
+    <span>
+      {prefix}{displayVal.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+};
+
+// --- Interactive 3D Tilt Account Card Component with Holographic Shimmer & Micro-Animations ---
 const AccountCard = ({
   acc, isDeletedView, statusFilter, startEditAccount, setDeleteConfirm, setRestoreConfirm,
   setHardDeleteConfirm, startEditNotes, editingNotesId, setEditingNotesId, tempNotes,
@@ -48,13 +72,15 @@ const AccountCard = ({
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 150, y: 150 });
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    setRotateX(-y / 24);
-    setRotateY(x / 24);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setMousePos({ x, y });
+    setRotateX(-(y - rect.height / 2) / 22);
+    setRotateY((x - rect.width / 2) / 22);
   };
 
   const handleMouseLeave = () => {
@@ -64,14 +90,25 @@ const AccountCard = ({
   };
 
   const isProfit = (acc.totalPnL || 0) >= 0;
+  const statusLower = (acc.status || '').toLowerCase();
+  const isPassed = statusLower === 'passed';
+  const isFailed = statusLower === 'failed';
+
+  const accentGradient = isPassed
+    ? 'linear-gradient(90deg, #059669, #10b981, #34d399, #10b981, #059669)'
+    : isFailed
+    ? 'linear-gradient(90deg, #b91c1c, #ef4444, #f87171, #ef4444, #b91c1c)'
+    : 'linear-gradient(90deg, #4f46e5, #6366f1, #a855f7, #6366f1, #4f46e5)';
+
+  const beaconColor = isPassed ? '#10b981' : isFailed ? '#ef4444' : '#6366f1';
 
   return (
     <motion.div
       variants={{
-        hidden: { opacity: 0, y: 25, scale: 0.95 },
-        show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 22 } }
+        hidden: { opacity: 0, y: 30, scale: 0.95 },
+        show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 280, damping: 20 } }
       }}
-      whileHover={{ y: -5 }}
+      whileHover={{ y: -6, transition: { duration: 0.2 } }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={handleMouseLeave}
@@ -79,24 +116,53 @@ const AccountCard = ({
       style={{
         transformStyle: 'preserve-3d',
         transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
-        transition: isHovered ? 'transform 0.08s ease-out' : 'transform 0.4s ease-out, box-shadow 0.3s ease',
+        transition: isHovered ? 'transform 0.08s ease-out' : 'transform 0.4s ease-out, box-shadow 0.3s ease, border-color 0.3s ease',
         borderColor: isDeletedView
           ? 'var(--warn-border)'
-          : ((acc.status || '').toLowerCase() === 'passed' ? 'var(--profit)' : ((acc.status || '').toLowerCase() === 'failed' ? 'var(--loss)' : 'var(--border)')),
+          : (isPassed ? 'var(--profit-border)' : (isFailed ? 'var(--loss-border)' : 'var(--border)')),
         boxShadow: isHovered
-          ? (acc.status === 'Passed' ? '0 12px 30px rgba(52, 211, 153, 0.25)' : (acc.status === 'Failed' ? '0 12px 30px rgba(248, 113, 113, 0.25)' : '0 12px 30px rgba(99, 102, 241, 0.2)'))
-          : (acc.status === 'Passed' ? '0 6px 20px var(--profit-soft)' : (acc.status === 'Failed' ? '0 6px 20px var(--loss-soft)' : 'var(--shadow-sm)'))
+          ? (isPassed ? '0 16px 36px rgba(52, 211, 153, 0.22)' : (isFailed ? '0 16px 36px rgba(248, 113, 113, 0.22)' : '0 16px 36px rgba(99, 102, 241, 0.2)'))
+          : (isPassed ? '0 4px 16px var(--profit-soft)' : (isFailed ? '0 4px 16px var(--loss-soft)' : 'var(--shadow-sm)'))
       }}
     >
+      {/* Top Laser Shimmer Beam Strip */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: '3px',
+        background: accentGradient,
+        backgroundSize: '200% 100%',
+        animation: 'shimmerBeam 3s ease-in-out infinite',
+        borderTopLeftRadius: '16px',
+        borderTopRightRadius: '16px',
+        opacity: isHovered ? 1 : 0.65,
+        transition: 'opacity 0.3s ease',
+        zIndex: 2
+      }} />
+
+      {/* Holographic Cursor Spotlight Overlay */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        borderRadius: '16px',
+        background: `radial-gradient(400px circle at ${mousePos.x}px ${mousePos.y}px, ${
+          isPassed ? 'rgba(52, 211, 153, 0.08)' : isFailed ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.09)'
+        }, transparent 75%)`,
+        opacity: isHovered ? 1 : 0,
+        pointerEvents: 'none',
+        transition: 'opacity 0.25s ease',
+        zIndex: 1
+      }} />
+
       {/* Action buttons (Edit & Delete / Restore & Hard Delete) */}
       <div style={{
         position: 'absolute', top: 16, right: 16,
-        display: 'flex', gap: '8px', alignItems: 'center', zIndex: 2
+        display: 'flex', gap: '8px', alignItems: 'center', zIndex: 3
       }}>
         {isDeletedView ? (
           <>
             <motion.button
-              whileHover={{ scale: 1.15 }}
+              whileHover={{ scale: 1.2, rotate: -8 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setRestoreConfirm(acc)}
               className="btn-action-round"
@@ -106,7 +172,7 @@ const AccountCard = ({
               <RotateCcw size={13} />
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.15 }}
+              whileHover={{ scale: 1.2, rotate: 8 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setHardDeleteConfirm(acc)}
               className="btn-action-round"
@@ -119,7 +185,7 @@ const AccountCard = ({
         ) : (
           <>
             <motion.button
-              whileHover={{ scale: 1.15 }}
+              whileHover={{ scale: 1.2, rotate: -8 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => startEditAccount(acc)}
               className="btn-action-round"
@@ -128,7 +194,7 @@ const AccountCard = ({
               <Edit2 size={12} />
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.15 }}
+              whileHover={{ scale: 1.2, rotate: 8 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setDeleteConfirm(acc)}
               className="btn-action-round"
@@ -141,33 +207,58 @@ const AccountCard = ({
       </div>
 
       {/* Account Details Header */}
-      <div style={{ paddingRight: '60px' }}>
+      <div style={{ paddingRight: '60px', position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
             {acc.accountName}
           </h3>
           {(acc.marketType || acc.market_type) && (
-            <span
+            <motion.span
+              whileHover={{ scale: 1.08, y: -1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
               style={{
                 fontSize: '0.62rem',
-                padding: '2px 8px',
+                padding: '2px 9px',
                 borderRadius: '6px',
                 fontWeight: 700,
-                background: 'rgba(99, 102, 241, 0.15)',
+                background: 'rgba(99, 102, 241, 0.12)',
                 color: 'var(--accent)',
-                border: '1px solid rgba(99, 102, 241, 0.3)'
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                boxShadow: '0 2px 6px rgba(99, 102, 241, 0.08)'
               }}
             >
               {acc.marketType || acc.market_type}
-            </span>
+            </motion.span>
           )}
           <motion.span
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.08 }}
             className={`badge ${
-              isDeletedView ? 'badge-warn' : ((acc.status || '').toLowerCase() === 'passed' ? 'badge-profit' : ((acc.status || '').toLowerCase() === 'failed' ? 'badge-loss' : 'badge-accent'))
+              isDeletedView ? 'badge-warn' : (isPassed ? 'badge-profit' : (isFailed ? 'badge-loss' : 'badge-accent'))
             }`}
-            style={{ fontSize: '0.62rem', padding: '3px 9px', borderRadius: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}
+            style={{
+              fontSize: '0.62rem',
+              padding: '3px 9px',
+              borderRadius: '6px',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}
           >
+            <span style={{ position: 'relative', display: 'inline-flex', width: 6, height: 6 }}>
+              <span style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                background: beaconColor,
+                animation: 'radarPing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite',
+                opacity: 0.75
+              }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: beaconColor }} />
+            </span>
             {isDeletedView ? 'DELETED' : acc.status}
           </motion.span>
         </div>
@@ -183,46 +274,54 @@ const AccountCard = ({
       </div>
 
       {/* Stats Grid — Balance, Profit Target, Trading Days */}
-      <div style={{ display: 'grid', gridTemplateColumns: (acc.profitTarget > 0 || acc.maxLossLimit > 0) ? '1.1fr 1fr 0.9fr' : '1fr 1fr', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '14px' }}>
-        <div className="account-stat-block-new">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: (acc.profitTarget > 0 || acc.maxLossLimit > 0) ? '1.1fr 1fr 0.9fr' : '1fr 1fr',
+        gap: '10px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        paddingBottom: '14px',
+        position: 'relative',
+        zIndex: 2
+      }}>
+        <motion.div whileHover={{ y: -3, scale: 1.02 }} transition={{ duration: 0.2 }} className="account-stat-block-new">
           <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
-            <Wallet size={11} style={{ opacity: 0.6 }} /> Balance
+            <Wallet size={11} style={{ opacity: 0.7, color: 'var(--accent)' }} /> Balance
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-            <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)' }}>
-              ${Math.round(acc.currentBalance || 0).toLocaleString()}
+            <span style={{ fontSize: '1.08rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.currentBalance || 0) >= (acc.startingBalance || 0) ? 'var(--profit)' : 'var(--loss)' }}>
+              <AnimatedBalance value={acc.currentBalance || 0} prefix="$" decimals={0} duration={850} />
             </span>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
               / ${(acc.startingBalance || 0).toLocaleString()}
             </span>
           </div>
-        </div>
+        </motion.div>
 
         {acc.profitTarget > 0 && (
-          <div className="account-stat-block-new">
+          <motion.div whileHover={{ y: -3, scale: 1.02 }} transition={{ duration: 0.2 }} className="account-stat-block-new">
             <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
-              <Target size={11} style={{ opacity: 0.6 }} /> Target
+              <Target size={11} style={{ opacity: 0.7, color: isProfit ? 'var(--profit)' : 'var(--loss)' }} /> Target
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)' }}>
-                ${Math.round(acc.totalPnL || 0).toLocaleString()}
+              <span style={{ fontSize: '1.08rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)' }}>
+                <AnimatedBalance value={acc.totalPnL || 0} prefix={isProfit ? '+$' : '-$'} decimals={0} duration={850} />
               </span>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
                 / ${acc.profitTarget.toLocaleString()}
               </span>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {(acc.profitTarget > 0 || acc.maxLossLimit > 0) && (
-          <div className="account-stat-block-new">
+          <motion.div whileHover={{ y: -3, scale: 1.02 }} transition={{ duration: 0.2 }} className="account-stat-block-new">
             <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
-              <CalendarDays size={11} style={{ opacity: 0.6 }} /> Days
+              <CalendarDays size={11} style={{ opacity: 0.7, color: 'var(--profit)' }} /> Days
             </span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
-              {acc.tradingDays || 0}
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
+              <AnimatedCountUp target={acc.tradingDays || 0} duration={650} />
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -238,27 +337,32 @@ const AccountCard = ({
         const isHigher = current >= (acc.startingBalance || 0);
         const fillLeft = isHigher ? startPct : progressPct;
         const fillWidth = isHigher ? (progressPct - startPct) : (startPct - progressPct);
-        const fillBackground = isHigher
-          ? 'linear-gradient(90deg, var(--profit-border), var(--profit))'
-          : 'linear-gradient(90deg, var(--loss), var(--loss-border))';
 
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: acc.consistencyRule > 0 ? '1.1fr 2.9fr' : '1fr', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '14px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: acc.consistencyRule > 0 ? '1.1fr 2.9fr' : '1fr',
+            gap: '10px',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            paddingBottom: '14px',
+            position: 'relative',
+            zIndex: 2
+          }}>
             {/* Consistency */}
             {acc.consistencyRule > 0 && (
-              <div className="account-stat-block-new" style={{ justifyContent: 'center' }}>
+              <motion.div whileHover={{ y: -3, scale: 1.02 }} className="account-stat-block-new" style={{ justifyContent: 'center' }}>
                 <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700 }}>Consistency</span>
                 <div style={{ fontSize: '1.05rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: (acc.consistencyScore || 0) <= acc.consistencyRule ? 'var(--profit)' : 'var(--loss)', marginTop: '2px' }}>
-                  {(acc.consistencyScore || 0).toFixed(1)}%
+                  <AnimatedCountUp target={acc.consistencyScore || 0} decimals={1} suffix="%" duration={750} />
                 </div>
                 <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                   Limit: {acc.consistencyRule}%
                 </span>
-              </div>
+              </motion.div>
             )}
 
             {/* Progress Bar Container */}
-            <div className="progress-bar-container-custom" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.015)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '12px 14px' }}>
+            <div className="progress-bar-container-custom" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', padding: '12px 14px' }}>
               {/* START Label */}
               <div style={{ position: 'relative', marginBottom: '4px', height: '12px' }}>
                 <span style={{
@@ -276,23 +380,28 @@ const AccountCard = ({
               {/* Progress Track */}
               <div style={{
                 position: 'relative',
-                height: '6px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '4px',
+                height: '7px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                borderRadius: '6px',
+                overflow: 'visible'
               }}>
-                {/* Glow fill bar with spring animation */}
+                {/* Glow fill bar with continuous shimmering wave */}
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${fillWidth}%` }}
-                  transition={{ duration: 0.9, ease: [0.25, 0.8, 0.25, 1], delay: 0.15 }}
+                  transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: `${fillLeft}%`,
                     height: '100%',
-                    background: fillBackground,
+                    background: isHigher
+                      ? 'linear-gradient(90deg, #059669 0%, #10b981 30%, #34d399 50%, #10b981 70%, #059669 100%)'
+                      : 'linear-gradient(90deg, #dc2626 0%, #ef4444 30%, #f87171 50%, #ef4444 70%, #dc2626 100%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmerBar 2.8s linear infinite',
                     borderRadius: '4px',
-                    boxShadow: `0 0 10px ${isHigher ? 'rgba(52, 211, 153, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`
+                    boxShadow: `0 0 12px ${isHigher ? 'rgba(52, 211, 153, 0.45)' : 'rgba(239, 68, 68, 0.45)'}`
                   }}
                 />
 
@@ -303,26 +412,28 @@ const AccountCard = ({
                   left: `${startPct}%`,
                   transform: 'translateX(-50%)',
                   width: '2px',
-                  height: '10px',
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  borderRadius: '1px'
+                  height: '11px',
+                  background: 'rgba(255, 255, 255, 0.35)',
+                  borderRadius: '1px',
+                  zIndex: 2
                 }} />
 
-                {/* Current position marker */}
+                {/* Current position marker with pulsing aura ring */}
                 <motion.div
-                  initial={{ left: `${startPct}%` }}
-                  animate={{ left: `${progressPct}%` }}
-                  transition={{ duration: 0.9, ease: [0.25, 0.8, 0.25, 1], delay: 0.15 }}
+                  initial={{ left: `${startPct}%`, scale: 0.8 }}
+                  animate={{ left: `${progressPct}%`, scale: 1 }}
+                  transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
                   style={{
                     position: 'absolute',
-                    top: '-3px',
+                    top: '-3.5px',
                     transform: 'translateX(-50%)',
-                    width: '12px',
-                    height: '12px',
+                    width: '14px',
+                    height: '14px',
                     borderRadius: '50%',
                     background: isHigher ? 'var(--profit)' : 'var(--loss)',
                     border: '2.5px solid #0f1115',
-                    boxShadow: `0 0 8px ${isHigher ? 'rgba(52, 211, 153, 0.6)' : 'rgba(239, 68, 68, 0.6)'}`,
+                    boxShadow: `0 0 0 3px ${isHigher ? 'rgba(52, 211, 153, 0.25)' : 'rgba(239, 68, 68, 0.25)'}, 0 0 10px ${isHigher ? 'rgba(52, 211, 153, 0.7)' : 'rgba(239, 68, 68, 0.7)'}`,
+                    zIndex: 3
                   }}
                 />
               </div>
@@ -358,29 +469,31 @@ const AccountCard = ({
       })()}
 
       {/* Performance Metrics Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <span style={{ color: 'var(--text-tertiary)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Trades Synced</span>
-          <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{acc.tradesCount || 0} trades</span>
+          <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>
+            <AnimatedCountUp target={acc.tradesCount || 0} duration={600} /> trades
+          </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end' }}>
           <span style={{ color: 'var(--text-tertiary)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Total Return</span>
-          <span style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)', fontSize: '0.82rem' }}>
-            {isProfit ? '+' : ''}${(acc.totalPnL || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          <span style={{ fontWeight: 800, fontFamily: 'JetBrains Mono', color: isProfit ? 'var(--profit)' : 'var(--loss)', fontSize: '0.86rem' }}>
+            <AnimatedBalance value={acc.totalPnL || 0} prefix={isProfit ? '+$' : '-$'} decimals={2} duration={900} />
           </span>
         </div>
       </div>
 
-      {/* View Details Button */}
+      {/* View Details Button with Shimmer Sweep and Magnetic Glow */}
       {!isDeletedView && (
         <motion.button
-          whileHover={{ scale: 1.025, boxShadow: '0 6px 20px rgba(255,255,255,0.15)' }}
+          whileHover={{ scale: 1.025, y: -2, boxShadow: '0 8px 24px rgba(99, 102, 241, 0.22)' }}
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate(`/dashboard?accountId=${acc.id}`)}
-          className="btn btn-sm btn-primary"
+          className="btn btn-sm btn-primary cta-glow-button"
           style={{
             width: '100%',
-            padding: '9px',
+            padding: '10px',
             fontSize: '0.74rem',
             fontWeight: 800,
             display: 'flex',
@@ -390,17 +503,27 @@ const AccountCard = ({
             background: 'var(--text-primary)',
             color: 'var(--bg-primary)',
             border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
+            borderRadius: '9px',
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden',
+            zIndex: 2
           }}
         >
-          ⚡ View Details on Dashboard
+          <motion.span
+            animate={{ rotate: [0, -12, 12, 0] }}
+            transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+          >
+            ⚡
+          </motion.span>
+          <span>View Details on Dashboard</span>
+          <div className="btn-shine-effect" />
         </motion.button>
       )}
 
       {/* Account Notes */}
       {editingNotesId === acc.id ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', zIndex: 2 }}>
           <textarea
             className="input"
             style={{ fontSize: '0.72rem', padding: '6px 8px', minHeight: '60px', resize: 'vertical' }}
@@ -414,7 +537,11 @@ const AccountCard = ({
           </div>
         </div>
       ) : (
-        <div className="notes-preview-premium">
+        <motion.div
+          whileHover={{ borderColor: 'var(--border-mid)' }}
+          className="notes-preview-premium"
+          style={{ position: 'relative', zIndex: 2 }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>Account Notes</span>
             <button
@@ -438,29 +565,29 @@ const AccountCard = ({
               + Add Account Notes
             </span>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Restore / Permanently Delete Action Bar for Deleted View */}
       {isDeletedView && (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', position: 'relative', zIndex: 2 }}>
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="btn btn-sm btn-primary"
             onClick={() => handleRestore(acc.id)}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'var(--profit)', borderColor: 'var(--profit)', fontSize: '0.74rem' }}
+            style={{ flex: 1, background: 'var(--profit)', color: '#fff', border: 'none', fontSize: '0.74rem' }}
           >
-            <RotateCcw size={13} /> Restore Account
+            <RotateCcw size={12} /> Restore Account
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="btn btn-sm btn-danger"
+            className="btn btn-sm btn-secondary"
             onClick={() => setHardDeleteConfirm(acc)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.74rem' }}
+            style={{ color: 'var(--loss)', borderColor: 'var(--loss-border)', fontSize: '0.74rem' }}
           >
-            <Trash2 size={13} /> Delete Permanently
+            <Trash2 size={12} /> Delete Forever
           </motion.button>
         </div>
       )}
@@ -951,6 +1078,28 @@ const Accounts = () => {
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}
         >
           <style>{`
+            @keyframes shimmerBeam {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            @keyframes shimmerBar {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+            @keyframes radarPing {
+              0% { transform: scale(0.95); opacity: 0.9; }
+              65% { transform: scale(2.4); opacity: 0; }
+              100% { transform: scale(2.4); opacity: 0; }
+            }
+            @keyframes pulseAura {
+              0%, 100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+              50% { transform: translateX(-50%) scale(1.18); filter: brightness(1.2); }
+            }
+            @keyframes shineSwipe {
+              0% { left: -100%; }
+              100% { left: 200%; }
+            }
             .account-card-premium {
               background: var(--bg-secondary) !important;
               border: 1px solid var(--border) !important;
@@ -963,17 +1112,26 @@ const Accounts = () => {
               flex-direction: column !important;
               gap: 18px !important;
               position: relative !important;
+              overflow: hidden !important;
             }
             .account-card-premium:hover {
               border-color: var(--border-mid) !important;
-              background: var(--bg-hover) !important;
+            }
+            body.theme-minimal .account-card-premium {
+              background: #ffffff !important;
+              border: 1px solid #e2e8f0 !important;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+            }
+            body.theme-minimal .account-card-premium:hover {
+              border-color: #cbd5e1 !important;
+              box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08) !important;
             }
             .account-stat-block-new {
               background: var(--surface-glass) !important;
               border: 1px solid var(--border) !important;
               border-radius: 12px !important;
               padding: 12px 14px !important;
-              transition: all 0.2s ease !important;
+              transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
@@ -982,10 +1140,19 @@ const Accounts = () => {
             .account-stat-block-new:hover {
               background: var(--surface-glass-h) !important;
               border-color: var(--border-mid) !important;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+            }
+            body.theme-minimal .account-stat-block-new {
+              background: #f8fafc !important;
+              border-color: #e2e8f0 !important;
+            }
+            body.theme-minimal .account-stat-block-new:hover {
+              background: #f1f5f9 !important;
+              border-color: #cbd5e1 !important;
             }
             .btn-action-round {
-              width: 28px !important;
-              height: 28px !important;
+              width: 30px !important;
+              height: 30px !important;
               border-radius: 50% !important;
               background: var(--surface-glass) !important;
               border: 1px solid var(--border) !important;
@@ -1000,6 +1167,7 @@ const Accounts = () => {
               background: var(--surface-glass-h) !important;
               border-color: var(--border-mid) !important;
               color: var(--text-primary) !important;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
             }
             .btn-action-round:hover .trash-icon {
               color: var(--loss) !important;
@@ -1012,6 +1180,29 @@ const Accounts = () => {
               display: flex !important;
               flex-direction: column !important;
               gap: 6px !important;
+              transition: border-color 0.2s ease, background 0.2s ease !important;
+            }
+            body.theme-minimal .notes-preview-premium {
+              background: #f8fafc !important;
+              border-color: #e2e8f0 !important;
+            }
+            .cta-glow-button {
+              position: relative !important;
+              overflow: hidden !important;
+              transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            .cta-glow-button .btn-shine-effect {
+              position: absolute;
+              top: 0;
+              left: -100%;
+              width: 50%;
+              height: 100%;
+              background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+              transform: skewX(-20deg);
+              pointer-events: none;
+            }
+            .cta-glow-button:hover .btn-shine-effect {
+              animation: shineSwipe 0.75s ease-out;
             }
           `}</style>
           {filteredAccounts.map(acc => (
