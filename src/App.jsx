@@ -2314,14 +2314,12 @@ function AppContent() {
     );
   }
 
-  const isAccountsPage = location.pathname === '/accounts';
-
   return (
     <div className="app-container">
       <ThreeBackground />
       {cursorEffect && <CustomCursor />}
-      {!isAccountsPage && <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />}
-      <main className="main-content" style={isAccountsPage ? { marginLeft: 0, width: '100%' } : {}}>
+      <Sidebar mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <main className="main-content">
         <CyberHudHeader />
         {user?.isGuest && (
           <div className="anim-fade-in" style={{
