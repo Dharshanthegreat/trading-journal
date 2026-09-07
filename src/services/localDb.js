@@ -1456,25 +1456,61 @@ const handleAccounts = async (url, method, body) => {
       const maxLossLimit = acc.maxLossLimit || 0;
       const dailyLossLimit = acc.dailyLossLimit || 0;
       const consistencyRule = acc.consistencyRule || 0;
-      const useTrailingDrawdown = acc.useTrailingDrawdown || false;
+      const drawdownType = acc.drawdownType || (acc.useTrailingDrawdown ? 'trailing' : 'static');
+      const useTrailingDrawdown = drawdownType === 'trailing' || acc.useTrailingDrawdown || false;
 
-      // Trailing drawdown calculation
+      // Drawdown calculation
       let mllValue = (acc.startingBalance || 0) - maxLossLimit;
-      if (useTrailingDrawdown && maxLossLimit > 0) {
-        let runningBalance = acc.startingBalance || 0;
-        let peakBalance = acc.startingBalance || 0;
-        const chronoTrades = [...accTrades].sort((a, b) => {
-          const tA = new Date(a.exitTime || a.entryTime || a.createdAt).getTime();
-          const tB = new Date(b.exitTime || b.entryTime || b.createdAt).getTime();
-          return tA - tB;
-        });
-        chronoTrades.forEach(t => {
-          runningBalance += (t.pnl || 0);
-          if (runningBalance > peakBalance) {
-            peakBalance = runningBalance;
+      if (maxLossLimit > 0) {
+        if (drawdownType === 'trailing') {
+          let runningBalance = acc.startingBalance || 0;
+          let peakBalance = acc.startingBalance || 0;
+          const chronoTrades = [...accTrades].sort((a, b) => {
+            const tA = new Date(a.exitTime || a.entryTime || a.createdAt).getTime();
+            const tB = new Date(b.exitTime || b.entryTime || b.createdAt).getTime();
+            return tA - tB;
+          });
+          chronoTrades.forEach(t => {
+            runningBalance += (t.pnl || 0);
+            if (runningBalance > peakBalance) {
+              peakBalance = runningBalance;
+            }
+          });
+          mllValue = peakBalance - maxLossLimit;
+          // Stop trailing once it reaches starting balance
+          if (mllValue > (acc.startingBalance || 0)) {
+            mllValue = (acc.startingBalance || 0);
           }
-        });
-        mllValue = peakBalance - maxLossLimit;
+        } else if (drawdownType === 'eod') {
+          // End of Day (EOD) Drawdown: floor trails based on highest End-of-Day balance
+          const chronoTrades = [...accTrades].sort((a, b) => {
+            const tA = new Date(a.exitTime || a.entryTime || a.createdAt).getTime();
+            const tB = new Date(b.exitTime || b.entryTime || b.createdAt).getTime();
+            return tA - tB;
+          });
+          const dailyPnL = {};
+          chronoTrades.forEach(t => {
+            const dateStr = t.exitTime || t.entryTime || t.createdAt;
+            if (dateStr) {
+              const dayStr = new Date(dateStr).toISOString().split('T')[0];
+              dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
+            }
+          });
+          let runningEodBalance = acc.startingBalance || 0;
+          let peakEodBalance = acc.startingBalance || 0;
+          const sortedDays = Object.keys(dailyPnL).sort();
+          sortedDays.forEach(day => {
+            runningEodBalance += dailyPnL[day];
+            if (runningEodBalance > peakEodBalance) {
+              peakEodBalance = runningEodBalance;
+            }
+          });
+          mllValue = peakEodBalance - maxLossLimit;
+          // Standard prop firm rule: MLL locks in when reaching starting balance
+          if (mllValue > (acc.startingBalance || 0)) {
+            mllValue = (acc.startingBalance || 0);
+          }
+        }
       }
 
       const targetValue = (acc.startingBalance || 0) + profitTarget;
@@ -1503,7 +1539,7 @@ const handleAccounts = async (url, method, body) => {
             acc.status = 'Passed';
             statusUpdated = true;
           }
-        } else if (maxLossLimit > 0 && (useTrailingDrawdown ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
+        } else if (maxLossLimit > 0 && (drawdownType !== 'static' ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
           calculatedStatus = 'Failed';
           if (acc.status !== 'Failed') {
             acc.status = 'Failed';
@@ -1525,6 +1561,7 @@ const handleAccounts = async (url, method, body) => {
         maxLossLimit,
         dailyLossLimit,
         consistencyRule,
+        drawdownType,
         useTrailingDrawdown,
         mllValue,
         targetValue,
@@ -1544,10 +1581,11 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown, drawdownType } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const startBal = parseFloat(balance) || 0;
+    const resolvedDrawdownType = drawdownType || (useTrailingDrawdown === true ? 'trailing' : 'static');
     const newAccount = {
       id: Date.now(),
       accountName,
@@ -1566,7 +1604,8 @@ const handleAccounts = async (url, method, body) => {
       maxLossLimit: parseFloat(maxLossLimit) || 0,
       dailyLossLimit: parseFloat(dailyLossLimit) || 0,
       consistencyRule: parseFloat(consistencyRule) || 0,
-      useTrailingDrawdown: useTrailingDrawdown === true,
+      drawdownType: resolvedDrawdownType,
+      useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod',
       mllValue: startBal - (parseFloat(maxLossLimit) || 0),
       targetValue: startBal + (parseFloat(profitTarget) || 0),
       consistencyScore: 0,
@@ -1580,9 +1619,13 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown, drawdownType } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
+
+    const resolvedDrawdownType = drawdownType !== undefined 
+      ? drawdownType 
+      : (useTrailingDrawdown !== undefined ? (useTrailingDrawdown ? 'trailing' : 'static') : accountsList[idx].drawdownType || (accountsList[idx].useTrailingDrawdown ? 'trailing' : 'static'));
 
     const updatedAccount = {
       ...accountsList[idx],
@@ -1598,7 +1641,8 @@ const handleAccounts = async (url, method, body) => {
       maxLossLimit: maxLossLimit !== undefined ? parseFloat(maxLossLimit) : accountsList[idx].maxLossLimit,
       dailyLossLimit: dailyLossLimit !== undefined ? parseFloat(dailyLossLimit) : accountsList[idx].dailyLossLimit,
       consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule,
-      useTrailingDrawdown: useTrailingDrawdown !== undefined ? useTrailingDrawdown : accountsList[idx].useTrailingDrawdown
+      drawdownType: resolvedDrawdownType,
+      useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod'
     };
 
     accountsList[idx] = updatedAccount;

@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import ChartViewerModal from '../components/ui/ChartViewerModal';
 import CustomSetupInput from '../components/ui/CustomSetupInput';
+import ModalPortal from '../components/ui/ModalPortal';
 
 // --- Animated Count-Up PnL Component ---
 const AnimatedPnL = ({ value, duration = 800 }) => {
@@ -766,7 +767,8 @@ const Journal = () => {
       </motion.div>
 
       {/* Add Trade Modal */}
-      {showForm && (
+      <ModalPortal>
+        {showForm && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCancelForm()}>
           <div className="glass-deep modal-panel">
             <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
@@ -1250,7 +1252,6 @@ const Journal = () => {
                       All rules configured for this account are listed below. Rules added here or in the playbook are saved directly to your Trading Rules page.
                     </p>
                   </div>
-
                   {accountRules.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <ListTodo size={28} style={{ opacity: 0.25 }} />
@@ -1366,8 +1367,10 @@ const Journal = () => {
           </div>
         </div>
       )}
+      </ModalPortal>
 
       {/* Trade Details & Share Modal */}
+      <ModalPortal>
       <AnimatePresence>
         {currentSelectedTrade && (
           <motion.div
@@ -1889,6 +1892,7 @@ const Journal = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </ModalPortal>
 
       {/* Lightbox / High-Res Chart Viewer */}
       {zoomImage && (
@@ -1902,6 +1906,7 @@ const Journal = () => {
       )}
 
       {/* Delete Confirm */}
+      <ModalPortal>
       <AnimatePresence>
         {deleteConfirm && (
           <motion.div
@@ -1935,8 +1940,10 @@ const Journal = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </ModalPortal>
 
       {/* Notion Playbook Modal */}
+      <ModalPortal>
       <AnimatePresence>
         {activePlaybook && (
           <motion.div
@@ -2013,6 +2020,7 @@ const Journal = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </ModalPortal>
 
     </motion.div>
   );

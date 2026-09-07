@@ -7,6 +7,7 @@ import {
   Coins, ExternalLink, FileText, Edit2, Target, Crosshair, RotateCcw, ShieldAlert, CheckCircle, Info, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalPortal from '../components/ui/ModalPortal';
 
 // --- Animated Count-Up Balance Component ---
 const AnimatedBalance = ({ value, prefix = '$', decimals = 2, duration = 900 }) => {
@@ -445,7 +446,7 @@ const AccountCard = ({
                     ${Math.round(mll).toLocaleString()}
                   </div>
                   <div style={{ fontSize: '0.52rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, marginTop: '1px' }}>
-                    {acc.useTrailingDrawdown ? 'MLL (Trailing)' : 'MLL (Static)'}
+                    {acc.drawdownType === 'eod' ? 'MLL (EOD Trailing)' : (acc.useTrailingDrawdown || acc.drawdownType === 'trailing' ? 'MLL (Trailing)' : 'MLL (Static)')}
                   </div>
                 </div>
                 {acc.dailyLossLimit > 0 && (
@@ -640,6 +641,7 @@ const Accounts = () => {
     maxLossLimit: '',
     dailyLossLimit: '',
     consistencyRule: '',
+    drawdownType: 'static',
     useTrailingDrawdown: false
   });
 
@@ -692,6 +694,7 @@ const Accounts = () => {
       maxLossLimit: '',
       dailyLossLimit: '',
       consistencyRule: '',
+      drawdownType: 'static',
       useTrailingDrawdown: false
     });
     setError('');
@@ -699,6 +702,7 @@ const Accounts = () => {
 
   const startEditAccount = (acc) => {
     setEditingAccount(acc);
+    const resolvedDrawdownType = acc.drawdownType || (acc.useTrailingDrawdown ? 'trailing' : 'static');
     setFormData({
       accountName: acc.accountName,
       accountType: acc.accountType,
@@ -712,7 +716,8 @@ const Accounts = () => {
       maxLossLimit: acc.maxLossLimit ? String(acc.maxLossLimit) : '',
       dailyLossLimit: acc.dailyLossLimit ? String(acc.dailyLossLimit) : '',
       consistencyRule: acc.consistencyRule ? String(acc.consistencyRule) : '',
-      useTrailingDrawdown: acc.useTrailingDrawdown === true
+      drawdownType: resolvedDrawdownType,
+      useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || acc.useTrailingDrawdown === true
     });
     setShowForm(true);
   };
@@ -726,6 +731,7 @@ const Accounts = () => {
 
     setSubmitting(true);
     setError('');
+    const resolvedDrawdownType = formData.drawdownType || (formData.useTrailingDrawdown ? 'trailing' : 'static');
     try {
       if (editingAccount) {
         await accountsApi.update(editingAccount.id, {
@@ -741,7 +747,8 @@ const Accounts = () => {
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
           dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
-          useTrailingDrawdown: formData.useTrailingDrawdown === true
+          drawdownType: resolvedDrawdownType,
+          useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || formData.useTrailingDrawdown === true
         });
       } else {
         await accountsApi.create({
@@ -757,7 +764,8 @@ const Accounts = () => {
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
           dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
-          useTrailingDrawdown: formData.useTrailingDrawdown === true
+          drawdownType: resolvedDrawdownType,
+          useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || formData.useTrailingDrawdown === true
         });
       }
       handleCloseForm();
@@ -1230,48 +1238,48 @@ const Accounts = () => {
       )}
 
       {/* ═══ ADD / EDIT ACCOUNT FORM MODAL ═══ */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
-            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            transition={{ duration: 0.2 }}
-            onClick={handleCloseForm}
-          >
+      <ModalPortal>
+        <AnimatePresence>
+          {showForm && (
             <motion.div
-              className="glass-deep modal-panel"
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              style={{ width: 450, padding: 'var(--s8)' }}
-              onClick={e => e.stopPropagation()}
+              className="modal-overlay"
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              transition={{ duration: 0.2 }}
+              onClick={handleCloseForm}
             >
-              <div className="modal-header" style={{ marginBottom: 'var(--s6)' }}>
-                <div className="modal-title" style={{ fontSize: '1.1rem', fontWeight: 800 }}>
-                  {editingAccount ? 'Edit Account' : 'Add Trading Account'}
+              <motion.div
+                className="glass-deep modal-panel"
+                initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                style={{ width: 450, padding: 'var(--s8)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="modal-header" style={{ marginBottom: 'var(--s6)' }}>
+                  <div className="modal-title" style={{ fontSize: '1.1rem', fontWeight: 800 }}>
+                    {editingAccount ? 'Edit Account' : 'Add Trading Account'}
+                  </div>
+                  <motion.button whileHover={{ scale: 1.15, rotate: 90 }} whileTap={{ scale: 0.9 }} className="modal-close" onClick={handleCloseForm}>
+                    <X size={18} />
+                  </motion.button>
                 </div>
-                <motion.button whileHover={{ scale: 1.15, rotate: 90 }} whileTap={{ scale: 0.9 }} className="modal-close" onClick={handleCloseForm}>
-                  <X size={18} />
-                </motion.button>
-              </div>
 
-              <form onSubmit={handleSubmit}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
                   <div className="form-field">
                     <label className="form-label">Account Name *</label>
                     <input
                       className="input"
-                      type="text"
                       placeholder="e.g. Apex 50k #1"
                       value={formData.accountName}
                       onChange={e => setFormData({ ...formData, accountName: e.target.value })}
+                      autoFocus
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
                     <div className="form-field">
                       <label className="form-label">Account Type</label>
                       <select
@@ -1279,10 +1287,9 @@ const Accounts = () => {
                         value={formData.accountType}
                         onChange={e => setFormData({ ...formData, accountType: e.target.value })}
                       >
-                        <option value="Simulated">Simulation Challenge</option>
-                        <option value="Live">Live Brokerage</option>
-                        <option value="Prop Challenge">Prop Firm Evaluation</option>
-                        <option value="Prop Funded">Prop Firm Funded Account</option>
+                        {['Simulation Challenge', 'Simulated', 'Funded Live', 'Live', 'Personal Demo'].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -1293,13 +1300,9 @@ const Accounts = () => {
                         value={formData.marketType}
                         onChange={e => setFormData({ ...formData, marketType: e.target.value })}
                       >
-                        <option value="Forex">Forex</option>
-                        <option value="Futures">Futures</option>
-                        <option value="Crypto">Crypto</option>
-                        <option value="Stocks">Stocks</option>
-                        <option value="Indices">Indices</option>
-                        <option value="Commodities">Commodities</option>
-                        <option value="Multi-Asset">Multi-Asset</option>
+                        {['Forex', 'Futures', 'Crypto', 'Stocks', 'Commodities'].map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -1309,7 +1312,8 @@ const Accounts = () => {
                     <input
                       className="input"
                       type="number"
-                      placeholder="50000"
+                      step="any"
+                      placeholder="10000"
                       value={formData.balance}
                       onChange={e => setFormData({ ...formData, balance: e.target.value })}
                     />
@@ -1319,27 +1323,37 @@ const Accounts = () => {
                     <label className="form-label">Notes (Optional)</label>
                     <textarea
                       className="input"
-                      style={{ minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.78rem' }}
+                      style={{ height: '60px', resize: 'vertical' }}
                       placeholder="e.g. Trading plan, rules, daily limits..."
                       value={formData.notes}
                       onChange={e => setFormData({ ...formData, notes: e.target.value })}
                     />
                   </div>
 
-                  {/* Challenge / Prop Firm Settings */}
-                  {formData.accountType !== 'Live' && (
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--s4)', marginTop: 'var(--s2)' }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--s3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Target size={13} style={{ color: 'var(--accent)' }} />
-                        Challenge / Prop Firm Rules
+                  {/* Prop Firm / Challenge Settings Card */}
+                  {(formData.accountType === 'Simulation Challenge' || formData.accountType === 'Funded Live' || formData.accountType === 'Simulated') && (
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.07)',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--s3)',
+                      marginTop: '4px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <Target size={14} style={{ color: 'var(--accent)' }} />
+                        <span>Challenge / Prop Firm Rules</span>
                       </div>
+
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
                         <div className="form-field">
                           <label className="form-label">Profit Target ($)</label>
                           <input
                             className="input"
                             type="number"
-                            placeholder="e.g. 1250"
+                            placeholder="e.g. 5000"
                             value={formData.profitTarget}
                             onChange={e => setFormData({ ...formData, profitTarget: e.target.value })}
                           />
@@ -1354,6 +1368,9 @@ const Accounts = () => {
                             onChange={e => setFormData({ ...formData, maxLossLimit: e.target.value })}
                           />
                         </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
                         <div className="form-field">
                           <label className="form-label">Daily Loss Limit ($)</label>
                           <input
@@ -1365,7 +1382,7 @@ const Accounts = () => {
                           />
                         </div>
                         <div className="form-field">
-                          <label className="form-label">Consistency (%)</label>
+                          <label className="form-label">Consistency Rule (%)</label>
                           <input
                             className="input"
                             type="number"
@@ -1380,11 +1397,19 @@ const Accounts = () => {
                         <label className="form-label">Drawdown Calculation Type</label>
                         <select
                           className="input"
-                          value={formData.useTrailingDrawdown ? 'trailing' : 'static'}
-                          onChange={e => setFormData({ ...formData, useTrailingDrawdown: e.target.value === 'trailing' })}
+                          value={formData.drawdownType || (formData.useTrailingDrawdown ? 'trailing' : 'static')}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setFormData({
+                              ...formData,
+                              drawdownType: val,
+                              useTrailingDrawdown: val === 'trailing' || val === 'eod'
+                            });
+                          }}
                         >
                           <option value="static">🔒 Static Drawdown (FTMO / Funding Pips — Fixed Floor)</option>
-                          <option value="trailing">📈 Trailing Drawdown (Apex / Topstep — Dynamic Peak Floor)</option>
+                          <option value="trailing">📈 Trailing Drawdown (Apex — Dynamic Intraday/Trade Peak Floor)</option>
+                          <option value="eod">📅 End of Day (EOD) Drawdown (Topstep / TradeDay — Daily Closing Peak Floor)</option>
                         </select>
                       </div>
 
@@ -1398,8 +1423,10 @@ const Accounts = () => {
                         borderRadius: '8px',
                         lineHeight: 1.4
                       }}>
-                        {formData.useTrailingDrawdown ? (
-                          <span>📈 <strong>Trailing Drawdown:</strong> Your Minimum Loss Level (MLL) trails upward dynamically as peak account equity increases until it reaches starting balance.</span>
+                        {formData.drawdownType === 'eod' ? (
+                          <span>📅 <strong>End of Day (EOD) Drawdown:</strong> Your Minimum Loss Level (MLL) trails upward based on your daily closing balance rather than intraday trade swings, and locks in permanently once it reaches starting balance.</span>
+                        ) : (formData.drawdownType === 'trailing' || formData.useTrailingDrawdown) ? (
+                          <span>📈 <strong>Trailing Drawdown:</strong> Your Minimum Loss Level (MLL) trails upward dynamically as peak account equity increases after each trade until it reaches starting balance.</span>
                         ) : (
                           <span>🔒 <strong>Static Drawdown:</strong> Your Minimum Loss Level (MLL) remains permanently fixed at <strong>${Math.max(0, (parseFloat(formData.balance) || 0) - (parseFloat(formData.maxLossLimit) || 0)).toLocaleString()}</strong> (Starting Balance - Max Loss Limit).</span>
                         )}
@@ -1415,7 +1442,7 @@ const Accounts = () => {
                         value={formData.currency}
                         onChange={e => setFormData({ ...formData, currency: e.target.value })}
                       >
-                        {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].map(c => <option key={c} value={c}>{c}</option>)}
+                        {['USD', 'EUR', 'GBP', 'JPY'].map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div className="form-field">
@@ -1428,152 +1455,162 @@ const Accounts = () => {
                         <option value="Active">Active</option>
                         <option value="Passed">Passed</option>
                         <option value="Failed">Failed</option>
+                        <option value="Breached">Breached</option>
                       </select>
                     </div>
                   </div>
-                </div>
 
-                {error && (
-                  <div style={{
-                    padding: '8px 12px', borderRadius: 'var(--r-md)',
-                    background: 'var(--loss-soft)', border: '1px solid var(--loss-border)',
-                    fontSize: '0.72rem', color: 'var(--loss)', marginTop: 'var(--s4)'
-                  }}>
-                    {error}
+                  {error && (
+                    <div className="glass anim-fade-in" style={{
+                      padding: '8px var(--s3)',
+                      borderRadius: 'var(--r-sm)',
+                      background: 'var(--loss-soft)',
+                      border: '1px solid var(--loss-border)',
+                      color: 'var(--loss)',
+                      fontSize: '0.75rem'
+                    }}>
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="form-actions" style={{ marginTop: 'var(--s6)' }}>
+                    <button type="button" className="btn btn-ghost" onClick={handleCloseForm}>Cancel</button>
+                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit" className="btn btn-primary" disabled={submitting}>
+                      {submitting ? (editingAccount ? 'Saving...' : 'Creating...') : (editingAccount ? 'Save Changes' : '+ Create Account')}
+                    </motion.button>
                   </div>
-                )}
-
-                <div className="form-actions" style={{ marginTop: 'var(--s6)' }}>
-                  <button type="button" className="btn btn-ghost" onClick={handleCloseForm}>Cancel</button>
-                  <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? (editingAccount ? 'Saving...' : 'Creating...') : (editingAccount ? 'Save Changes' : '+ Create Account')}
-                  </motion.button>
-                </div>
-              </form>
+                </form>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </ModalPortal>
 
       {/* ═══ SOFT DELETE CONFIRMATION MODAL ═══ */}
-      <AnimatePresence>
-        {deleteConfirm && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
-            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setDeleteConfirm(null)}
-          >
+      <ModalPortal>
+        <AnimatePresence>
+          {deleteConfirm && (
             <motion.div
-              className="modal-panel glass"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              style={{ maxWidth: 440, padding: 'var(--s6)' }}
-              onClick={e => e.stopPropagation()}
+              className="modal-overlay"
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setDeleteConfirm(null)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warn)', marginBottom: 'var(--s3)' }}>
-                <AlertTriangle size={24} />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Move to Deleted Accounts?</h3>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
-                Move <strong>"{deleteConfirm.accountName}"</strong> to the Deleted Accounts tab? All account balances, targets, notes, and trade logs will be safely archived and can be restored at any time.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-danger" onClick={() => handleDelete(deleteConfirm.id)}>
-                  Move to Deleted
-                </motion.button>
-              </div>
+              <motion.div
+                className="modal-panel glass"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                style={{ maxWidth: 440, padding: 'var(--s6)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warn)', marginBottom: 'var(--s3)' }}>
+                  <AlertTriangle size={24} />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Move to Deleted Accounts?</h3>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
+                  Move <strong>"{deleteConfirm.accountName}"</strong> to the Deleted Accounts tab? All account balances, targets, notes, and trade logs will be safely archived and can be restored at any time.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-danger" onClick={() => handleDelete(deleteConfirm.id)}>
+                    Move to Deleted
+                  </motion.button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </ModalPortal>
 
       {/* ═══ RESTORE CONFIRMATION MODAL ═══ */}
-      <AnimatePresence>
-        {restoreConfirm && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
-            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setRestoreConfirm(null)}
-          >
+      <ModalPortal>
+        <AnimatePresence>
+          {restoreConfirm && (
             <motion.div
-              className="modal-panel glass"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              style={{ maxWidth: 440, padding: 'var(--s6)' }}
-              onClick={e => e.stopPropagation()}
+              className="modal-overlay"
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setRestoreConfirm(null)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--profit)', marginBottom: 'var(--s3)' }}>
-                <RotateCcw size={24} />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Restore Account?</h3>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
-                Restore <strong>"{restoreConfirm.accountName}"</strong> back to your active accounts list with all stats and trade logs intact?
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button className="btn btn-ghost" onClick={() => setRestoreConfirm(null)}>Cancel</button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="btn btn-primary"
-                  style={{ background: 'var(--profit)', borderColor: 'var(--profit)' }}
-                  onClick={() => handleRestore(restoreConfirm.id)}
-                >
-                  Restore Account
-                </motion.button>
-              </div>
+              <motion.div
+                className="modal-panel glass"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                style={{ maxWidth: 440, padding: 'var(--s6)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--profit)', marginBottom: 'var(--s3)' }}>
+                  <RotateCcw size={24} />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Restore Account?</h3>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
+                  Restore <strong>"{restoreConfirm.accountName}"</strong> back to your active accounts list with all stats and trade logs intact?
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-ghost" onClick={() => setRestoreConfirm(null)}>Cancel</button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="btn btn-primary"
+                    style={{ background: 'var(--profit)', borderColor: 'var(--profit)' }}
+                    onClick={() => handleRestore(restoreConfirm.id)}
+                  >
+                    Restore Account
+                  </motion.button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </ModalPortal>
 
       {/* ═══ HARD DELETE CONFIRMATION MODAL ═══ */}
-      <AnimatePresence>
-        {hardDeleteConfirm && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
-            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setHardDeleteConfirm(null)}
-          >
+      <ModalPortal>
+        <AnimatePresence>
+          {hardDeleteConfirm && (
             <motion.div
-              className="modal-panel glass"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              style={{ maxWidth: 440, padding: 'var(--s6)' }}
-              onClick={e => e.stopPropagation()}
+              className="modal-overlay"
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setHardDeleteConfirm(null)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--loss)', marginBottom: 'var(--s3)' }}>
-                <ShieldAlert size={24} />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Permanently Delete Account?</h3>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
-                Permanently erase <strong>"{hardDeleteConfirm.accountName}"</strong>? This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button className="btn btn-ghost" onClick={() => setHardDeleteConfirm(null)}>Cancel</button>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-danger" onClick={() => handleHardDelete(hardDeleteConfirm.id)}>
-                  Permanently Erase
-                </motion.button>
-              </div>
+              <motion.div
+                className="modal-panel glass"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                style={{ maxWidth: 440, padding: 'var(--s6)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--loss)', marginBottom: 'var(--s3)' }}>
+                  <ShieldAlert size={24} />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>Permanently Delete Account?</h3>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, marginBottom: 'var(--s5)' }}>
+                  Permanently erase <strong>"{hardDeleteConfirm.accountName}"</strong>? This action cannot be undone.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-ghost" onClick={() => setHardDeleteConfirm(null)}>Cancel</button>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-danger" onClick={() => handleHardDelete(hardDeleteConfirm.id)}>
+                    Permanently Erase
+                  </motion.button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </ModalPortal>
 
     </div>
   );
