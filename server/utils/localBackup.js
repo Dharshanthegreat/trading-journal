@@ -164,6 +164,7 @@ export async function writeLocalBackup(userId) {
         maxLossLimit: a.max_loss_limit || 0,
         dailyLossLimit: a.daily_loss_limit || 0,
         consistencyRule: a.consistency_rule || 0,
+        minTradingDays: a.min_trading_days || 0,
         drawdownType: a.drawdown_type || (a.use_trailing_drawdown ? 'trailing' : 'static'),
         useTrailingDrawdown: a.use_trailing_drawdown || false,
         createdAt: a.created_at

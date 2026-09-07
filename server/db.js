@@ -191,6 +191,7 @@ async function initDB() {
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS use_trailing_drawdown BOOLEAN DEFAULT FALSE;
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS drawdown_type TEXT DEFAULT 'static';
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS market_type TEXT DEFAULT 'Forex';
+      ALTER TABLE accounts ADD COLUMN IF NOT EXISTS min_trading_days INTEGER DEFAULT 0;
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
       ALTER TABLE trading_rules ADD COLUMN IF NOT EXISTS passed_count INTEGER DEFAULT 0;
       ALTER TABLE trading_rules ADD COLUMN IF NOT EXISTS failed_count INTEGER DEFAULT 0;

@@ -314,13 +314,23 @@ const AccountCard = ({
           </motion.div>
         )}
 
-        {(acc.profitTarget > 0 || acc.maxLossLimit > 0) && (
+        {(acc.profitTarget > 0 || acc.maxLossLimit > 0 || (acc.minTradingDays || acc.min_trading_days) > 0) && (
           <motion.div whileHover={{ y: -3, scale: 1.02 }} transition={{ duration: 0.2 }} className="account-stat-block-new">
             <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
-              <CalendarDays size={11} style={{ opacity: 0.7, color: 'var(--profit)' }} /> Days
+              <CalendarDays size={11} style={{ opacity: 0.7, color: ((acc.minTradingDays || acc.min_trading_days) > 0 && (acc.tradingDays || 0) >= (acc.minTradingDays || acc.min_trading_days)) ? 'var(--profit)' : 'var(--accent)' }} /> Days
+              {((acc.minTradingDays || acc.min_trading_days) > 0 && (acc.tradingDays || 0) >= (acc.minTradingDays || acc.min_trading_days)) && (
+                <span style={{ color: 'var(--profit)', fontSize: '0.65rem', fontWeight: 800, marginLeft: 'auto' }}>✓</span>
+              )}
             </span>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: 'var(--profit)', marginTop: '2px' }}>
-              <AnimatedCountUp target={acc.tradingDays || 0} duration={650} />
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: ((acc.minTradingDays || acc.min_trading_days) > 0 && (acc.tradingDays || 0) >= (acc.minTradingDays || acc.min_trading_days)) ? 'var(--profit)' : 'var(--text-primary)' }}>
+                <AnimatedCountUp target={acc.tradingDays || 0} duration={650} />
+              </span>
+              {(acc.minTradingDays || acc.min_trading_days) > 0 && (
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                  / {(acc.minTradingDays || acc.min_trading_days)} min
+                </span>
+              )}
             </div>
           </motion.div>
         )}
@@ -641,6 +651,7 @@ const Accounts = () => {
     maxLossLimit: '',
     dailyLossLimit: '',
     consistencyRule: '',
+    minTradingDays: '',
     drawdownType: 'static',
     useTrailingDrawdown: false
   });
@@ -694,6 +705,7 @@ const Accounts = () => {
       maxLossLimit: '',
       dailyLossLimit: '',
       consistencyRule: '',
+      minTradingDays: '',
       drawdownType: 'static',
       useTrailingDrawdown: false
     });
@@ -716,6 +728,9 @@ const Accounts = () => {
       maxLossLimit: acc.maxLossLimit ? String(acc.maxLossLimit) : '',
       dailyLossLimit: acc.dailyLossLimit ? String(acc.dailyLossLimit) : '',
       consistencyRule: acc.consistencyRule ? String(acc.consistencyRule) : '',
+      minTradingDays: (acc.minTradingDays !== undefined && acc.minTradingDays !== null && acc.minTradingDays !== '')
+        ? String(acc.minTradingDays)
+        : (acc.min_trading_days ? String(acc.min_trading_days) : ''),
       drawdownType: resolvedDrawdownType,
       useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || acc.useTrailingDrawdown === true
     });
@@ -747,6 +762,7 @@ const Accounts = () => {
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
           dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
+          minTradingDays: parseInt(formData.minTradingDays, 10) || 0,
           drawdownType: resolvedDrawdownType,
           useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || formData.useTrailingDrawdown === true
         });
@@ -764,6 +780,7 @@ const Accounts = () => {
           maxLossLimit: parseFloat(formData.maxLossLimit) || 0,
           dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
+          minTradingDays: parseInt(formData.minTradingDays, 10) || 0,
           drawdownType: resolvedDrawdownType,
           useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || formData.useTrailingDrawdown === true
         });
@@ -892,6 +909,8 @@ const Accounts = () => {
               maxLossLimit: '',
               dailyLossLimit: '',
               consistencyRule: '',
+              minTradingDays: '',
+              drawdownType: 'static',
               useTrailingDrawdown: false
             });
             setShowForm(true);
@@ -1391,6 +1410,18 @@ const Accounts = () => {
                             onChange={e => setFormData({ ...formData, consistencyRule: e.target.value })}
                           />
                         </div>
+                      </div>
+
+                      <div className="form-field" style={{ marginTop: '12px' }}>
+                        <label className="form-label">Minimum Trading Days</label>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          placeholder="e.g. 5 (Required trading days to pass challenge)"
+                          value={formData.minTradingDays}
+                          onChange={e => setFormData({ ...formData, minTradingDays: e.target.value })}
+                        />
                       </div>
                       
                       <div className="form-field" style={{ marginTop: '12px' }}>

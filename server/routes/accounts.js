@@ -31,6 +31,7 @@ router.get('/', async (req, res) => {
       const maxLossLimit = acc.max_loss_limit || 0;
       const dailyLossLimit = acc.daily_loss_limit || 0;
       const consistencyRule = acc.consistency_rule || 0;
+      const minTradingDays = acc.min_trading_days || 0;
       const drawdownType = acc.drawdown_type || (acc.use_trailing_drawdown ? 'trailing' : 'static');
       const useTrailingDrawdown = drawdownType === 'trailing' || acc.use_trailing_drawdown || false;
 
@@ -107,8 +108,10 @@ router.get('/', async (req, res) => {
       let calculatedStatus = acc.status || 'Active';
       if (!calculatedStatus || calculatedStatus.toLowerCase() === 'active') {
         if (profitTarget > 0 && totalPnL >= profitTarget) {
-          calculatedStatus = 'Passed';
-          await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Passed', acc.id, userId]);
+          if (minTradingDays <= 0 || tradingDays >= minTradingDays) {
+            calculatedStatus = 'Passed';
+            await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Passed', acc.id, userId]);
+          }
         } else if (maxLossLimit > 0 && (drawdownType !== 'static' ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
           calculatedStatus = 'Failed';
           await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Failed', acc.id, userId]);
@@ -133,6 +136,7 @@ router.get('/', async (req, res) => {
         maxLossLimit,
         dailyLossLimit,
         consistencyRule,
+        minTradingDays,
         drawdownType,
         useTrailingDrawdown,
         mllValue,
@@ -176,6 +180,7 @@ router.get('/deleted', async (req, res) => {
       const maxLossLimit = acc.max_loss_limit || 0;
       const dailyLossLimit = acc.daily_loss_limit || 0;
       const consistencyRule = acc.consistency_rule || 0;
+      const minTradingDays = acc.min_trading_days || 0;
 
       return {
         id: acc.id,
@@ -195,6 +200,7 @@ router.get('/deleted', async (req, res) => {
         maxLossLimit,
         dailyLossLimit,
         consistencyRule,
+        minTradingDays,
         drawdownType: acc.drawdown_type || (acc.use_trailing_drawdown ? 'trailing' : 'static'),
         useTrailingDrawdown: acc.use_trailing_drawdown || false,
         createdAt: acc.created_at,
@@ -212,7 +218,7 @@ router.get('/deleted', async (req, res) => {
 // ─── Create Account ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown, drawdownType } = req.body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = req.body;
     const userId = req.user.id;
 
     if (!accountName) {
@@ -228,14 +234,15 @@ router.post('/', async (req, res) => {
     const accMaxLossLimit = parseFloat(maxLossLimit) || 0;
     const accDailyLossLimit = parseFloat(dailyLossLimit) || 0;
     const accConsistencyRule = parseFloat(consistencyRule) || 0;
+    const accMinTradingDays = parseInt(minTradingDays, 10) || 0;
     const accDrawdownType = drawdownType || (useTrailingDrawdown === true ? 'trailing' : 'static');
     const accUseTrailing = accDrawdownType === 'trailing' || accDrawdownType === 'eod' || useTrailingDrawdown === true;
 
     const result = await db.query(`
-      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, daily_loss_limit, consistency_rule, use_trailing_drawdown, market_type, drawdown_type)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, daily_loss_limit, consistency_rule, use_trailing_drawdown, market_type, drawdown_type, min_trading_days)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
-    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accDailyLossLimit, accConsistencyRule, accUseTrailing, accMarketType, accDrawdownType]);
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accDailyLossLimit, accConsistencyRule, accUseTrailing, accMarketType, accDrawdownType, accMinTradingDays]);
 
     const newAccount = result.rows[0];
     res.status(201).json({
@@ -256,6 +263,7 @@ router.post('/', async (req, res) => {
       maxLossLimit: newAccount.max_loss_limit || 0,
       dailyLossLimit: newAccount.daily_loss_limit || 0,
       consistencyRule: newAccount.consistency_rule || 0,
+      minTradingDays: newAccount.min_trading_days || accMinTradingDays,
       drawdownType: newAccount.drawdown_type || accDrawdownType,
       useTrailingDrawdown: newAccount.use_trailing_drawdown || false,
       mllValue: newAccount.balance - (newAccount.max_loss_limit || 0),
@@ -272,7 +280,7 @@ router.post('/', async (req, res) => {
 // ─── Update Account ────────────────────────────────────
 router.put('/:id', async (req, res) => {
   try {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown, drawdownType } = req.body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = req.body;
     const accountId = req.params.id;
     const userId = req.user.id;
 
@@ -303,8 +311,9 @@ router.put('/:id', async (req, res) => {
           consistency_rule = COALESCE($11, consistency_rule),
           use_trailing_drawdown = COALESCE($12, use_trailing_drawdown),
           market_type = COALESCE($13, market_type),
-          drawdown_type = COALESCE($14, drawdown_type)
-      WHERE id = $15 AND user_id = $16
+          drawdown_type = COALESCE($14, drawdown_type),
+          min_trading_days = COALESCE($15, min_trading_days)
+      WHERE id = $16 AND user_id = $17
       RETURNING *
     `, [
       accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, notes,
@@ -315,6 +324,7 @@ router.put('/:id', async (req, res) => {
       resolvedUseTrailing,
       marketType,
       resolvedDrawdownType,
+      minTradingDays !== undefined ? (parseInt(minTradingDays, 10) || 0) : null,
       accountId, userId
     ]);
 
@@ -333,6 +343,7 @@ router.put('/:id', async (req, res) => {
       maxLossLimit: updatedAccount.max_loss_limit || 0,
       dailyLossLimit: updatedAccount.daily_loss_limit || 0,
       consistencyRule: updatedAccount.consistency_rule || 0,
+      minTradingDays: updatedAccount.min_trading_days || 0,
       drawdownType: updatedAccount.drawdown_type || (updatedAccount.use_trailing_drawdown ? 'trailing' : 'static'),
       useTrailingDrawdown: updatedAccount.use_trailing_drawdown || false,
       createdAt: updatedAccount.created_at,

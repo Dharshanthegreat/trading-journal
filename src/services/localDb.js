@@ -1456,6 +1456,7 @@ const handleAccounts = async (url, method, body) => {
       const maxLossLimit = acc.maxLossLimit || 0;
       const dailyLossLimit = acc.dailyLossLimit || 0;
       const consistencyRule = acc.consistencyRule || 0;
+      const minTradingDays = acc.minTradingDays || acc.min_trading_days || 0;
       const drawdownType = acc.drawdownType || (acc.useTrailingDrawdown ? 'trailing' : 'static');
       const useTrailingDrawdown = drawdownType === 'trailing' || acc.useTrailingDrawdown || false;
 
@@ -1534,10 +1535,12 @@ const handleAccounts = async (url, method, body) => {
       let calculatedStatus = acc.status || 'Active';
       if (!calculatedStatus || calculatedStatus.toLowerCase() === 'active') {
         if (profitTarget > 0 && totalPnL >= profitTarget) {
-          calculatedStatus = 'Passed';
-          if (acc.status !== 'Passed') {
-            acc.status = 'Passed';
-            statusUpdated = true;
+          if (minTradingDays <= 0 || tradingDays >= minTradingDays) {
+            calculatedStatus = 'Passed';
+            if (acc.status !== 'Passed') {
+              acc.status = 'Passed';
+              statusUpdated = true;
+            }
           }
         } else if (maxLossLimit > 0 && (drawdownType !== 'static' ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
           calculatedStatus = 'Failed';
@@ -1561,6 +1564,7 @@ const handleAccounts = async (url, method, body) => {
         maxLossLimit,
         dailyLossLimit,
         consistencyRule,
+        minTradingDays,
         drawdownType,
         useTrailingDrawdown,
         mllValue,
@@ -1581,7 +1585,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown, drawdownType } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const startBal = parseFloat(balance) || 0;
@@ -1604,6 +1608,7 @@ const handleAccounts = async (url, method, body) => {
       maxLossLimit: parseFloat(maxLossLimit) || 0,
       dailyLossLimit: parseFloat(dailyLossLimit) || 0,
       consistencyRule: parseFloat(consistencyRule) || 0,
+      minTradingDays: parseInt(minTradingDays, 10) || 0,
       drawdownType: resolvedDrawdownType,
       useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod',
       mllValue: startBal - (parseFloat(maxLossLimit) || 0),
@@ -1619,7 +1624,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, useTrailingDrawdown, drawdownType } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1641,6 +1646,7 @@ const handleAccounts = async (url, method, body) => {
       maxLossLimit: maxLossLimit !== undefined ? parseFloat(maxLossLimit) : accountsList[idx].maxLossLimit,
       dailyLossLimit: dailyLossLimit !== undefined ? parseFloat(dailyLossLimit) : accountsList[idx].dailyLossLimit,
       consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule,
+      minTradingDays: minTradingDays !== undefined ? (parseInt(minTradingDays, 10) || 0) : (accountsList[idx].minTradingDays || 0),
       drawdownType: resolvedDrawdownType,
       useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod'
     };
