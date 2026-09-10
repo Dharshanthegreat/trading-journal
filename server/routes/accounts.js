@@ -16,16 +16,29 @@ router.get('/', async (req, res) => {
       const tradesCount = tradesResult.rows.length;
       const currentBalance = (acc.balance || 0) + totalPnL;
 
-      // Count distinct trading days
-      const tradingDaysSet = new Set();
+      // Count distinct / qualifying trading days
+      const dailyPnL = {};
       tradesResult.rows.forEach(t => {
         const tradeTime = t.exit_time || t.entry_time || t.created_at;
         if (tradeTime) {
           const dayStr = new Date(tradeTime).toISOString().split('T')[0];
-          tradingDaysSet.add(dayStr);
+          dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
         }
       });
-      const tradingDays = tradingDaysSet.size;
+
+      const minDailyProfitPct = parseFloat(acc.min_daily_profit_pct) || 0;
+      const minDailyProfitReq = minDailyProfitPct > 0 ? (parseFloat(acc.balance) || 0) * (minDailyProfitPct / 100) : 0;
+      let tradingDays = 0;
+      const allDays = Object.keys(dailyPnL);
+      if (minDailyProfitPct > 0) {
+        allDays.forEach(day => {
+          if (dailyPnL[day] >= minDailyProfitReq) {
+            tradingDays++;
+          }
+        });
+      } else {
+        tradingDays = allDays.length;
+      }
 
       const profitTarget = acc.profit_target || 0;
       const maxLossLimit = acc.max_loss_limit || 0;
@@ -63,25 +76,25 @@ router.get('/', async (req, res) => {
             const tB = new Date(b.exit_time || b.entry_time || b.created_at).getTime();
             return tA - tB;
           });
-          const dailyPnL = {};
+          const eodDailyPnL = {};
           chronoTrades.forEach(t => {
-            const tradeTime = t.exit_time || t.entry_time || t.created_at;
-            if (tradeTime) {
-              const dayStr = new Date(tradeTime).toISOString().split('T')[0];
-              dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
+            const dateStr = t.exit_time || t.entry_time || t.created_at;
+            if (dateStr) {
+              const dayStr = new Date(dateStr).toISOString().split('T')[0];
+              eodDailyPnL[dayStr] = (eodDailyPnL[dayStr] || 0) + (t.pnl || 0);
             }
           });
           let runningEodBalance = acc.balance || 0;
           let peakEodBalance = acc.balance || 0;
-          const sortedDays = Object.keys(dailyPnL).sort();
+          const sortedDays = Object.keys(eodDailyPnL).sort();
           sortedDays.forEach(day => {
-            runningEodBalance += dailyPnL[day];
+            runningEodBalance += eodDailyPnL[day];
             if (runningEodBalance > peakEodBalance) {
               peakEodBalance = runningEodBalance;
             }
           });
           mllValue = peakEodBalance - maxLossLimit;
-          // Standard prop firm rule (Topstep/TradeDay): locks in at starting balance
+          // Standard prop firm rule: MLL locks in when reaching starting balance
           if (mllValue > (acc.balance || 0)) {
             mllValue = (acc.balance || 0);
           }
@@ -90,17 +103,18 @@ router.get('/', async (req, res) => {
       
       const targetValue = (acc.balance || 0) + profitTarget;
 
+      // Consistency rule check
       let consistencyScore = 0;
       if (consistencyRule > 0 && totalPnL > 0) {
-        const dailyPnL = {};
+        const cDailyPnL = {};
         tradesResult.rows.forEach(t => {
           const tradeTime = t.exit_time || t.entry_time || t.created_at;
           if (tradeTime) {
             const dayStr = new Date(tradeTime).toISOString().split('T')[0];
-            dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
+            cDailyPnL[dayStr] = (cDailyPnL[dayStr] || 0) + (t.pnl || 0);
           }
         });
-        const maxDayPnL = Math.max(...Object.values(dailyPnL).map(Math.abs), 0);
+        const maxDayPnL = Math.max(...Object.values(cDailyPnL).map(Math.abs), 0);
         consistencyScore = (maxDayPnL / totalPnL) * 100;
       }
 
@@ -110,11 +124,11 @@ router.get('/', async (req, res) => {
         if (profitTarget > 0 && totalPnL >= profitTarget) {
           if (minTradingDays <= 0 || tradingDays >= minTradingDays) {
             calculatedStatus = 'Passed';
-            await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Passed', acc.id, userId]);
+            await db.query('UPDATE accounts SET status = $1 WHERE id = $2', ['Passed', acc.id]);
           }
         } else if (maxLossLimit > 0 && (drawdownType !== 'static' ? currentBalance < mllValue : totalPnL <= -maxLossLimit)) {
           calculatedStatus = 'Failed';
-          await db.query('UPDATE accounts SET status = $1 WHERE id = $2 AND user_id = $3', ['Failed', acc.id, userId]);
+          await db.query('UPDATE accounts SET status = $1 WHERE id = $2', ['Failed', acc.id]);
         }
       }
 
@@ -137,6 +151,7 @@ router.get('/', async (req, res) => {
         dailyLossLimit,
         consistencyRule,
         minTradingDays,
+        minDailyProfitPct,
         drawdownType,
         useTrailingDrawdown,
         mllValue,
@@ -166,15 +181,28 @@ router.get('/deleted', async (req, res) => {
       const tradesCount = tradesResult.rows.length;
       const currentBalance = (acc.balance || 0) + totalPnL;
 
-      const tradingDaysSet = new Set();
+      const dailyPnL = {};
       tradesResult.rows.forEach(t => {
         const tradeTime = t.exit_time || t.entry_time || t.created_at;
         if (tradeTime) {
           const dayStr = new Date(tradeTime).toISOString().split('T')[0];
-          tradingDaysSet.add(dayStr);
+          dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
         }
       });
-      const tradingDays = tradingDaysSet.size;
+
+      const minDailyProfitPct = parseFloat(acc.min_daily_profit_pct) || 0;
+      const minDailyProfitReq = minDailyProfitPct > 0 ? (parseFloat(acc.balance) || 0) * (minDailyProfitPct / 100) : 0;
+      let tradingDays = 0;
+      const allDays = Object.keys(dailyPnL);
+      if (minDailyProfitPct > 0) {
+        allDays.forEach(day => {
+          if (dailyPnL[day] >= minDailyProfitReq) {
+            tradingDays++;
+          }
+        });
+      } else {
+        tradingDays = allDays.length;
+      }
 
       const profitTarget = acc.profit_target || 0;
       const maxLossLimit = acc.max_loss_limit || 0;
@@ -201,6 +229,7 @@ router.get('/deleted', async (req, res) => {
         dailyLossLimit,
         consistencyRule,
         minTradingDays,
+        minDailyProfitPct,
         drawdownType: acc.drawdown_type || (acc.use_trailing_drawdown ? 'trailing' : 'static'),
         useTrailingDrawdown: acc.use_trailing_drawdown || false,
         createdAt: acc.created_at,
@@ -218,7 +247,7 @@ router.get('/deleted', async (req, res) => {
 // ─── Create Account ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = req.body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, minDailyProfitPct, useTrailingDrawdown, drawdownType } = req.body;
     const userId = req.user.id;
 
     if (!accountName) {
@@ -235,14 +264,15 @@ router.post('/', async (req, res) => {
     const accDailyLossLimit = parseFloat(dailyLossLimit) || 0;
     const accConsistencyRule = parseFloat(consistencyRule) || 0;
     const accMinTradingDays = parseInt(minTradingDays, 10) || 0;
+    const accMinDailyProfitPct = parseFloat(minDailyProfitPct) || 0;
     const accDrawdownType = drawdownType || (useTrailingDrawdown === true ? 'trailing' : 'static');
     const accUseTrailing = accDrawdownType === 'trailing' || accDrawdownType === 'eod' || useTrailingDrawdown === true;
 
     const result = await db.query(`
-      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, daily_loss_limit, consistency_rule, use_trailing_drawdown, market_type, drawdown_type, min_trading_days)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      INSERT INTO accounts (user_id, account_name, account_type, balance, currency, status, notion_link, notes, profit_target, max_loss_limit, daily_loss_limit, consistency_rule, use_trailing_drawdown, market_type, drawdown_type, min_trading_days, min_daily_profit_pct)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
-    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accDailyLossLimit, accConsistencyRule, accUseTrailing, accMarketType, accDrawdownType, accMinTradingDays]);
+    `, [userId, accountName, accType, startBalance, accCurrency, accStatus, notionLink || '', notes || '', accProfitTarget, accMaxLossLimit, accDailyLossLimit, accConsistencyRule, accUseTrailing, accMarketType, accDrawdownType, accMinTradingDays, accMinDailyProfitPct]);
 
     const newAccount = result.rows[0];
     res.status(201).json({
@@ -264,6 +294,7 @@ router.post('/', async (req, res) => {
       dailyLossLimit: newAccount.daily_loss_limit || 0,
       consistencyRule: newAccount.consistency_rule || 0,
       minTradingDays: newAccount.min_trading_days || accMinTradingDays,
+      minDailyProfitPct: newAccount.min_daily_profit_pct !== undefined ? newAccount.min_daily_profit_pct : accMinDailyProfitPct,
       drawdownType: newAccount.drawdown_type || accDrawdownType,
       useTrailingDrawdown: newAccount.use_trailing_drawdown || false,
       mllValue: newAccount.balance - (newAccount.max_loss_limit || 0),
@@ -280,7 +311,7 @@ router.post('/', async (req, res) => {
 // ─── Update Account ────────────────────────────────────
 router.put('/:id', async (req, res) => {
   try {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = req.body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, minDailyProfitPct, useTrailingDrawdown, drawdownType } = req.body;
     const accountId = req.params.id;
     const userId = req.user.id;
 
@@ -312,8 +343,9 @@ router.put('/:id', async (req, res) => {
           use_trailing_drawdown = COALESCE($12, use_trailing_drawdown),
           market_type = COALESCE($13, market_type),
           drawdown_type = COALESCE($14, drawdown_type),
-          min_trading_days = COALESCE($15, min_trading_days)
-      WHERE id = $16 AND user_id = $17
+          min_trading_days = COALESCE($15, min_trading_days),
+          min_daily_profit_pct = COALESCE($16, min_daily_profit_pct)
+      WHERE id = $17 AND user_id = $18
       RETURNING *
     `, [
       accountName, accountType, balance ? parseFloat(balance) : null, currency, status, notionLink, notes,
@@ -325,6 +357,7 @@ router.put('/:id', async (req, res) => {
       marketType,
       resolvedDrawdownType,
       minTradingDays !== undefined ? (parseInt(minTradingDays, 10) || 0) : null,
+      minDailyProfitPct !== undefined ? (parseFloat(minDailyProfitPct) || 0) : null,
       accountId, userId
     ]);
 
@@ -344,6 +377,7 @@ router.put('/:id', async (req, res) => {
       dailyLossLimit: updatedAccount.daily_loss_limit || 0,
       consistencyRule: updatedAccount.consistency_rule || 0,
       minTradingDays: updatedAccount.min_trading_days || 0,
+      minDailyProfitPct: updatedAccount.min_daily_profit_pct || 0,
       drawdownType: updatedAccount.drawdown_type || (updatedAccount.use_trailing_drawdown ? 'trailing' : 'static'),
       useTrailingDrawdown: updatedAccount.use_trailing_drawdown || false,
       createdAt: updatedAccount.created_at,

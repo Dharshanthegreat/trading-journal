@@ -332,6 +332,11 @@ const AccountCard = ({
                 </span>
               )}
             </div>
+            {Boolean(parseFloat(acc.minDailyProfitPct || acc.min_daily_profit_pct) > 0) && (
+              <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px', fontWeight: 600 }}>
+                ≥{acc.minDailyProfitPct || acc.min_daily_profit_pct}% profit/day
+              </span>
+            )}
           </motion.div>
         )}
       </div>
@@ -652,6 +657,7 @@ const Accounts = () => {
     dailyLossLimit: '',
     consistencyRule: '',
     minTradingDays: '',
+    minDailyProfitPct: '',
     drawdownType: 'static',
     useTrailingDrawdown: false
   });
@@ -706,6 +712,7 @@ const Accounts = () => {
       dailyLossLimit: '',
       consistencyRule: '',
       minTradingDays: '',
+      minDailyProfitPct: '',
       drawdownType: 'static',
       useTrailingDrawdown: false
     });
@@ -731,6 +738,9 @@ const Accounts = () => {
       minTradingDays: (acc.minTradingDays !== undefined && acc.minTradingDays !== null && acc.minTradingDays !== '')
         ? String(acc.minTradingDays)
         : (acc.min_trading_days ? String(acc.min_trading_days) : ''),
+      minDailyProfitPct: (acc.minDailyProfitPct !== undefined && acc.minDailyProfitPct !== null && acc.minDailyProfitPct !== 0 && acc.minDailyProfitPct !== '')
+        ? String(acc.minDailyProfitPct)
+        : ((acc.min_daily_profit_pct !== undefined && acc.min_daily_profit_pct !== null && acc.min_daily_profit_pct !== 0) ? String(acc.min_daily_profit_pct) : ''),
       drawdownType: resolvedDrawdownType,
       useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || acc.useTrailingDrawdown === true
     });
@@ -763,6 +773,7 @@ const Accounts = () => {
           dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
           minTradingDays: parseInt(formData.minTradingDays, 10) || 0,
+          minDailyProfitPct: parseFloat(formData.minDailyProfitPct) || 0,
           drawdownType: resolvedDrawdownType,
           useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || formData.useTrailingDrawdown === true
         });
@@ -781,6 +792,7 @@ const Accounts = () => {
           dailyLossLimit: parseFloat(formData.dailyLossLimit) || 0,
           consistencyRule: parseFloat(formData.consistencyRule) || 0,
           minTradingDays: parseInt(formData.minTradingDays, 10) || 0,
+          minDailyProfitPct: parseFloat(formData.minDailyProfitPct) || 0,
           drawdownType: resolvedDrawdownType,
           useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod' || formData.useTrailingDrawdown === true
         });
@@ -910,6 +922,7 @@ const Accounts = () => {
               dailyLossLimit: '',
               consistencyRule: '',
               minTradingDays: '',
+              minDailyProfitPct: '',
               drawdownType: 'static',
               useTrailingDrawdown: false
             });
@@ -1412,17 +1425,39 @@ const Accounts = () => {
                         </div>
                       </div>
 
-                      <div className="form-field" style={{ marginTop: '12px' }}>
-                        <label className="form-label">Minimum Trading Days</label>
-                        <input
-                          className="input"
-                          type="number"
-                          min="0"
-                          placeholder="e.g. 5 (Required trading days to pass challenge)"
-                          value={formData.minTradingDays}
-                          onChange={e => setFormData({ ...formData, minTradingDays: e.target.value })}
-                        />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)', marginTop: '12px' }}>
+                        <div className="form-field">
+                          <label className="form-label">Minimum Trading Days</label>
+                          <input
+                            className="input"
+                            type="number"
+                            min="0"
+                            placeholder="e.g. 3 or 5"
+                            value={formData.minTradingDays}
+                            onChange={e => setFormData({ ...formData, minTradingDays: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>Min Profit / Day (%)</span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 400 }}>Optional</span>
+                          </label>
+                          <input
+                            className="input"
+                            type="number"
+                            step="any"
+                            min="0"
+                            placeholder="e.g. 0.5 (% profit/day)"
+                            value={formData.minDailyProfitPct}
+                            onChange={e => setFormData({ ...formData, minDailyProfitPct: e.target.value })}
+                          />
+                        </div>
                       </div>
+                      {Boolean(formData.minDailyProfitPct && parseFloat(formData.minDailyProfitPct) > 0) && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '-4px', opacity: 0.9 }}>
+                          💡 Days count toward minimum only when daily profit reaches at least {formData.minDailyProfitPct}% (${((parseFloat(formData.balance) || 0) * (parseFloat(formData.minDailyProfitPct) / 100)).toFixed(2)})
+                        </div>
+                      )}
                       
                       <div className="form-field" style={{ marginTop: '12px' }}>
                         <label className="form-label">Drawdown Calculation Type</label>

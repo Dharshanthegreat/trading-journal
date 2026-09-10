@@ -1440,16 +1440,15 @@ const handleAccounts = async (url, method, body) => {
       const tradesCount = accTrades.length;
       const currentBalance = (acc.startingBalance || 0) + totalPnL;
 
-      // Count distinct trading days
-      const tradingDaysSet = new Set();
+      // Group trades by day and compute daily net PnL
+      const dailyPnL = {};
       accTrades.forEach(t => {
         const dateStr = t.exitTime || t.entryTime || t.createdAt;
         if (dateStr) {
           const dayStr = new Date(dateStr).toISOString().split('T')[0];
-          tradingDaysSet.add(dayStr);
+          dailyPnL[dayStr] = (dailyPnL[dayStr] || 0) + (t.pnl || 0);
         }
       });
-      const tradingDays = tradingDaysSet.size;
 
       // Prop challenge fields
       const profitTarget = acc.profitTarget || 0;
@@ -1457,8 +1456,23 @@ const handleAccounts = async (url, method, body) => {
       const dailyLossLimit = acc.dailyLossLimit || 0;
       const consistencyRule = acc.consistencyRule || 0;
       const minTradingDays = acc.minTradingDays || acc.min_trading_days || 0;
+      const minDailyProfitPct = parseFloat(acc.minDailyProfitPct || acc.min_daily_profit_pct) || 0;
       const drawdownType = acc.drawdownType || (acc.useTrailingDrawdown ? 'trailing' : 'static');
       const useTrailingDrawdown = drawdownType === 'trailing' || acc.useTrailingDrawdown || false;
+
+      // Count qualifying trading days (if minDailyProfitPct is set, daily PnL must reach startingBalance * pct)
+      const minDailyProfitReq = minDailyProfitPct > 0 ? (acc.startingBalance || 0) * (minDailyProfitPct / 100) : 0;
+      let tradingDays = 0;
+      const allDays = Object.keys(dailyPnL);
+      if (minDailyProfitPct > 0) {
+        allDays.forEach(day => {
+          if (dailyPnL[day] >= minDailyProfitReq) {
+            tradingDays++;
+          }
+        });
+      } else {
+        tradingDays = allDays.length;
+      }
 
       // Drawdown calculation
       let mllValue = (acc.startingBalance || 0) - maxLossLimit;
@@ -1565,6 +1579,7 @@ const handleAccounts = async (url, method, body) => {
         dailyLossLimit,
         consistencyRule,
         minTradingDays,
+        minDailyProfitPct,
         drawdownType,
         useTrailingDrawdown,
         mllValue,
@@ -1585,7 +1600,7 @@ const handleAccounts = async (url, method, body) => {
   }
 
   if (url === '' && method === 'POST') {
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, minDailyProfitPct, useTrailingDrawdown, drawdownType } = body;
     if (!accountName) throw { status: 400, message: 'Account Name is required' };
 
     const startBal = parseFloat(balance) || 0;
@@ -1609,6 +1624,7 @@ const handleAccounts = async (url, method, body) => {
       dailyLossLimit: parseFloat(dailyLossLimit) || 0,
       consistencyRule: parseFloat(consistencyRule) || 0,
       minTradingDays: parseInt(minTradingDays, 10) || 0,
+      minDailyProfitPct: parseFloat(minDailyProfitPct) || 0,
       drawdownType: resolvedDrawdownType,
       useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod',
       mllValue: startBal - (parseFloat(maxLossLimit) || 0),
@@ -1624,7 +1640,7 @@ const handleAccounts = async (url, method, body) => {
 
   if (url.startsWith('/') && method === 'PUT') {
     const id = parseInt(url.slice(1));
-    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, useTrailingDrawdown, drawdownType } = body;
+    const { accountName, accountType, marketType, balance, currency, status, notionLink, notes, profitTarget, maxLossLimit, dailyLossLimit, consistencyRule, minTradingDays, minDailyProfitPct, useTrailingDrawdown, drawdownType } = body;
     const idx = accountsList.findIndex(acc => acc.id === id);
     if (idx === -1) throw { status: 404, message: 'Account not found' };
 
@@ -1647,6 +1663,7 @@ const handleAccounts = async (url, method, body) => {
       dailyLossLimit: dailyLossLimit !== undefined ? parseFloat(dailyLossLimit) : accountsList[idx].dailyLossLimit,
       consistencyRule: consistencyRule !== undefined ? parseFloat(consistencyRule) : accountsList[idx].consistencyRule,
       minTradingDays: minTradingDays !== undefined ? (parseInt(minTradingDays, 10) || 0) : (accountsList[idx].minTradingDays || 0),
+      minDailyProfitPct: minDailyProfitPct !== undefined ? (parseFloat(minDailyProfitPct) || 0) : (accountsList[idx].minDailyProfitPct || 0),
       drawdownType: resolvedDrawdownType,
       useTrailingDrawdown: resolvedDrawdownType === 'trailing' || resolvedDrawdownType === 'eod'
     };
