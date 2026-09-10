@@ -9,7 +9,8 @@ export const CustomSetupInput = ({
   onChange,
   options = DEFAULT_SETUPS,
   placeholder = 'e.g. OB, FVG, or type custom...',
-  label = 'Setup / Strategy'
+  label = 'Setup / Strategy',
+  className = 'form-field'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -35,7 +36,7 @@ export const CustomSetupInput = ({
   );
 
   return (
-    <div className="form-field" style={{ position: 'relative' }} ref={containerRef}>
+    <div className={className} style={{ position: 'relative' }} ref={containerRef}>
       {label && <label className="form-label">{label}</label>}
 
       {/* Input container with chevron toggle */}

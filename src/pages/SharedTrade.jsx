@@ -452,6 +452,7 @@ const SharedTrade = () => {
                   { label: 'Setup / Strategy', value: trade.setup || '—' },
                   { label: 'Stop Loss', value: trade.stopLoss ? `$${trade.stopLoss}` : '—' },
                   { label: 'Take Profit', value: trade.takeProfit ? `$${trade.takeProfit}` : '—' },
+                  { label: 'Commission', value: trade.commission ? `$${parseFloat(trade.commission).toFixed(2)}` : '—' },
                   { label: 'Execution Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.62rem', padding: '1px 6px', borderRadius: 4 }}>{trade.grade || '—'}</span> },
                 ].map(item => (
                   <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', paddingBottom: 'var(--s1.5)', borderBottom: '1px solid var(--border)' }}>

@@ -138,6 +138,7 @@ export async function writeLocalBackup(userId) {
         accountId: t.account_id,
         notionLink: t.notion_link || '',
         riskRewardRatio: t.risk_reward_ratio || 0,
+        commission: t.commission || 0,
         createdAt: t.created_at
       })),
       journalEntries: journalResult.rows.map(j => ({

@@ -54,6 +54,7 @@ async function initDB() {
         lot_size DOUBLE PRECISION DEFAULT 0,
         stop_loss DOUBLE PRECISION DEFAULT 0,
         take_profit DOUBLE PRECISION DEFAULT 0,
+        commission DOUBLE PRECISION DEFAULT 0,
         pnl DOUBLE PRECISION DEFAULT 0,
         entry_time TIMESTAMPTZ,
         exit_time TIMESTAMPTZ,
@@ -182,6 +183,7 @@ async function initDB() {
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS account_id INTEGER;
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS notion_link TEXT DEFAULT '';
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS risk_reward_ratio DOUBLE PRECISION DEFAULT 0;
+      ALTER TABLE trades ADD COLUMN IF NOT EXISTS commission DOUBLE PRECISION DEFAULT 0;
       ALTER TABLE trades ADD COLUMN IF NOT EXISTS rules_checklist TEXT DEFAULT '{}';
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
       ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profit_target DOUBLE PRECISION DEFAULT 0;

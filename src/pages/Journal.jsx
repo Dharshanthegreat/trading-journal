@@ -53,7 +53,7 @@ import { toNewYorkDatetimeString, parseNewYorkDatetimeToDate, formatInNewYork, t
 
 const defaultForm = () => ({
   symbol: '', type: 'Long', entryPrice: '', exitPrice: '', lotSize: '',
-  stopLoss: '', takeProfit: '', pnl: '',
+  stopLoss: '', takeProfit: '', pnl: '', commission: '',
   entryTime: toNewYorkDatetimeString(new Date()), exitTime: '',
   setup: '', notes: '', tags: '', emotionTags: [],
   fomoLevel: 5, confidenceLevel: 5, grade: 'B',
@@ -251,6 +251,9 @@ const Journal = () => {
         if (parsedData.pnl !== undefined && parsedData.pnl !== null && !manuallyEditedRef.current.pnl) {
           nextData.pnl = String(parsedData.pnl);
         }
+        if (parsedData.commission !== undefined && parsedData.commission !== null && !manuallyEditedRef.current.commission) {
+          nextData.commission = String(parsedData.commission);
+        }
         return nextData;
       });
       setOcrMessage('Successfully extracted trade metrics!');
@@ -302,6 +305,7 @@ const Journal = () => {
       stopLoss: trade.stopLoss !== undefined ? String(trade.stopLoss) : '',
       takeProfit: trade.takeProfit !== undefined ? String(trade.takeProfit) : '',
       pnl: trade.pnl !== undefined ? String(trade.pnl) : '',
+      commission: trade.commission !== undefined && trade.commission !== null ? String(trade.commission) : '',
       entryTime: trade.entryTime ? toNewYorkDatetimeString(trade.entryTime) : '',
       exitTime: trade.exitTime ? toNewYorkDatetimeString(trade.exitTime) : '',
       setup: trade.setup || '',
@@ -544,6 +548,7 @@ const Journal = () => {
         stopLoss: parseFloat(formData.stopLoss) || 0,
         takeProfit: parseFloat(formData.takeProfit) || 0,
         pnl: parseFloat(formData.pnl) || 0,
+        commission: parseFloat(formData.commission) || 0,
         entryTime: entryTimeParsed && !isNaN(entryTimeParsed.getTime()) ? entryTimeParsed.toISOString() : new Date().toISOString(),
         exitTime: exitTimeParsed && !isNaN(exitTimeParsed.getTime()) ? exitTimeParsed.toISOString() : '',
         setup: formData.setup,
@@ -974,6 +979,10 @@ const Journal = () => {
                 </div>
 
                 <div className="form-field">
+                  <label className="form-label">Commission ($)</label>
+                  <input className="input" type="number" step="any" placeholder="0.00" value={formData.commission} onChange={e => handleFieldChange('commission', e.target.value)}/>
+                </div>
+                <div className="form-field">
                   <label className="form-label">Risk/Reward Ratio (R/R)</label>
                   <input className="input" type="number" step="any" placeholder="2.00" value={formData.riskRewardRatio} onChange={e => handleFieldChange('riskRewardRatio', e.target.value)}/>
                 </div>
@@ -1035,6 +1044,7 @@ const Journal = () => {
                   <input className="input" type="datetime-local" value={formData.exitTime} onChange={e => handleFieldChange('exitTime', e.target.value)}/>
                 </div>
                 <CustomSetupInput
+                  className="form-field full"
                   value={formData.setup}
                   onChange={val => handleFieldChange('setup', val)}
                 />
@@ -1707,6 +1717,7 @@ const Journal = () => {
                       {[
                         { label: 'Setup / Strategy', value: currentSelectedTrade.setup || '—' },
                         { label: 'Grade', value: <span className="badge badge-accent" style={{ fontSize: '0.6rem' }}>{currentSelectedTrade.grade || '—'}</span> },
+                        { label: 'Commission', value: currentSelectedTrade.commission ? `$${parseFloat(currentSelectedTrade.commission).toFixed(2)}` : '—' },
                         { label: 'Risk/Reward Ratio (R/R)', value: currentSelectedTrade.riskRewardRatio ? `${currentSelectedTrade.riskRewardRatio} R` : '—' },
                         { label: 'Exit Time', value: currentSelectedTrade.exitTime ? formatInNewYork(currentSelectedTrade.exitTime, 'MMM d, HH:mm') : '—' },
                         { label: 'Trading Account', value: accounts.find(a => a.id === currentSelectedTrade.accountId)?.accountName || '—' }
