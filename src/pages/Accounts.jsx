@@ -1306,7 +1306,7 @@ const Accounts = () => {
                         value={formData.accountType}
                         onChange={e => setFormData({ ...formData, accountType: e.target.value })}
                       >
-                        {['Simulation Challenge', 'Simulated', 'Funded Live', 'Live', 'Personal Demo'].map(t => (
+                        {['Prop Challenge', 'Prop Funded', 'Simulation Challenge', 'Simulated', 'Funded Live', 'Live', 'Personal Demo'].map(t => (
                           <option key={t} value={t}>{t}</option>
                         ))}
                       </select>
@@ -1350,7 +1350,7 @@ const Accounts = () => {
                   </div>
 
                   {/* Prop Firm / Challenge Settings Card */}
-                  {(formData.accountType === 'Simulation Challenge' || formData.accountType === 'Funded Live' || formData.accountType === 'Simulated') && (
+                  {(['Prop Challenge', 'Prop Funded', 'Simulation Challenge', 'Funded Live', 'Simulated'].includes(formData.accountType)) && (
                     <div style={{
                       background: 'rgba(255, 255, 255, 0.02)',
                       border: '1px solid rgba(255, 255, 255, 0.07)',
