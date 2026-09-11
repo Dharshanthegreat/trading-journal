@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, ZoomIn, ZoomOut, RotateCcw, Maximize2,
@@ -32,6 +33,21 @@ export const ChartViewerModal = ({
   useEffect(() => {
     resetView();
   }, [currentIndex, resetView]);
+
+  // Sync initialIndex if prop changes
+  useEffect(() => {
+    setCurrentIndex(initialIndex);
+  }, [initialIndex]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
 
   // Keyboard navigation & controls
   useEffect(() => {
@@ -135,9 +151,10 @@ export const ChartViewerModal = ({
 
   if (!currentUrl) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <motion.div
+        key="chart-viewer-lightbox-modal"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -150,7 +167,8 @@ export const ChartViewerModal = ({
           bottom: 0,
           background: 'rgba(5, 7, 11, 0.96)',
           backdropFilter: 'blur(16px)',
-          zIndex: 100000,
+          WebkitBackdropFilter: 'blur(16px)',
+          zIndex: 1000000,
           display: 'flex',
           flexDirection: 'column',
           userSelect: 'none',
@@ -498,6 +516,12 @@ export const ChartViewerModal = ({
       </motion.div>
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+
+  return modalContent;
 };
 
 export default ChartViewerModal;

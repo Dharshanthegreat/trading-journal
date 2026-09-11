@@ -419,6 +419,7 @@ const Journal = () => {
 
   useEffect(() => {
     setActiveImageIdx(0);
+    setZoomImage(null);
   }, [selectedTrade]);
 
   const handleShare = async () => {
